@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Chatbot DigiFlow</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #0a0a0a;
+            color: white;
+        }
+        .test-section {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        h1 {
+            background: linear-gradient(135deg, #9333ea, #ec4899);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        button {
+            background: linear-gradient(135deg, #9333ea, #ec4899);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            opacity: 0.9;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 8px;
+            margin: 10px 0;
+            background: rgba(255, 255, 255, 0.05);
+        }
+        .success { border-left: 4px solid #10b981; }
+        .error { border-left: 4px solid #ef4444; }
+        .warning { border-left: 4px solid #f59e0b; }
+        .info { border-left: 4px solid #3b82f6; }
+        pre {
+            background: rgba(0, 0, 0, 0.5);
+            padding: 10px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🤖 Test du Chatbot DigiFlow</h1>
+    
+    <div class="test-section">
+        <h2>📋 Configuration Actuelle</h2>
+        <div id="config-status"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>🔌 Test de l'API</h2>
+        <button onclick="testAPI()">Tester l'API /api/chat</button>
+        <div id="api-result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>💬 Test du Chatbot Inline</h2>
+        <button onclick="toggleChat()">Ouvrir/Fermer le Chat</button>
+        <div id="chat-container" style="display: none; margin-top: 20px;">
+            <div style="background: rgba(0, 0, 0, 0.9); border-radius: 12px; padding: 20px; border: 1px solid rgba(147, 51, 234, 0.3);">
+                <div id="messages" style="height: 300px; overflow-y: auto; margin-bottom: 20px; padding: 10px; background: rgba(255, 255, 255, 0.05); border-radius: 8px;">
+                    <div style="color: #9333ea;">🤖 Assistant: Bonjour! Je suis l'assistant DigiFlow. Comment puis-je vous aider?</div>
+                </div>
+                <div style="display: flex; gap: 10px;">
+                    <input type="text" id="chat-input" placeholder="Tapez votre message..." style="flex: 1; padding: 10px; background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 20px; color: white;">
+                    <button onclick="sendMessage()">Envoyer</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>🔍 Diagnostic</h2>
+        <button onclick="runDiagnostic()">Lancer le diagnostic complet</button>
+        <div id="diagnostic-result"></div>
+    </div>
+
+    <script>
+        // Configuration de test
+        const API_URL = window.location.origin + '/api/chat';
+        
+        // Vérifier la configuration
+        async function checkConfig() {
+            const configDiv = document.getElementById('config-status');
+            configDiv.innerHTML = `
+                <div class="status info">
+                    <strong>URL de l'API:</strong> ${API_URL}<br>
+                    <strong>Origine:</strong> ${window.location.origin}<br>
+                    <strong>Protocole:</strong> ${window.location.protocol}<br>
+                    <strong>Host:</strong> ${window.location.host}
+                </div>
+            `;
+        }
+
+        // Test de l'API
+        async function testAPI() {
+            const resultDiv = document.getElementById('api-result');
+            resultDiv.innerHTML = '<div class="status info">⏳ Test en cours...</div>';
+            
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        message: 'Test API - Bonjour DigiFlow!'
+                    })
+                });
+                
+                const contentType = response.headers.get('content-type');
+                const responseText = await response.text();
+                
+                if (response.ok) {
+                    try {
+                        const data = JSON.parse(responseText);
+                        resultDiv.innerHTML = `
+                            <div class="status success">
+                                ✅ API fonctionnelle!<br>
+                                <strong>Status:</strong> ${response.status}<br>
+                                <strong>Type de contenu:</strong> ${contentType}<br>
+                                <strong>IA Anthropic:</strong> ${data.aiGenerated ? '✅ Activée' : '⚠️ Mode fallback'}<br>
+                                <strong>Réponse:</strong>
+                                <pre>${JSON.stringify(data, null, 2)}</pre>
+                            </div>
+                        `;
+                    } catch (parseError) {
+                        resultDiv.innerHTML = `
+                            <div class="status warning">
+                                ⚠️ Réponse reçue mais pas en JSON<br>
+                                <strong>Status:</strong> ${response.status}<br>
+                                <strong>Contenu:</strong>
+                                <pre>${responseText.substring(0, 500)}...</pre>
+                            </div>
+                        `;
+                    }
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="status error">
+                            ❌ Erreur API<br>
+                            <strong>Status:</strong> ${response.status}<br>
+                            <strong>Message:</strong> ${responseText}
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="status error">
+                        ❌ Erreur de connexion<br>
+                        <strong>Message:</strong> ${error.message}<br>
+                        <strong>Type:</strong> ${error.name}
+                    </div>
+                `;
+            }
+        }
+
+        // Toggle chat
+        function toggleChat() {
+            const container = document.getElementById('chat-container');
+            container.style.display = container.style.display === 'none' ? 'block' : 'none';
+        }
+
+        // Envoyer un message
+        async function sendMessage() {
+            const input = document.getElementById('chat-input');
+            const messagesDiv = document.getElementById('messages');
+            const message = input.value.trim();
+            
+            if (!message) return;
+            
+            // Ajouter le message utilisateur
+            messagesDiv.innerHTML += `<div style="color: white; margin: 10px 0;">👤 Vous: ${message}</div>`;
+            input.value = '';
+            
+            // Indicateur de chargement
+            messagesDiv.innerHTML += `<div id="typing" style="color: #9333ea; margin: 10px 0;">🤖 Assistant: <span style="opacity: 0.5;">En train d'écrire...</span></div>`;
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+            
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ message })
+                });
+                
+                const data = await response.json();
+                
+                // Remplacer l'indicateur par la réponse
+                document.getElementById('typing').innerHTML = `🤖 Assistant: ${data.response} ${data.aiGenerated ? '<span style="background: #9333ea; padding: 2px 6px; border-radius: 10px; font-size: 10px; margin-left: 5px;">IA</span>' : ''}`;
+            } catch (error) {
+                document.getElementById('typing').innerHTML = `🤖 Assistant: <span style="color: #ef4444;">Erreur: ${error.message}</span>`;
+            }
+            
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        // Diagnostic complet
+        async function runDiagnostic() {
+            const resultDiv = document.getElementById('diagnostic-result');
+            resultDiv.innerHTML = '<div class="status info">🔍 Diagnostic en cours...</div>';
+            
+            let results = [];
+            
+            // Test 1: API disponible
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: 'test' })
+                });
+                results.push(response.ok ? '✅ API accessible' : '❌ API inaccessible');
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    results.push(data.aiGenerated ? '✅ Anthropic actif' : '⚠️ Mode fallback actif');
+                }
+            } catch (e) {
+                results.push('❌ Erreur de connexion à l\'API');
+            }
+            
+            // Test 2: Headers CORS
+            try {
+                const response = await fetch(API_URL, { method: 'OPTIONS' });
+                results.push('✅ CORS configuré');
+            } catch (e) {
+                results.push('⚠️ Vérifier la configuration CORS');
+            }
+            
+            // Test 3: Performance
+            const startTime = Date.now();
+            try {
+                await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: 'test performance' })
+                });
+                const responseTime = Date.now() - startTime;
+                results.push(`⏱️ Temps de réponse: ${responseTime}ms ${responseTime < 1000 ? '✅' : '⚠️'}`);
+            } catch (e) {
+                results.push('❌ Test de performance échoué');
+            }
+            
+            // Afficher les résultats
+            resultDiv.innerHTML = `
+                <div class="status ${results.some(r => r.includes('❌')) ? 'error' : results.some(r => r.includes('⚠️')) ? 'warning' : 'success'}">
+                    <h3>📊 Résultats du diagnostic:</h3>
+                    ${results.map(r => `<div>${r}</div>`).join('')}
+                    <br>
+                    <strong>Recommandations:</strong><br>
+                    ${results.some(r => r.includes('❌')) ? '• Vérifier le déploiement sur Vercel<br>' : ''}
+                    ${results.some(r => r.includes('Mode fallback')) ? '• Vérifier la variable ANTHROPIC_API_KEY sur Vercel<br>' : ''}
+                    ${results.some(r => r.includes('CORS')) ? '• Vérifier la configuration CORS de l\'API<br>' : ''}
+                    ${results.every(r => r.includes('✅')) ? '• Tout fonctionne correctement! 🎉' : ''}
+                </div>
+            `;
+        }
+
+        // Initialisation
+        checkConfig();
+        
+        // Support Enter key
+        document.getElementById('chat-input')?.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendMessage();
+        });
+    </script>
+</body>
+</html>

@@ -7,7 +7,7 @@ import Button from '@/components/ui/Button';
 import TestimonialsSection from '@/components/home/TestimonialsSection';
 import FAQSection from '@/components/home/FAQSection';
 import PremiumFooter from '@/components/layout/PremiumFooter';
-import AnimatedChatbot from '@/components/chat/AnimatedChatbot';
+import SimpleChatbot from '@/components/chat/SimpleChatbot';
 import { PREMIUM_APPLICATIONS } from '@/lib/premiumApplications';
 
 const HeroSphere = dynamic(() => import('@/components/three/HeroSphere'), {
@@ -294,8 +294,8 @@ export default function Home() {
         <PremiumFooter />
       </main>
 
-      {/* Animated Chatbot */}
-      <AnimatedChatbot />
+      {/* Simple Chatbot with inline styles */}
+      <SimpleChatbot />
     </div>
   );
 }
