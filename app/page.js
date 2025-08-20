@@ -9,6 +9,7 @@ import FAQSection from '@/components/home/FAQSection';
 import PremiumFooter from '@/components/layout/PremiumFooter';
 import SimpleChatbot from '@/components/chat/SimpleChatbot';
 import { PREMIUM_APPLICATIONS } from '@/lib/premiumApplications';
+import ApplicationCard from '@/components/ApplicationCard';
 
 const HeroSphere = dynamic(() => import('@/components/three/HeroSphere'), {
   ssr: false,
@@ -167,51 +168,7 @@ export default function Home() {
               
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 {PREMIUM_APPLICATIONS.map((app, index) => (
-                  <motion.div
-                    key={app.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.5, delay: 0.8 + index * 0.1 }}
-                    className="glass-card p-6 hover:scale-105 transition-all duration-300 cursor-pointer group"
-                  >
-                    <div className="flex items-start justify-between mb-4">
-                      <div 
-                        className="w-14 h-14 rounded-xl flex items-center justify-center text-2xl"
-                        style={{ background: app.gradient }}
-                      >
-                        {app.icon}
-                      </div>
-                      {app.status === 'active' ? (
-                        <span className="px-2 py-1 bg-green-500/20 text-green-400 text-xs rounded-full">Active</span>
-                      ) : (
-                        <span className="px-2 py-1 bg-white/10 text-white/40 text-xs rounded-full">Soon</span>
-                      )}
-                    </div>
-                    
-                    <h4 className="text-xl font-bold text-white mb-1">{app.name}</h4>
-                    <p className="text-sm text-purple-400 mb-3">{app.tagline}</p>
-                    <p className="text-sm text-white/60 mb-4">{app.description}</p>
-                    
-                    <div className="space-y-2">
-                      {app.features.map((feature, idx) => (
-                        <div key={idx} className="flex items-center gap-2 text-xs text-white/70">
-                          <span className="text-purple-400">✓</span>
-                          {feature}
-                        </div>
-                      ))}
-                    </div>
-                    
-                    {app.stats && (
-                      <div className="mt-4 pt-4 border-t border-white/10 flex justify-between text-xs">
-                        {Object.entries(app.stats).slice(0, 2).map(([key, value]) => (
-                          <div key={key}>
-                            <span className="text-white/50">{key}: </span>
-                            <span className="text-white font-semibold">{value}</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </motion.div>
+                  <ApplicationCard key={app.id} app={app} index={index} />
                 ))}
               </div>
             </motion.div>
