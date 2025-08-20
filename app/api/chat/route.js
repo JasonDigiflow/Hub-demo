@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
-import { AVA_CONCISE_PROMPT } from '@/lib/ai-personas-concise';
+import { AVA_BALANCED_PROMPT } from '@/lib/ai-personas-balanced';
 
 export async function POST(request) {
   try {
@@ -20,11 +20,11 @@ export async function POST(request) {
           apiKey: process.env.ANTHROPIC_API_KEY,
         });
 
-        // Utiliser la version CONCISE d'Ava (max 3 phrases)
+        // Utiliser la version ÉQUILIBRÉE d'Ava (concise mais humaine)
         const messages = [
           {
             role: 'system',
-            content: AVA_CONCISE_PROMPT
+            content: AVA_BALANCED_PROMPT
           },
           {
             role: 'user',
@@ -34,7 +34,7 @@ export async function POST(request) {
 
         const response = await anthropic.messages.create({
           model: 'claude-3-5-haiku-20241022', // Dernière version de Haiku
-          max_tokens: 200, // Réduit pour forcer la concision
+          max_tokens: 300, // Équilibré pour permettre un peu d'humanité
           temperature: 0.7,
           messages: messages
         });
@@ -73,9 +73,12 @@ export async function POST(request) {
       'essai': '14 jours d\'essai gratuit sur Fidalyz, sans carte bancaire.',
       'résultat': 'Fidalyz : +0.8 étoiles en moyenne, +47% d\'avis positifs.',
       
-      // Questions générales
-      'bonjour': 'Bonjour ! Je suis Ava, assistante DigiFlow. Comment puis-je vous aider ?',
-      'aide': 'Je peux vous informer sur DigiFlow et Fidalyz. Que souhaitez-vous savoir ?',
+      // Questions générales et sociales
+      'bonjour': 'Bonjour ! 😊 Je suis Ava, votre assistante DigiFlow. Je suis ravie de vous présenter nos solutions IA. Qu\'est-ce qui vous intéresse ?',
+      'ça va': 'Très bien merci ! 😊 Je suis là pour vous parler de DigiFlow et ses applications IA. Qu\'est-ce qui vous amène ?',
+      'comment vas': 'Super, merci de demander ! Je suis prête à vous aider avec DigiFlow. Vous cherchez une solution particulière ?',
+      'aide': 'Avec plaisir ! Je peux vous présenter Fidalyz (disponible) ou nos 7 autres apps qui arrivent en 2025. Par quoi on commence ?',
+      'merci': 'Je vous en prie ! 😊 N\'hésitez pas si vous avez d\'autres questions sur DigiFlow.',
       
       // Default
       'default': 'Je n\'ai pas cette information précise. Contactez support@digiflow.com pour plus de détails.'
