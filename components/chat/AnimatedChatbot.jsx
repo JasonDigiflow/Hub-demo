@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-const ChatMessage = ({ message, isBot }) => (
+const ChatMessage = ({ text, isBot, aiGenerated }) => (
   <motion.div
     initial={{ opacity: 0, y: 10 }}
     animate={{ opacity: 1, y: 0 }}
@@ -12,14 +12,19 @@ const ChatMessage = ({ message, isBot }) => (
   >
     <div
       className={`
-        max-w-[80%] px-4 py-2 rounded-2xl text-sm
+        max-w-[80%] px-4 py-2 rounded-2xl text-sm relative
         ${isBot 
           ? 'glass-card text-white/90' 
           : 'bg-gradient-to-r from-purple-600 to-pink-600 text-white'
         }
       `}
     >
-      {message}
+      {text}
+      {isBot && aiGenerated && (
+        <span className="absolute -top-2 -right-2 text-xs bg-purple-600 text-white px-2 py-0.5 rounded-full">
+          IA
+        </span>
+      )}
     </div>
   </motion.div>
 );
@@ -41,7 +46,7 @@ export default function AnimatedChatbot() {
     "Parler à un expert"
   ];
 
-  const handleSend = (text) => {
+  const handleSend = async (text) => {
     const messageText = text || inputValue;
     if (!messageText.trim()) return;
 
@@ -55,25 +60,50 @@ export default function AnimatedChatbot() {
     setInputValue('');
     setIsTyping(true);
 
-    // Simulate bot response
-    setTimeout(() => {
-      const botResponses = {
+    try {
+      // Appel à l'API pour obtenir une réponse (Anthropic ou fallback)
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          message: messageText,
+          history: messages 
+        })
+      });
+
+      const data = await response.json();
+      
+      setIsTyping(false);
+      
+      // Ajouter la réponse du bot
+      setMessages(prev => [...prev, {
+        id: Date.now() + 1,
+        text: data.response || "Désolé, je n'ai pas pu traiter votre message. Veuillez réessayer.",
+        isBot: true,
+        aiGenerated: data.aiGenerated || false
+      }]);
+    } catch (error) {
+      console.error('Chat error:', error);
+      setIsTyping(false);
+      
+      // Fallback en cas d'erreur
+      const fallbackResponses = {
         "Découvrir DigiFlow": "DigiFlow est une plateforme tout-en-un qui automatise votre business avec 8 applications puissantes. Voulez-vous une démo personnalisée?",
         "Voir les tarifs": "Nos plans démarrent à 49€/mois. Chaque application peut être activée selon vos besoins. Essai gratuit de 14 jours disponible!",
         "Démo gratuite": "Parfait! Je peux programmer une démo avec notre équipe. Quel créneau vous conviendrait le mieux?",
         "Parler à un expert": "Je transfère votre demande à notre équipe. Un expert vous contactera dans les 24h. Puis-je avoir votre email?"
       };
 
-      const response = botResponses[messageText] || 
+      const response = fallbackResponses[messageText] || 
         "Je comprends votre question. Notre équipe sera ravie de vous aider. Souhaitez-vous programmer un appel?";
 
-      setIsTyping(false);
       setMessages(prev => [...prev, {
         id: Date.now() + 1,
         text: response,
-        isBot: true
+        isBot: true,
+        aiGenerated: false
       }]);
-    }, 1500);
+    }
   };
 
   // Auto-open after delay
