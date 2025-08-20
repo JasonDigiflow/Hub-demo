@@ -64,11 +64,14 @@ export async function POST(request) {
     // Fallback : Réponses pré-définies si pas d'API Anthropic
     const fallbackResponses = {
       // Questions sur DigiFlow
-      'digiflow': 'DigiFlow est une plateforme tout-en-un qui automatise et optimise votre business avec 8 applications intelligentes. Chaque app est spécialisée dans un domaine clé de votre entreprise.',
-      'fidalyz': 'Fidalyz est notre application de gestion de réputation. Elle répond automatiquement aux avis clients avec l\'IA, collecte des avis par SMS/NFC et publie des posts Google Business.',
-      'tarif': 'Nos tarifs démarrent à 49€/mois par application. Essai gratuit de 14 jours disponible. Contactez-nous pour un devis personnalisé !',
-      'demo': 'Vous pouvez accéder à la démo de Fidalyz en vous connectant avec : jason@behype-app.com / Demo123',
-      'essai': 'Profitez de 14 jours d\'essai gratuit sans carte bancaire ! Cliquez sur "Essai gratuit" pour commencer.',
+      'digiflow': 'DigiFlow est une plateforme tout-en-un qui automatise et optimise votre business avec 8 applications intelligentes. Actuellement, Fidalyz est déployée et les 7 autres arrivent progressivement en 2025.',
+      'fidalyz': 'Fidalyz est notre première application déployée ! Gérée par Clark, elle automatise votre réputation en ligne : réponses IA aux avis, collecte SMS/NFC, posts Google Business. Déjà 2.5k+ utilisateurs satisfaits !',
+      'pourquoi': 'Excellente question ! Fidalyz est notre première app déployée car la gestion de réputation est le besoin #1. Les 7 autres applications arrivent progressivement au Q1-Q2 2025. Voulez-vous une démo de Fidalyz ?',
+      'accès': 'Pour l\'instant, seule Fidalyz est accessible. C\'est notre produit phare avec d\'excellents résultats ! Les autres apps (AIDs, SEOly, Supportia...) arrivent très bientôt. Voulez-vous être notifié ?',
+      'autres': 'Les 7 autres applications arrivent progressivement ! Supportia (janvier), AIDs (février), SEOly (mars)... Je peux vous mettre en liste d\'attente prioritaire. En attendant, découvrez Fidalyz !',
+      'tarif': 'Fidalyz est à 49€/mois avec 14 jours d\'essai gratuit. Les autres apps auront des tarifs similaires. Pack complet prévu à tarif préférentiel !',
+      'demo': 'Accédez à la démo Fidalyz : jason@behype-app.com / Demo123. Les démos des autres apps seront disponibles à leur lancement.',
+      'essai': '14 jours d\'essai gratuit sur Fidalyz, sans carte ! Les autres apps auront aussi leur période d\'essai à leur sortie.',
       
       // Questions générales
       'bonjour': 'Bonjour ! 👋 Je suis Ava, votre assistante virtuelle DigiFlow. Comment puis-je vous aider aujourd\'hui ?',
@@ -76,17 +79,27 @@ export async function POST(request) {
       'contact': 'Pour nous contacter : support@digiflow.com ou utilisez le formulaire de contact. Notre équipe répond sous 24h.',
       
       // Default
-      'default': 'Je suis Ava, votre assistante DigiFlow. Je peux vous orienter vers la bonne solution parmi nos 8 applications. Dites-moi quel est votre besoin principal !'
+      'default': 'Je suis Ava, votre assistante DigiFlow. Actuellement, Fidalyz (gestion réputation) est disponible et les 7 autres apps arrivent en 2025. Comment puis-je vous aider ?'
     };
 
     // Chercher une réponse correspondante
     const messageLower = message.toLowerCase();
     let response = fallbackResponses.default;
 
-    for (const [key, value] of Object.entries(fallbackResponses)) {
-      if (messageLower.includes(key)) {
-        response = value;
-        break;
+    // Questions spécifiques sur l'accès limité
+    if (messageLower.includes('pourquoi') && (messageLower.includes('fidalyz') || messageLower.includes('seul') || messageLower.includes('accès'))) {
+      response = fallbackResponses.pourquoi;
+    } else if (messageLower.includes('autres') || messageLower.includes('reste') || messageLower.includes('quand')) {
+      response = fallbackResponses.autres;
+    } else if (messageLower.includes('accès') || messageLower.includes('disponible')) {
+      response = fallbackResponses.accès;
+    } else {
+      // Recherche normale par mots-clés
+      for (const [key, value] of Object.entries(fallbackResponses)) {
+        if (messageLower.includes(key)) {
+          response = value;
+          break;
+        }
       }
     }
 
