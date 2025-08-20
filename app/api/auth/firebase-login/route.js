@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server';
-import { auth } from '@/lib/firebase';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import jwt from 'jsonwebtoken';
 import { cookies } from 'next/headers';
@@ -20,6 +19,13 @@ export async function POST(request) {
     // Si Firebase est configuré, utiliser Firebase Auth
     if (process.env.NEXT_PUBLIC_FIREBASE_API_KEY) {
       try {
+        // Import dynamique de Firebase seulement si configuré
+        const { auth } = await import('@/lib/firebase');
+        
+        if (!auth) {
+          throw new Error('Firebase not initialized');
+        }
+        
         // Connexion avec Firebase
         const userCredential = await signInWithEmailAndPassword(auth, email, password);
         const user = userCredential.user;
