@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 export default function SimpleChatbot() {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([
-    { id: 1, text: "Bonjour! 👋 Je suis l'assistant DigiFlow. Comment puis-je vous aider?", isBot: true }
+    { id: 1, text: "Bonjour! 👋 Je suis Ava, votre assistante virtuelle DigiFlow. Je suis ici pour vous présenter nos solutions et vous orienter vers le bon expert IA. Comment puis-je vous aider?", isBot: true, persona: 'Ava' }
   ]);
   const [inputValue, setInputValue] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -44,7 +44,7 @@ export default function SimpleChatbot() {
       
       setMessages(prev => [...prev, {
         id: Date.now() + 1,
-        text: data.response || "Je suis là pour vous aider avec DigiFlow!",
+        text: data.response || "Je suis Ava, et je suis là pour vous aider avec DigiFlow et ses 8 applications!",
         isBot: true,
         aiGenerated: data.aiGenerated
       }]);
@@ -127,10 +127,10 @@ export default function SimpleChatbot() {
                 alignItems: 'center',
                 justifyContent: 'center'
               }}>
-                <span style={{ fontSize: '20px' }}>🤖</span>
+                <span style={{ fontSize: '20px' }}>👩‍💼</span>
               </div>
               <div>
-                <div style={{ color: 'white', fontWeight: 'bold' }}>Assistant DigiFlow</div>
+                <div style={{ color: 'white', fontWeight: 'bold' }}>Ava - Assistant DigiFlow</div>
                 <div style={{ color: 'rgba(255, 255, 255, 0.8)', fontSize: '12px' }}>
                   {isTyping ? 'En train d\'écrire...' : 'En ligne'}
                 </div>

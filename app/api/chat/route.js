@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
+import { AI_PERSONAS, getEnrichedPrompt, getRelevantPersona, addMemory } from '@/lib/ai-personas';
 
 export async function POST(request) {
   try {
@@ -19,24 +20,20 @@ export async function POST(request) {
           apiKey: process.env.ANTHROPIC_API_KEY,
         });
 
-        // Construire le contexte avec l'historique
+        // Utiliser Ava comme persona principal du chatbot
+        const enrichedPrompt = getEnrichedPrompt('ava', {
+          history: history
+        });
+
+        // Construire le contexte avec le persona Ava
         const messages = [
           {
+            role: 'system',
+            content: enrichedPrompt
+          },
+          {
             role: 'user',
-            content: `Tu es l'assistant IA de DigiFlow, une plateforme d'automatisation business. 
-Tu dois être utile, professionnel et concis. Tu connais bien les 8 applications de DigiFlow :
-- Fidalyz (gestion e-réputation)
-- AIDs (optimisation publicitaire)
-- SEOly (SEO automatisé)
-- Supportia (support client IA)
-- Salesia (automatisation commerciale)
-- Lexa (contrats légaux)
-- CashFlow (gestion financière)
-- Eden (business intelligence)
-
-Réponds en français de manière naturelle et engageante.
-
-Question de l'utilisateur : ${message}`
+            content: message
           }
         ];
 
@@ -48,6 +45,11 @@ Question de l'utilisateur : ${message}`
         });
 
         const aiResponse = response.content[0].text;
+
+        // Ajouter à la mémoire si c'est une information importante
+        if (message.includes('mon nom est') || message.includes('je suis')) {
+          addMemory('ava', `Client: ${message}`);
+        }
 
         return NextResponse.json({
           response: aiResponse,
@@ -69,12 +71,12 @@ Question de l'utilisateur : ${message}`
       'essai': 'Profitez de 14 jours d\'essai gratuit sans carte bancaire ! Cliquez sur "Essai gratuit" pour commencer.',
       
       // Questions générales
-      'bonjour': 'Bonjour ! 👋 Je suis l\'assistant DigiFlow. Comment puis-je vous aider aujourd\'hui ?',
-      'aide': 'Je peux vous renseigner sur nos 8 applications, les tarifs, ou vous aider à démarrer votre essai gratuit. Que souhaitez-vous savoir ?',
+      'bonjour': 'Bonjour ! 👋 Je suis Ava, votre assistante virtuelle DigiFlow. Comment puis-je vous aider aujourd\'hui ?',
+      'aide': 'Je suis Ava, et je peux vous présenter nos 8 applications gérées par mes collègues IA : Clark (Fidalyz), Octavia (AIDs), Jerry (SEOly), Claude (Supportia), Valérie (Salesia), Lexa (Lexa), Papin (CashFlow) et Eden (Eden). Que souhaitez-vous savoir ?',
       'contact': 'Pour nous contacter : support@digiflow.com ou utilisez le formulaire de contact. Notre équipe répond sous 24h.',
       
       // Default
-      'default': 'Je suis là pour répondre à vos questions sur DigiFlow et ses applications. N\'hésitez pas à me demander des informations sur Fidalyz, les tarifs, ou comment démarrer votre essai gratuit !'
+      'default': 'Je suis Ava, votre assistante DigiFlow. Je peux vous orienter vers la bonne solution parmi nos 8 applications. Dites-moi quel est votre besoin principal !'
     };
 
     // Chercher une réponse correspondante
