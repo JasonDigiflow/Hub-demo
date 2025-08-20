@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
-import { AI_PERSONAS, getEnrichedPrompt, getRelevantPersona, addMemory } from '@/lib/ai-personas';
+import { AVA_CONCISE_PROMPT } from '@/lib/ai-personas-concise';
 
 export async function POST(request) {
   try {
@@ -20,16 +20,11 @@ export async function POST(request) {
           apiKey: process.env.ANTHROPIC_API_KEY,
         });
 
-        // Utiliser Ava comme persona principal du chatbot
-        const enrichedPrompt = getEnrichedPrompt('ava', {
-          history: history
-        });
-
-        // Construire le contexte avec le persona Ava
+        // Utiliser la version CONCISE d'Ava (max 3 phrases)
         const messages = [
           {
             role: 'system',
-            content: enrichedPrompt
+            content: AVA_CONCISE_PROMPT
           },
           {
             role: 'user',
@@ -38,22 +33,18 @@ export async function POST(request) {
         ];
 
         const response = await anthropic.messages.create({
-          model: 'claude-3-haiku-20240307',
-          max_tokens: 500,
+          model: 'claude-3-5-haiku-20241022', // Dernière version de Haiku
+          max_tokens: 200, // Réduit pour forcer la concision
           temperature: 0.7,
           messages: messages
         });
 
         const aiResponse = response.content[0].text;
 
-        // Ajouter à la mémoire si c'est une information importante
-        if (message.includes('mon nom est') || message.includes('je suis')) {
-          addMemory('ava', `Client: ${message}`);
-        }
-
         return NextResponse.json({
           response: aiResponse,
-          aiGenerated: true
+          aiGenerated: true,
+          persona: 'Ava'
         });
       } catch (aiError) {
         console.error('Anthropic API error:', aiError);
@@ -61,58 +52,59 @@ export async function POST(request) {
       }
     }
 
-    // Fallback : Réponses pré-définies si pas d'API Anthropic
+    // Fallback : Réponses CONCISES pré-définies
     const fallbackResponses = {
       // Questions sur DigiFlow
-      'digiflow': 'DigiFlow est une plateforme tout-en-un qui automatise et optimise votre business avec 8 applications intelligentes. Actuellement, Fidalyz est déployée et les 7 autres arrivent progressivement en 2025.',
-      'fidalyz': 'Fidalyz est notre première application déployée ! Gérée par Clark, elle automatise votre réputation en ligne : réponses IA aux avis, collecte SMS/NFC, posts Google Business. Déjà 2.5k+ utilisateurs satisfaits !',
-      'pourquoi': 'Excellente question ! Fidalyz est notre première app déployée car la gestion de réputation est le besoin #1. Les 7 autres applications arrivent progressivement au Q1-Q2 2025. Voulez-vous une démo de Fidalyz ?',
-      'accès': 'Pour l\'instant, seule Fidalyz est accessible. C\'est notre produit phare avec d\'excellents résultats ! Les autres apps (AIDs, SEOly, Supportia...) arrivent très bientôt. Voulez-vous être notifié ?',
-      'autres': 'Les 7 autres applications arrivent progressivement ! Supportia (janvier), AIDs (février), SEOly (mars)... Je peux vous mettre en liste d\'attente prioritaire. En attendant, découvrez Fidalyz !',
-      'tarif': 'Fidalyz est à 49€/mois avec 14 jours d\'essai gratuit. Les autres apps auront des tarifs similaires. Pack complet prévu à tarif préférentiel !',
-      'demo': 'Accédez à la démo Fidalyz : jason@behype-app.com / Demo123. Les démos des autres apps seront disponibles à leur lancement.',
-      'essai': '14 jours d\'essai gratuit sur Fidalyz, sans carte ! Les autres apps auront aussi leur période d\'essai à leur sortie.',
+      'digiflow': 'DigiFlow Hub est une plateforme d\'automatisation business par IA. 8 applications IA, dont Fidalyz disponible actuellement.',
+      'fidalyz': 'Fidalyz gère votre e-réputation avec l\'IA Clark. Prix : 49€/mois, essai 14 jours gratuit.',
+      'fondateur': 'Jason Sotoca est le fondateur de DigiFlow Hub.',
+      'jason': 'Jason Sotoca est le CEO et fondateur de DigiFlow Hub.',
+      'prix': 'Fidalyz : 49€/mois. Packs à venir : Starter 119€, Growth 189€, Ultimate 299€.',
+      'tarif': 'Fidalyz : 49€/mois. Essai gratuit 14 jours disponible.',
+      'demo': 'Accès démo : jason@behype-app.com / Demo123',
+      'sécurité': 'DigiFlow est totalement sécurisé. Serveurs en France, RGPD compliant, données chiffrées.',
+      'sécurisé': 'Oui, totalement sécurisé. Serveurs français, conformité RGPD, chiffrement AES-256.',
+      'rgpd': 'DigiFlow est 100% conforme RGPD. Données hébergées en France.',
+      'pourquoi': 'Nous perfectionnons chaque app avant lancement. Les 7 autres arrivent en 2025.',
+      'quand': 'Supportia en janvier, AIDs en février, puis une app par mois jusqu\'en juillet.',
+      'différence': 'HubSpot : vous faites le travail. DigiFlow : l\'IA fait le travail à votre place.',
+      'concurrent': 'Contrairement à Monday ou HubSpot, nos IA font le travail, pas juste l\'assister.',
+      'contact': 'Support : support@digiflow.com. Site : digiflow-agency.fr.',
+      'essai': '14 jours d\'essai gratuit sur Fidalyz, sans carte bancaire.',
+      'résultat': 'Fidalyz : +0.8 étoiles en moyenne, +47% d\'avis positifs.',
       
       // Questions générales
-      'bonjour': 'Bonjour ! 👋 Je suis Ava, votre assistante virtuelle DigiFlow. Comment puis-je vous aider aujourd\'hui ?',
-      'aide': 'Je suis Ava, et je peux vous présenter nos 8 applications gérées par mes collègues IA : Clark (Fidalyz), Octavia (AIDs), Jerry (SEOly), Claude (Supportia), Valérie (Salesia), Lexa (Lexa), Papin (CashFlow) et Eden (Eden). Que souhaitez-vous savoir ?',
-      'contact': 'Pour nous contacter : support@digiflow.com ou utilisez le formulaire de contact. Notre équipe répond sous 24h.',
+      'bonjour': 'Bonjour ! Je suis Ava, assistante DigiFlow. Comment puis-je vous aider ?',
+      'aide': 'Je peux vous informer sur DigiFlow et Fidalyz. Que souhaitez-vous savoir ?',
       
       // Default
-      'default': 'Je suis Ava, votre assistante DigiFlow. Actuellement, Fidalyz (gestion réputation) est disponible et les 7 autres apps arrivent en 2025. Comment puis-je vous aider ?'
+      'default': 'Je n\'ai pas cette information précise. Contactez support@digiflow.com pour plus de détails.'
     };
 
     // Chercher une réponse correspondante
     const messageLower = message.toLowerCase();
     let response = fallbackResponses.default;
 
-    // Questions spécifiques sur l'accès limité
-    if (messageLower.includes('pourquoi') && (messageLower.includes('fidalyz') || messageLower.includes('seul') || messageLower.includes('accès'))) {
-      response = fallbackResponses.pourquoi;
-    } else if (messageLower.includes('autres') || messageLower.includes('reste') || messageLower.includes('quand')) {
-      response = fallbackResponses.autres;
-    } else if (messageLower.includes('accès') || messageLower.includes('disponible')) {
-      response = fallbackResponses.accès;
-    } else {
-      // Recherche normale par mots-clés
-      for (const [key, value] of Object.entries(fallbackResponses)) {
-        if (messageLower.includes(key)) {
-          response = value;
-          break;
-        }
+    // Recherche par mots-clés
+    for (const [key, value] of Object.entries(fallbackResponses)) {
+      if (messageLower.includes(key)) {
+        response = value;
+        break;
       }
     }
 
     return NextResponse.json({
       response,
-      aiGenerated: false
+      aiGenerated: false,
+      persona: 'Ava'
     });
+
   } catch (error) {
     console.error('Chat API error:', error);
     return NextResponse.json(
       { 
-        error: 'Erreur lors du traitement du message',
-        response: 'Désolé, je rencontre un problème technique. Veuillez réessayer.'
+        error: 'Erreur lors du traitement',
+        response: 'Désolé, erreur technique. Réessayez ou contactez support@digiflow.com.'
       },
       { status: 500 }
     );
