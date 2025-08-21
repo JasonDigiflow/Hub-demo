@@ -8,7 +8,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 export default function AppLayout({ children }) {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [user, setUser] = useState(null);
-  const [showUserMenu, setShowUserMenu] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
 
@@ -119,8 +118,8 @@ export default function AppLayout({ children }) {
                     </span>
                   </div>
                   <div className="flex-1">
-                    <p className="text-sm font-medium text-white">{user.name || 'Utilisateur'}</p>
-                    <p className="text-xs text-gray-400">{user.organization?.name || user.email}</p>
+                    <p className="text-sm font-medium text-white">{user?.name || 'Utilisateur'}</p>
+                    <p className="text-xs text-gray-400">{user?.organizationName || 'Organisation'}</p>
                   </div>
                 </div>
               </div>
@@ -267,49 +266,6 @@ export default function AppLayout({ children }) {
                   <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
                 </button>
 
-                {/* User Menu */}
-                <div className="relative">
-                  <button
-                    onClick={() => setShowUserMenu(!showUserMenu)}
-                    className="flex items-center gap-2 p-2 hover:bg-white/5 rounded-lg transition-colors"
-                  >
-                    <div className="w-8 h-8 bg-gradient-to-r from-purple-600 to-pink-600 rounded-full flex items-center justify-center">
-                      <span className="text-white text-sm font-bold">
-                        {user?.name ? user.name[0].toUpperCase() : 'U'}
-                      </span>
-                    </div>
-                  </button>
-
-                  <AnimatePresence>
-                    {showUserMenu && (
-                      <motion.div
-                        initial={{ opacity: 0, y: -10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -10 }}
-                        className="absolute right-0 mt-2 w-56 bg-gray-800 border border-white/10 rounded-xl shadow-xl overflow-hidden"
-                      >
-                        <div className="p-4 border-b border-white/10">
-                          <p className="text-sm font-medium text-white">{user?.name}</p>
-                          <p className="text-xs text-gray-400">{user?.email}</p>
-                        </div>
-                        <div className="p-2">
-                          <Link href="/app/settings" className="block px-3 py-2 text-sm text-gray-300 hover:bg-white/5 rounded-lg transition-colors">
-                            ⚙️ Paramètres
-                          </Link>
-                          <Link href="/app/billing" className="block px-3 py-2 text-sm text-gray-300 hover:bg-white/5 rounded-lg transition-colors">
-                            💳 Facturation
-                          </Link>
-                          <button
-                            onClick={handleLogout}
-                            className="w-full text-left px-3 py-2 text-sm text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
-                          >
-                            🚪 Déconnexion
-                          </button>
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
               </div>
             </div>
           </div>

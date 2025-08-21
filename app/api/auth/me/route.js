@@ -9,8 +9,9 @@ const DEMO_USER = {
   email: 'jason@behype-app.com',
   name: 'Jason Sotoca',
   avatar: '👨‍💼',
+  organizationName: 'DigiFlow', // Nom de l'organisation pour affichage
   organization: {
-    name: 'Behype',
+    name: 'DigiFlow',
     id: 'org_001',
     role: 'owner',
     members: 1,
