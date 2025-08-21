@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import jwt from 'jsonwebtoken';
-
-const JWT_SECRET = process.env.JWT_SECRET || 'digiflow-secret-key-2024';
+import { auth, db } from '@/lib/firebase';
+import { getDoc, doc } from 'firebase/firestore';
 
 // Données utilisateur complètes pour la démo
 const DEMO_USER = {
@@ -67,11 +66,22 @@ export async function GET(request) {
       );
     }
 
+    // Demo mode
+    if (token.value === 'demo_token') {
+      return NextResponse.json(DEMO_USER);
+    }
+
+    // Firebase mode - For now, return demo user if Firebase not configured
+    // TODO: Implement Firebase Admin SDK for token verification
+    if (!auth || !db) {
+      return NextResponse.json(DEMO_USER);
+    }
+
+    // Try to decode as Firebase token (basic check)
+    // In production, you'd use Firebase Admin SDK to verify the token
     try {
-      // Vérifier le token
-      const decoded = jwt.verify(token.value, JWT_SECRET);
-      
-      // Retourner les données utilisateur directement (sans wrapper)
+      // For now, return demo user
+      // This would be replaced with actual Firebase token verification
       return NextResponse.json(DEMO_USER);
     } catch (error) {
       return NextResponse.json(

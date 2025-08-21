@@ -1,34 +1,21 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import jwt from 'jsonwebtoken';
+import { loginWithEmail } from '@/lib/firebase-auth';
+import { auth } from '@/lib/firebase';
 
-// Secret pour JWT (en production, utiliser une variable d'environnement)
-const JWT_SECRET = process.env.JWT_SECRET || 'digiflow-secret-key-2024';
-
-// Compte démo
+// Compte démo pour développement local
 const DEMO_ACCOUNT = {
   email: 'jason@behype-app.com',
   password: 'Demo123',
   user: {
-    id: '1',
+    id: 'demo_user',
     email: 'jason@behype-app.com',
     name: 'Jason Sotoca',
     organization: {
       name: 'Behype',
-      id: 'org_001',
+      id: 'demo_org',
       role: 'owner',
       members: 1
-    },
-    apps: {
-      fidalyz: {
-        active: true,
-        stats: {
-          reviews: 127,
-          avgRating: 4.7,
-          responseRate: 95,
-          googlePosts: 42
-        }
-      }
     }
   }
 };
@@ -37,7 +24,6 @@ export async function POST(request) {
   try {
     const { email, password } = await request.json();
 
-    // Validation basique
     if (!email || !password) {
       return NextResponse.json(
         { error: 'Email et mot de passe requis' },
@@ -45,44 +31,65 @@ export async function POST(request) {
       );
     }
 
-    // Vérification du compte démo
-    if (email === DEMO_ACCOUNT.email && password === DEMO_ACCOUNT.password) {
-      // Créer le token JWT
-      const token = jwt.sign(
-        { 
-          userId: DEMO_ACCOUNT.user.id, 
-          email: DEMO_ACCOUNT.user.email,
-          name: DEMO_ACCOUNT.user.name 
-        },
-        JWT_SECRET,
-        { expiresIn: '7d' }
-      );
+    // Check if Firebase is configured
+    if (!auth) {
+      // Fallback to demo mode for local development
+      if (email === DEMO_ACCOUNT.email && password === DEMO_ACCOUNT.password) {
+        const response = NextResponse.json({
+          success: true,
+          user: DEMO_ACCOUNT.user
+        });
 
-      // Stocker le token dans un cookie httpOnly
-      const cookieStore = cookies();
-      cookieStore.set('auth_token', token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        maxAge: 60 * 60 * 24 * 7 // 7 jours
-      });
+        // Set demo cookie
+        response.cookies.set('auth_token', 'demo_token', {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'strict',
+          maxAge: 60 * 60 * 24 * 7 // 7 days
+        });
 
-      return NextResponse.json({
-        success: true,
-        user: DEMO_ACCOUNT.user
-      });
+        return response;
+      } else {
+        return NextResponse.json(
+          { error: 'Email ou mot de passe incorrect (Mode démo)' },
+          { status: 401 }
+        );
+      }
     }
 
-    // Compte non trouvé
+    // Use Firebase Auth
+    const result = await loginWithEmail(email, password);
+
+    if (result.success) {
+      // Get the ID token from Firebase
+      const user = auth.currentUser;
+      const idToken = await user.getIdToken();
+
+      const response = NextResponse.json({
+        success: true,
+        user: result.user
+      });
+
+      // Set secure httpOnly cookie with Firebase ID token
+      response.cookies.set('auth_token', idToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: 60 * 60 * 24 * 7 // 7 days
+      });
+
+      return response;
+    }
+
     return NextResponse.json(
-      { error: 'Email ou mot de passe incorrect' },
+      { error: 'Authentication failed' },
       { status: 401 }
     );
   } catch (error) {
     console.error('Login error:', error);
     return NextResponse.json(
-      { error: 'Erreur lors de la connexion' },
-      { status: 500 }
+      { error: error.message || 'Erreur lors de la connexion' },
+      { status: 401 }
     );
   }
 }

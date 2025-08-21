@@ -6,7 +6,7 @@ import Link from 'next/link';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import GlassCard from '@/components/ui/GlassCard';
-import { register, joinOrganization } from '@/lib/auth';
+import { registerWithEmail } from '@/lib/firebase-auth';
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -28,22 +28,48 @@ export default function RegisterPage() {
     setLoading(true);
 
     if (joinMode && formData.inviteCode) {
-      const result = joinOrganization(formData.inviteCode);
-      if (result.success) {
-        router.push('/hub');
-      } else {
-        setError(result.error);
-        setLoading(false);
-      }
+      // TODO: Implement join organization with Firebase
+      setError('Fonction en cours de développement');
+      setLoading(false);
     } else {
       if (step === 1) {
+        // Validate first step
+        if (!formData.email || !formData.password || !formData.name) {
+          setError('Tous les champs sont requis');
+          setLoading(false);
+          return;
+        }
+        if (formData.password.length < 6) {
+          setError('Le mot de passe doit contenir au moins 6 caractères');
+          setLoading(false);
+          return;
+        }
         setStep(2);
         setLoading(false);
       } else {
-        const result = register(formData);
-        if (result.success) {
-          router.push('/hub');
-        } else {
+        // Register with Firebase
+        try {
+          const response = await fetch('/api/auth/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              email: formData.email,
+              password: formData.password,
+              name: formData.name,
+              organizationName: formData.organizationName
+            })
+          });
+
+          const data = await response.json();
+
+          if (data.success) {
+            router.push('/app');
+          } else {
+            setError(data.error || 'Erreur lors de la création du compte');
+            setLoading(false);
+          }
+        } catch (error) {
+          console.error('Registration error:', error);
           setError('Erreur lors de la création du compte');
           setLoading(false);
         }
