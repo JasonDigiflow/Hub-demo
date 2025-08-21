@@ -470,7 +470,7 @@ export default function AIDsDashboard() {
                 <div className="flex items-center gap-3 text-xs">
                   <span className="text-gray-500">{insight.metric}</span>
                   <span className={`font-semibold ${
-                    insight.impact.startsWith('+') ? 'text-green-400' : 'text-red-400'
+                    String(insight.impact || '').startsWith('+') ? 'text-green-400' : 'text-red-400'
                   }`}>
                     {insight.impact}
                   </span>
