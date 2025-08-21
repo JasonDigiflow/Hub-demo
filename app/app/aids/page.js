@@ -236,16 +236,16 @@ export default function AIDsDashboard() {
             onClick={handleAutopilotToggle}
             className={`
               relative px-6 py-3 rounded-xl font-medium transition-all duration-300
-              flex items-center gap-3
+              flex items-center gap-3 shadow-lg
               ${autopilotEnabled 
-                ? 'bg-gradient-to-r from-green-600 to-emerald-600 text-white shadow-lg shadow-green-600/20' 
-                : 'bg-white/5 text-gray-400 border border-white/10 hover:bg-white/10'
+                ? 'bg-gradient-to-r from-green-600 to-emerald-600 text-white shadow-green-600/20' 
+                : 'bg-gradient-to-r from-red-600 to-red-700 text-white shadow-red-600/20 hover:from-red-700 hover:to-red-800'
               }
             `}
           >
-            <div className={`w-2 h-2 rounded-full ${autopilotEnabled ? 'bg-white animate-pulse' : 'bg-gray-500'}`} />
+            <div className={`w-2 h-2 rounded-full ${autopilotEnabled ? 'bg-white animate-pulse' : 'bg-white/50'}`} />
             <span>AIDs Autopilot</span>
-            <span className={`font-bold ${autopilotEnabled ? 'text-white' : 'text-gray-500'}`}>
+            <span className={`font-bold ${autopilotEnabled ? 'text-white' : 'text-white'}`}>
               {autopilotEnabled ? 'ON' : 'OFF'}
             </span>
           </button>
