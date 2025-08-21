@@ -34,10 +34,24 @@ export default function AIDsDashboard() {
   const [recentActions, setRecentActions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [timeRange, setTimeRange] = useState('daily');
+  const [metaConnected, setMetaConnected] = useState(false);
+  const [userInfo, setUserInfo] = useState(null);
 
   useEffect(() => {
+    checkMetaConnection();
     loadDashboardData();
   }, [timeRange]);
+
+  const checkMetaConnection = async () => {
+    try {
+      const response = await fetch('/api/aids/meta/status');
+      const data = await response.json();
+      setMetaConnected(data.connected);
+      setUserInfo(data.user);
+    } catch (error) {
+      console.error('Error checking Meta connection:', error);
+    }
+  };
 
   const loadDashboardData = async () => {
     setLoading(true);
@@ -174,6 +188,62 @@ export default function AIDsDashboard() {
           </button>
         </div>
       </div>
+
+      {/* Meta Connection Banner */}
+      {!metaConnected && (
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-gradient-to-r from-blue-600/20 to-purple-600/20 rounded-xl p-6 mb-6 border border-white/10"
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-xl font-bold text-white mb-2">Connect Your Meta Ads Account</h3>
+              <p className="text-gray-300">
+                Link your Facebook Business account to start managing real campaigns with AIDs
+              </p>
+            </div>
+            <a
+              href="/app/aids/connect"
+              className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+            >
+              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+              </svg>
+              Connect Meta Account
+            </a>
+          </div>
+        </motion.div>
+      )}
+
+      {/* Connected Account Info */}
+      {metaConnected && userInfo && (
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-gradient-to-r from-green-600/20 to-green-600/10 rounded-xl p-4 mb-6 border border-green-600/20"
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-green-600/30 rounded-full flex items-center justify-center">
+                <svg className="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <div>
+                <p className="text-green-400 font-medium">Meta Account Connected</p>
+                <p className="text-gray-400 text-sm">{userInfo.name} • {userInfo.email}</p>
+              </div>
+            </div>
+            <a
+              href="/app/aids/connect"
+              className="text-gray-400 hover:text-white transition-colors text-sm"
+            >
+              Manage Connection
+            </a>
+          </div>
+        </motion.div>
+      )}
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
