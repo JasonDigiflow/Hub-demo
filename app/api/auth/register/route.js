@@ -51,24 +51,33 @@ export async function POST(request) {
     console.log('Firebase registration result:', result.success ? 'Success' : 'Failed');
 
     if (result.success) {
-      // Get the ID token from Firebase
-      const user = auth.currentUser;
-      const idToken = await user.getIdToken();
+      try {
+        // Get the ID token from the returned Firebase user
+        const idToken = await result.firebaseUser.getIdToken();
+        
+        const response = NextResponse.json({
+          success: true,
+          user: result.user
+        });
 
-      const response = NextResponse.json({
-        success: true,
-        user: result.user
-      });
+        // Set secure httpOnly cookie with Firebase ID token
+        response.cookies.set('auth_token', idToken, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'strict',
+          maxAge: 60 * 60 * 24 * 7 // 7 days
+        });
 
-      // Set secure httpOnly cookie with Firebase ID token
-      response.cookies.set('auth_token', idToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
-        maxAge: 60 * 60 * 24 * 7 // 7 days
-      });
-
-      return response;
+        return response;
+      } catch (tokenError) {
+        console.error('Error getting ID token:', tokenError);
+        // Even if token fails, user is created, so return success
+        return NextResponse.json({
+          success: true,
+          user: result.user,
+          message: 'Compte créé avec succès. Veuillez vous connecter.'
+        });
+      }
     }
 
     return NextResponse.json(
