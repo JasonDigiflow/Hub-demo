@@ -17,9 +17,16 @@ export default function LoginPage() {
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [redirectUrl, setRedirectUrl] = useState('/app');
 
   useEffect(() => {
     initializeAuth();
+    // Get redirect URL from query params
+    const params = new URLSearchParams(window.location.search);
+    const redirect = params.get('redirect');
+    if (redirect) {
+      setRedirectUrl(redirect);
+    }
   }, []);
 
   const handleSubmit = async (e) => {
@@ -41,8 +48,8 @@ export default function LoginPage() {
       const data = await res.json();
 
       if (res.ok && data.success) {
-        // Connexion réussie - redirection vers la démo Fidalyz
-        router.push('/demo/fidalyz');
+        // Connexion réussie - redirection vers l'URL demandée ou /app
+        router.push(redirectUrl);
       } else {
         setError(data.error || 'Email ou mot de passe incorrect');
         setLoading(false);

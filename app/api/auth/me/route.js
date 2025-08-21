@@ -57,8 +57,8 @@ const DEMO_USER = {
 
 export async function GET(request) {
   try {
-    const cookieStore = await cookies();
-    const token = cookieStore.get('auth-token');
+    const cookieStore = cookies();
+    const token = cookieStore.get('auth_token');
 
     if (!token) {
       return NextResponse.json(
@@ -71,10 +71,8 @@ export async function GET(request) {
       // Vérifier le token
       const decoded = jwt.verify(token.value, JWT_SECRET);
       
-      // Retourner les données utilisateur
-      return NextResponse.json({
-        user: DEMO_USER
-      });
+      // Retourner les données utilisateur directement (sans wrapper)
+      return NextResponse.json(DEMO_USER);
     } catch (error) {
       return NextResponse.json(
         { error: 'Token invalide' },

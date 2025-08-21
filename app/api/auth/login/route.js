@@ -59,8 +59,8 @@ export async function POST(request) {
       );
 
       // Stocker le token dans un cookie httpOnly
-      const cookieStore = await cookies();
-      cookieStore.set('auth-token', token, {
+      const cookieStore = cookies();
+      cookieStore.set('auth_token', token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',

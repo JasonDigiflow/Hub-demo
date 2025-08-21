@@ -101,22 +101,22 @@ export default function Home() {
               </p>
               
               <div className="flex gap-4 justify-center flex-wrap">
-                <Link href="/auth/register">
+                <Link href="/auth/login">
                   <motion.button
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                     className="btn-gradient text-lg px-8 py-4 rounded-full shadow-lg shadow-purple-500/25"
                   >
-                    Essai gratuit 14 jours
+                    Accéder au Hub
                   </motion.button>
                 </Link>
-                <Link href="/demo/fidalyz">
+                <Link href="/auth/register">
                   <motion.button
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                     className="glass-card text-lg px-8 py-4 rounded-full text-white hover:bg-white/10 transition-colors"
                   >
-                    Voir la démo Fidalyz
+                    Créer un compte
                   </motion.button>
                 </Link>
               </div>
