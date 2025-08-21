@@ -69,8 +69,10 @@ export default function OrganizationPage() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold text-white mb-2">Organisation</h1>
-        <p className="text-gray-400">Gérez votre équipe et les paramètres de l'organisation</p>
+        <h1 className="text-4xl font-bold text-white mb-2">
+          <span className="bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">Organisation</span>
+        </h1>
+        <p className="text-gray-400 text-lg">Gérez votre équipe et les paramètres de l'organisation</p>
       </div>
 
       {/* Organization Info */}

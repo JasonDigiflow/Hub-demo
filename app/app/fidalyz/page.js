@@ -43,9 +43,9 @@ export default function FidalyzDashboard() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-4xl font-bold mb-2">
-              <span className="gradient-text">Fidalyz</span> Dashboard
+              <span className="bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">Fidalyz</span> Dashboard
             </h1>
-            <p className="text-white/70">
+            <p className="text-gray-400 text-lg">
               Gérez et optimisez votre réputation en ligne
             </p>
           </div>

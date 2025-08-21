@@ -162,10 +162,10 @@ export default function RevenuesPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-white mb-2">
-            Gestion des Revenus
+          <h1 className="text-4xl font-bold text-white mb-2">
+            <span className="bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">Gestion des Revenus</span>
           </h1>
-          <p className="text-gray-400">
+          <p className="text-gray-400 text-lg">
             Suivez les revenus générés par vos campagnes publicitaires
           </p>
         </div>

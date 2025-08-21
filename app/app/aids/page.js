@@ -222,10 +222,10 @@ export default function AIDsDashboard() {
       {/* Header with Autopilot */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-white mb-2">
-            AIDs Dashboard
+          <h1 className="text-4xl font-bold text-white mb-2">
+            <span className="bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">AIDs</span> Dashboard
           </h1>
-          <p className="text-gray-400">
+          <p className="text-gray-400 text-lg">
             Octavia analyse et optimise vos campagnes Meta en temps réel
           </p>
         </div>
