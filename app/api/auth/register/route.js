@@ -85,9 +85,19 @@ export async function POST(request) {
       { status: 400 }
     );
   } catch (error) {
-    console.error('Registration error:', error);
+    console.error('Registration error details:', {
+      message: error.message,
+      code: error.code,
+      stack: error.stack
+    });
+    
+    // Return more detailed error for debugging
     return NextResponse.json(
-      { error: error.message || 'Erreur lors de la création du compte' },
+      { 
+        error: error.message || 'Erreur lors de la création du compte',
+        code: error.code,
+        details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      },
       { status: 400 }
     );
   }
