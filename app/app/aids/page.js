@@ -231,6 +231,15 @@ export default function AIDsDashboard() {
         </div>
         
         <div className="flex items-center gap-3">
+          {/* Revenue Button */}
+          <a
+            href="/app/aids/revenues"
+            className="px-5 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl font-medium transition-all hover:from-green-700 hover:to-emerald-700 shadow-lg shadow-green-600/20 flex items-center gap-2"
+          >
+            <span className="text-xl">💰</span>
+            <span>Gérer les revenus</span>
+          </a>
+
           {/* Autopilot Toggle */}
           <button
             onClick={handleAutopilotToggle}
