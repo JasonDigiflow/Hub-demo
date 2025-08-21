@@ -1,8 +1,6 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-
-// In-memory storage for demo (would use Firebase in production)
-let revenuesData = [];
+import { revenueService } from '@/lib/aids/revenueService';
 
 export async function GET() {
   try {
@@ -14,30 +12,14 @@ export async function GET() {
       return NextResponse.json({ revenues: [], stats: {} }, { status: 200 });
     }
 
-    // Calculate stats
-    const totalRevenue = revenuesData.reduce((sum, r) => sum + r.amount, 0);
-    const uniqueClients = new Set(revenuesData.map(r => r.clientId)).size;
-    const averageTicket = uniqueClients > 0 ? totalRevenue / uniqueClients : 0;
-    
-    // Calculate monthly growth (mock for demo)
-    const currentMonth = new Date().getMonth();
-    const currentMonthRevenues = revenuesData.filter(r => {
-      const revenueMonth = new Date(r.date).getMonth();
-      return revenueMonth === currentMonth;
-    });
-    const monthlyTotal = currentMonthRevenues.reduce((sum, r) => sum + r.amount, 0);
-    
-    const stats = {
-      totalRevenue,
-      totalClients: uniqueClients,
-      averageTicket,
-      monthlyGrowth: 23.5, // Mock percentage
-      monthlyRevenue: monthlyTotal
-    };
+    // Get revenues and stats from service (uses Firebase if available)
+    const revenues = await revenueService.getAll();
+    const stats = await revenueService.getStats();
 
     return NextResponse.json({ 
-      revenues: revenuesData.sort((a, b) => new Date(b.date) - new Date(a.date)),
-      stats 
+      revenues,
+      stats,
+      usingFirebase: revenueService.isFirebaseAvailable()
     });
   } catch (error) {
     console.error('Error fetching revenues:', error);
@@ -66,18 +48,13 @@ export async function POST(request) {
       );
     }
 
-    // Add revenue with unique ID
-    const newRevenue = {
-      ...data,
-      id: Date.now().toString(),
-      createdAt: new Date().toISOString()
-    };
-
-    revenuesData.push(newRevenue);
+    // Create revenue using service (will use Firebase if available)
+    const revenueId = await revenueService.create(data);
 
     return NextResponse.json({ 
       success: true, 
-      revenue: newRevenue 
+      id: revenueId,
+      usingFirebase: revenueService.isFirebaseAvailable()
     });
   } catch (error) {
     console.error('Error creating revenue:', error);
