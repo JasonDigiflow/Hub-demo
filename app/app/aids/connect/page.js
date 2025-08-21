@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Facebook, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
-import Link from 'next/link';
+import { motion } from 'framer-motion';
+import Script from 'next/script';
 
 export default function ConnectMetaAds() {
   const router = useRouter();
@@ -13,6 +13,7 @@ export default function ConnectMetaAds() {
   const [selectedAccount, setSelectedAccount] = useState(null);
   const [error, setError] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
+  const [fbLoaded, setFbLoaded] = useState(false);
 
   useEffect(() => {
     checkExistingConnection();
@@ -34,16 +35,36 @@ export default function ConnectMetaAds() {
     }
   };
 
+  const initFacebookSDK = () => {
+    window.fbAsyncInit = function() {
+      window.FB.init({
+        appId: process.env.NEXT_PUBLIC_META_APP_ID || '1994469434647099',
+        cookie: true,
+        xfbml: true,
+        version: 'v18.0'
+      });
+      
+      window.FB.AppEvents.logPageView();
+      setFbLoaded(true);
+    };
+  };
+
   const handleFacebookLogin = () => {
+    if (!window.FB) {
+      setError('Facebook SDK not loaded. Please refresh the page.');
+      return;
+    }
+
     setLoading(true);
+    setError(null);
     
-    // Initialize Facebook SDK
     window.FB.login(
       async (response) => {
+        console.log('FB Login Response:', response);
+        
         if (response.authResponse) {
           const { accessToken, userID } = response.authResponse;
           
-          // Save token and get ad accounts
           try {
             const res = await fetch('/api/aids/meta/connect', {
               method: 'POST',
@@ -58,23 +79,25 @@ export default function ConnectMetaAds() {
             
             if (data.success) {
               setConnected(true);
-              setAccounts(data.accounts);
+              setAccounts(data.accounts || []);
               setCurrentUser(data.user);
               setError(null);
             } else {
-              setError(data.error || 'Connection failed');
+              setError(data.error || 'Connexion échouée. Vérifiez que votre compte a accès à des comptes publicitaires.');
             }
           } catch (error) {
-            setError('Failed to connect to Meta');
+            console.error('Connect error:', error);
+            setError('Erreur de connexion au serveur');
           }
         } else {
-          setError('Facebook login cancelled');
+          setError('Connexion Facebook annulée');
         }
         setLoading(false);
       },
       {
         scope: 'email,ads_management,ads_read,business_management,pages_read_engagement',
-        auth_type: 'rerequest'
+        auth_type: 'rerequest',
+        return_scopes: true
       }
     );
   };
@@ -92,7 +115,6 @@ export default function ConnectMetaAds() {
       
       if (data.success) {
         setSelectedAccount(accountId);
-        // Redirect to AIDs dashboard
         setTimeout(() => {
           router.push('/app/aids');
         }, 1500);
@@ -100,19 +122,24 @@ export default function ConnectMetaAds() {
         setError(data.error);
       }
     } catch (error) {
-      setError('Failed to select account');
+      setError('Erreur lors de la sélection du compte');
     }
     setLoading(false);
   };
 
   const handleDisconnect = async () => {
-    if (confirm('Are you sure you want to disconnect your Meta account?')) {
+    if (confirm('Êtes-vous sûr de vouloir déconnecter votre compte Meta ?')) {
       try {
         await fetch('/api/aids/meta/disconnect', { method: 'POST' });
         setConnected(false);
         setAccounts([]);
         setSelectedAccount(null);
         setCurrentUser(null);
+        
+        // Also logout from Facebook
+        if (window.FB) {
+          window.FB.logout();
+        }
       } catch (error) {
         console.error('Error disconnecting:', error);
       }
@@ -120,128 +147,182 @@ export default function ConnectMetaAds() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-purple-50 to-white py-12">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+    <>
+      <Script
+        strategy="afterInteractive"
+        onLoad={initFacebookSDK}
+        src="https://connect.facebook.net/fr_FR/sdk.js"
+      />
+
+      <div className="space-y-6">
         {/* Header */}
-        <div className="mb-8">
-          <Link href="/app/aids" className="inline-flex items-center text-gray-600 hover:text-gray-900 mb-4">
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to AIDs
-          </Link>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Connect Meta Ads Account</h1>
-          <p className="text-gray-600">
-            Connect your Meta Business account to start managing your ad campaigns with AIDs
+        <div>
+          <h1 className="text-4xl font-bold text-white mb-2">
+            <span className="bg-gradient-to-r from-blue-600 to-blue-400 bg-clip-text text-transparent">
+              Connexion Meta Ads
+            </span>
+          </h1>
+          <p className="text-gray-400 text-lg">
+            Connectez votre compte Meta Business pour gérer vos campagnes publicitaires
           </p>
         </div>
 
         {/* Connection Status */}
         {connected && currentUser && (
-          <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-green-500/10 border border-green-500/30 rounded-xl p-6"
+          >
             <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <CheckCircle className="w-5 h-5 text-green-600 mr-3" />
+              <div className="flex items-center gap-3">
+                <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
                 <div>
-                  <p className="text-green-900 font-medium">Connected as {currentUser.name}</p>
-                  <p className="text-green-700 text-sm">{currentUser.email}</p>
+                  <p className="text-white font-medium">Connecté en tant que {currentUser.name}</p>
+                  <p className="text-gray-400 text-sm">{currentUser.email}</p>
                 </div>
               </div>
               <button
                 onClick={handleDisconnect}
-                className="text-red-600 hover:text-red-700 text-sm font-medium"
+                className="px-4 py-2 bg-red-500/20 text-red-400 rounded-lg hover:bg-red-500/30 transition-colors"
               >
-                Disconnect
+                Déconnecter
               </button>
             </div>
-          </div>
+          </motion.div>
         )}
 
         {/* Error Message */}
         {error && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
-            <div className="flex items-center">
-              <AlertCircle className="w-5 h-5 text-red-600 mr-3" />
-              <p className="text-red-900">{error}</p>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-red-500/10 border border-red-500/30 rounded-xl p-6"
+          >
+            <div className="flex items-start gap-3">
+              <span className="text-2xl">⚠️</span>
+              <div>
+                <p className="text-red-400 font-medium">Erreur de connexion</p>
+                <p className="text-gray-400 text-sm mt-1">{error}</p>
+              </div>
             </div>
-          </div>
+          </motion.div>
         )}
 
         {/* Connect Button */}
         {!connected && (
-          <div className="bg-white rounded-lg shadow-lg p-8 text-center">
-            <div className="mb-6">
-              <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Facebook className="w-10 h-10 text-blue-600" />
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-white/5 rounded-xl p-8 border border-white/10"
+          >
+            <div className="text-center">
+              <div className="w-20 h-20 bg-blue-600/20 rounded-full flex items-center justify-center mx-auto mb-6">
+                <svg className="w-10 h-10 text-blue-400" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                </svg>
               </div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">
-                Connect Your Meta Business Account
+              
+              <h2 className="text-2xl font-bold text-white mb-3">
+                Connectez votre compte Meta Business
               </h2>
-              <p className="text-gray-600 mb-6">
-                Grant AIDs permission to manage your ad campaigns
+              <p className="text-gray-400 mb-8">
+                Accordez à AIDs la permission de gérer vos campagnes publicitaires
               </p>
-            </div>
 
-            <button
-              onClick={handleFacebookLogin}
-              disabled={loading}
-              className="inline-flex items-center px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 disabled:bg-gray-400 transition-colors"
-            >
-              {loading ? (
-                <>
-                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                  Connecting...
-                </>
-              ) : (
-                <>
-                  <Facebook className="w-5 h-5 mr-2" />
-                  Connect with Facebook
-                </>
-              )}
-            </button>
+              <button
+                onClick={handleFacebookLogin}
+                disabled={loading || !fbLoaded}
+                className={`
+                  inline-flex items-center px-8 py-4 rounded-xl font-medium transition-all
+                  ${loading || !fbLoaded
+                    ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
+                    : 'bg-blue-600 text-white hover:bg-blue-700 shadow-lg shadow-blue-600/20'
+                  }
+                `}
+              >
+                {loading ? (
+                  <>
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-3"></div>
+                    Connexion en cours...
+                  </>
+                ) : !fbLoaded ? (
+                  <>
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-3"></div>
+                    Chargement...
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-5 h-5 mr-3" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                    </svg>
+                    Se connecter avec Facebook
+                  </>
+                )}
+              </button>
 
-            <div className="mt-6 text-sm text-gray-500">
-              <p className="mb-2">We'll request access to:</p>
-              <ul className="text-left inline-block">
-                <li>✓ Read your ad account data</li>
-                <li>✓ Create and manage campaigns</li>
-                <li>✓ View performance metrics</li>
-                <li>✓ Manage ad creatives</li>
-              </ul>
+              <div className="mt-8 text-left bg-white/5 rounded-lg p-4">
+                <p className="text-sm text-gray-400 mb-3">Permissions requises :</p>
+                <ul className="space-y-2 text-sm">
+                  <li className="flex items-center gap-2 text-gray-300">
+                    <span className="text-green-400">✓</span>
+                    Lecture des données de vos comptes publicitaires
+                  </li>
+                  <li className="flex items-center gap-2 text-gray-300">
+                    <span className="text-green-400">✓</span>
+                    Création et gestion de campagnes
+                  </li>
+                  <li className="flex items-center gap-2 text-gray-300">
+                    <span className="text-green-400">✓</span>
+                    Analyse des performances
+                  </li>
+                  <li className="flex items-center gap-2 text-gray-300">
+                    <span className="text-green-400">✓</span>
+                    Gestion des créatives publicitaires
+                  </li>
+                </ul>
+              </div>
             </div>
-          </div>
+          </motion.div>
         )}
 
         {/* Account Selection */}
         {connected && accounts.length > 0 && (
-          <div className="bg-white rounded-lg shadow-lg p-6">
-            <h2 className="text-xl font-bold text-gray-900 mb-4">
-              Select Ad Account
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-white/5 rounded-xl p-6 border border-white/10"
+          >
+            <h2 className="text-xl font-bold text-white mb-4">
+              Sélectionner un compte publicitaire
             </h2>
-            <p className="text-gray-600 mb-6">
-              Choose which ad account AIDs should manage:
+            <p className="text-gray-400 mb-6">
+              Choisissez le compte que AIDs doit gérer :
             </p>
 
             <div className="space-y-3">
               {accounts.map((account) => (
                 <div
                   key={account.id}
-                  className={`border rounded-lg p-4 cursor-pointer transition-all ${
-                    selectedAccount === account.id
-                      ? 'border-purple-500 bg-purple-50'
-                      : 'border-gray-200 hover:border-gray-300'
-                  }`}
+                  className={`
+                    border rounded-lg p-4 cursor-pointer transition-all
+                    ${selectedAccount === account.id
+                      ? 'border-purple-500 bg-purple-500/10'
+                      : 'border-white/10 hover:border-white/20 bg-white/5'
+                    }
+                  `}
                   onClick={() => handleSelectAccount(account.id)}
                 >
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="font-medium text-gray-900">{account.name}</p>
-                      <p className="text-sm text-gray-600">ID: {account.id}</p>
+                      <p className="font-medium text-white">{account.name}</p>
+                      <p className="text-sm text-gray-400">ID: {account.id}</p>
                       <p className="text-sm text-gray-500">
-                        Currency: {account.currency} • 
-                        Timezone: {account.timezone_name}
+                        {account.currency} • {account.timezone_name}
                       </p>
                     </div>
                     {selectedAccount === account.id && (
-                      <CheckCircle className="w-6 h-6 text-purple-600" />
+                      <span className="text-2xl">✅</span>
                     )}
                   </div>
                 </div>
@@ -249,66 +330,52 @@ export default function ConnectMetaAds() {
             </div>
 
             {selectedAccount && (
-              <div className="mt-6 text-center">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="mt-6 text-center"
+              >
                 <button
                   onClick={() => router.push('/app/aids')}
-                  className="px-6 py-3 bg-purple-600 text-white font-medium rounded-lg hover:bg-purple-700 transition-colors"
+                  className="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all font-medium"
                 >
-                  Go to AIDs Dashboard →
+                  Aller au Dashboard AIDs →
                 </button>
-              </div>
+              </motion.div>
             )}
+          </motion.div>
+        )}
+
+        {/* Demo Mode Notice */}
+        {!connected && (
+          <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-6">
+            <div className="flex items-start gap-3">
+              <span className="text-2xl">💡</span>
+              <div>
+                <p className="text-yellow-400 font-medium">Mode démo disponible</p>
+                <p className="text-gray-400 text-sm mt-1">
+                  Si vous n'avez pas de compte Meta Business, vous pouvez utiliser AIDs en mode démo 
+                  en retournant au <a href="/app/aids" className="text-purple-400 hover:text-purple-300">dashboard</a>.
+                </p>
+              </div>
+            </div>
           </div>
         )}
 
-        {/* Info Box */}
-        <div className="mt-8 bg-blue-50 border border-blue-200 rounded-lg p-6">
-          <h3 className="font-semibold text-blue-900 mb-2">How it works</h3>
-          <ol className="list-decimal list-inside text-blue-800 space-y-1">
-            <li>Connect your Facebook account</li>
-            <li>Select your ad account</li>
-            <li>AIDs starts optimizing your campaigns</li>
-            <li>Octavia AI analyzes and improves performance 24/7</li>
-          </ol>
-        </div>
-
         {/* Privacy Note */}
-        <div className="mt-6 text-center text-sm text-gray-500">
+        <div className="text-center text-sm text-gray-500">
           <p>
-            By connecting, you agree to our{' '}
-            <Link href="/privacy" className="text-purple-600 hover:underline">
-              Privacy Policy
-            </Link>
-            {' '}and{' '}
-            <Link href="/terms" className="text-purple-600 hover:underline">
-              Terms of Service
-            </Link>
+            En vous connectant, vous acceptez notre{' '}
+            <a href="/privacy" className="text-purple-400 hover:text-purple-300">
+              Politique de confidentialité
+            </a>
+            {' '}et nos{' '}
+            <a href="/terms" className="text-purple-400 hover:text-purple-300">
+              Conditions d'utilisation
+            </a>
           </p>
         </div>
       </div>
-
-      {/* Facebook SDK */}
-      <script
-        dangerouslySetInnerHTML={{
-          __html: `
-            window.fbAsyncInit = function() {
-              FB.init({
-                appId: '${process.env.NEXT_PUBLIC_META_APP_ID || '1994469434647099'}',
-                cookie: true,
-                xfbml: true,
-                version: 'v18.0'
-              });
-            };
-            (function(d, s, id){
-              var js, fjs = d.getElementsByTagName(s)[0];
-              if (d.getElementById(id)) {return;}
-              js = d.createElement(s); js.id = id;
-              js.src = "https://connect.facebook.net/en_US/sdk.js";
-              fjs.parentNode.insertBefore(js, fjs);
-            }(document, 'script', 'facebook-jssdk'));
-          `
-        }}
-      />
-    </div>
+    </>
   );
 }
