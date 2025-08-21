@@ -26,6 +26,7 @@ export default function AIDsLayout({ children }) {
 
   const navigation = [
     { name: 'Dashboard', href: '/app/aids', icon: '📊' },
+    { name: 'Revenus', href: '/app/aids/revenues', icon: '💰' },
     { name: 'Experiments', href: '/app/aids/experiments', icon: '🧪' },
     { name: 'Creatives', href: '/app/aids/creatives', icon: '🎨' },
     { name: 'Settings', href: '/app/aids/settings', icon: '⚙️' },

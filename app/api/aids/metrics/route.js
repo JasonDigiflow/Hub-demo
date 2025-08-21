@@ -17,6 +17,25 @@ export async function GET(request) {
     
     const metrics = await metricsService.ingest(dateRange);
     
+    // Fetch real revenue data to calculate actual ROAS
+    let realRevenue = 0;
+    let realROAS = 4.0; // Default
+    try {
+      const revenueResponse = await fetch(`${request.nextUrl.origin}/api/aids/revenues`);
+      if (revenueResponse.ok) {
+        const revenueData = await revenueResponse.json();
+        realRevenue = revenueData.stats?.totalRevenue || 0;
+        
+        // Calculate real ROAS if we have revenue and spend data
+        const totalSpend = metrics.aggregated?.totalSpend || 4567.89;
+        if (realRevenue > 0 && totalSpend > 0) {
+          realROAS = realRevenue / totalSpend;
+        }
+      }
+    } catch (error) {
+      console.log('Could not fetch revenue data:', error);
+    }
+    
     // Generate demo recent actions
     const recentActions = [
       {
@@ -46,8 +65,8 @@ export async function GET(request) {
       metrics: {
         overview: {
           totalSpend: metrics.aggregated?.totalSpend || 4567.89,
-          totalRevenue: metrics.aggregated?.totalRevenue || 18271.56,
-          roas: metrics.aggregated?.roas || 4.0,
+          totalRevenue: realRevenue > 0 ? realRevenue : (metrics.aggregated?.totalRevenue || 18271.56),
+          roas: realRevenue > 0 ? realROAS : (metrics.aggregated?.roas || 4.0),
           campaigns: metrics.campaigns || 8,
           activeAds: metrics.ads || 24,
           impressions: metrics.aggregated?.totalImpressions || 456789,
@@ -55,7 +74,8 @@ export async function GET(request) {
           ctr: metrics.aggregated?.avgCTR || 2.7,
           cpc: metrics.aggregated?.avgCPC || 0.37,
           conversions: metrics.aggregated?.totalConversions || 234,
-          conversionRate: metrics.aggregated?.conversionRate || 1.9
+          conversionRate: metrics.aggregated?.conversionRate || 1.9,
+          hasRealRevenue: realRevenue > 0
         },
         trend: generateTrendData(range)
       },
