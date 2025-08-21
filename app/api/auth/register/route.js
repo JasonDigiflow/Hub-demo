@@ -21,8 +21,13 @@ export async function POST(request) {
       );
     }
 
+    // Log Firebase status for debugging
+    console.log('Firebase Auth status:', auth ? 'Available' : 'Not available');
+    console.log('Environment:', process.env.NODE_ENV);
+    
     // Check if Firebase is configured
     if (!auth) {
+      console.warn('Firebase not configured - using demo mode');
       // Demo mode - store in memory/localStorage
       return NextResponse.json({
         success: true,
@@ -35,11 +40,15 @@ export async function POST(request) {
       });
     }
 
+    console.log('Attempting Firebase registration for:', email);
+    
     // Register with Firebase
     const result = await registerWithEmail(email, password, {
       name,
       organizationName
     });
+    
+    console.log('Firebase registration result:', result.success ? 'Success' : 'Failed');
 
     if (result.success) {
       // Get the ID token from Firebase
