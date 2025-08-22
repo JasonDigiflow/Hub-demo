@@ -30,9 +30,9 @@ export async function GET(request) {
     console.log('=== FETCHING LEADS FOR ACCOUNT ===');
     console.log('Account ID:', accountId);
     
-    // Method 1: Try getting ads with leads directly
+    // Method 1: Try getting ads with leads directly - GET FULL FIELD DATA
     const adsWithLeadsUrl = `https://graph.facebook.com/v18.0/${accountId}/ads?` +
-      `fields=id,name,adset{id,name},campaign{id,name},leads&` +
+      `fields=id,name,adset{id,name},campaign{id,name},leads{id,created_time,field_data}&` +
       `limit=500&` +
       `access_token=${session.accessToken}`;
     
@@ -46,17 +46,63 @@ export async function GET(request) {
     let allLeadsFromAds = [];
     if (adsData.data) {
       for (const ad of adsData.data) {
-        if (ad.leads && ad.leads.data) {
+        if (ad.leads && ad.leads.data && ad.leads.data.length > 0) {
           console.log(`Ad "${ad.name}" has ${ad.leads.data.length} leads`);
-          allLeadsFromAds.push(...ad.leads.data.map(lead => ({
-            ...lead,
-            ad_name: ad.name,
-            ad_id: ad.id,
-            campaign_name: ad.campaign?.name,
-            campaign_id: ad.campaign?.id,
-            adset_name: ad.adset?.name,
-            adset_id: ad.adset?.id
-          })));
+          
+          // Process each lead properly
+          for (const lead of ad.leads.data) {
+            const fieldData = {};
+            if (lead.field_data) {
+              lead.field_data.forEach(field => {
+                fieldData[field.name] = field.values?.[0] || '';
+              });
+            }
+            
+            // Extract name from various possible fields
+            const fullName = fieldData['full_name'] || 
+                           fieldData['FULL_NAME'] || 
+                           fieldData['name'] || '';
+            
+            const firstName = fieldData['first_name'] || 
+                            fieldData['FIRST_NAME'] || '';
+            
+            const lastName = fieldData['last_name'] || 
+                           fieldData['LAST_NAME'] || '';
+            
+            const finalName = fullName || 
+                            (firstName || lastName ? `${firstName} ${lastName}`.trim() : '') ||
+                            'Prospect sans nom';
+            
+            const email = fieldData['email'] || 
+                        fieldData['EMAIL'] || 
+                        fieldData['work_email'] || '';
+            
+            const phone = fieldData['phone_number'] || 
+                        fieldData['PHONE'] || 
+                        fieldData['phone'] || '';
+            
+            const company = fieldData['company_name'] || 
+                          fieldData['COMPANY_NAME'] || 
+                          fieldData['company'] || '';
+            
+            allLeadsFromAds.push({
+              id: `LEAD_${lead.id}`,
+              name: finalName,
+              email: email,
+              phone: phone,
+              company: company,
+              source: 'Facebook Ads',
+              ad_name: ad.name,
+              ad_id: ad.id,
+              campaign_name: ad.campaign?.name,
+              campaign_id: ad.campaign?.id,
+              adset_name: ad.adset?.name,
+              adset_id: ad.adset?.id,
+              date: lead.created_time,
+              status: 'new',
+              rawData: fieldData
+            });
+          }
         }
       }
     }
@@ -191,20 +237,20 @@ export async function GET(request) {
       return await getLeadsFromAds(accountId, session.accessToken);
     }
     
-    // Prioritize leads from pages (they have the page access token)
+    // Prioritize real leads from ads (they have actual field data)
     let allLeads = [];
     
-    // First, use leads from pages if we got any
-    if (allLeadsFromPages.length > 0) {
+    // First priority: leads from ads (they have the actual prospect data)
+    if (allLeadsFromAds.length > 0) {
+      console.log(`\n=== USING LEADS FROM ADS ===`);
+      console.log(`Got ${allLeadsFromAds.length} real leads from ads with full data`);
+      allLeads = allLeadsFromAds;
+    }
+    // Second priority: leads from pages 
+    else if (allLeadsFromPages.length > 0) {
       console.log(`\n=== USING LEADS FROM PAGES (WITH PAGE TOKEN) ===`);
       console.log(`Got ${allLeadsFromPages.length} leads with page access token`);
       allLeads = allLeadsFromPages;
-    } 
-    // Otherwise, try leads from ads
-    else if (allLeadsFromAds.length > 0) {
-      console.log(`\n=== USING LEADS FROM ADS ===`);
-      console.log(`Got ${allLeadsFromAds.length} leads from ads`);
-      allLeads = allLeadsFromAds;
     }
     
     console.log(`\n=== COMBINED LEADS ===`);
