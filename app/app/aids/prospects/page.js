@@ -145,18 +145,36 @@ export default function ProspectsPage() {
       }
       
       if (data.success && data.leads && data.leads.length > 0) {
+        console.log(`Récupéré ${data.leads.length} leads depuis Meta`);
+        
         // Les leads sont maintenant automatiquement sauvegardés dans Firebase par l'API
-        if (data.savedToFirebase && data.savedToFirebase > 0) {
-          console.log(`✅ ${data.savedToFirebase} prospects automatiquement sauvegardés dans Firebase`);
+        const savedCount = data.savedToFirebase || 0;
+        const skippedCount = data.skipped || 0;
+        const totalCount = data.totalCount || data.leads.length;
+        
+        if (savedCount > 0) {
+          console.log(`✅ ${savedCount} prospects automatiquement sauvegardés dans Firebase`);
         }
         
         // Recharger les prospects depuis Firebase
         await loadProspects();
         
         if (showLoading) {
-          const message = data.savedToFirebase > 0 
-            ? `✅ ${data.savedToFirebase} nouveaux prospects importés depuis Meta!\n${data.skipped} déjà existants.\n\nSource: ${data.source}`
-            : `ℹ️ Tous les prospects sont déjà importés.\n${data.skipped} prospects existants.`;
+          let message;
+          if (savedCount > 0) {
+            message = `✅ ${savedCount} nouveaux prospects importés depuis Meta!\n`;
+            if (skippedCount > 0) message += `${skippedCount} déjà existants.\n`;
+            message += `\nTotal: ${totalCount} prospects\nSource: ${data.source || 'Meta Ads'}`;
+          } else if (totalCount > 0) {
+            message = `ℹ️ ${totalCount} prospects récupérés depuis Meta.\n`;
+            if (skippedCount > 0) {
+              message += `Tous les prospects sont déjà importés.\n${skippedCount} prospects existants.`;
+            } else {
+              message += `Vérifiez votre centre de prospects.`;
+            }
+          } else {
+            message = `ℹ️ Aucun nouveau prospect à importer.`;
+          }
           alert(message);
         }
       } else if (showLoading) {
@@ -456,21 +474,30 @@ export default function ProspectsPage() {
                     <button
                       onClick={async () => {
                         setShowAdvancedOptions(false);
-                        if (confirm('Voulez-vous vraiment forcer la resynchronisation complète?\n\nCela va supprimer tous les prospects existants et les réimporter depuis Meta.')) {
+                        if (confirm('Voulez-vous vraiment forcer la resynchronisation complète?\n\nCela va récupérer TOUS les prospects depuis Meta, même ceux déjà importés.')) {
                           setSyncLoading(true);
                           try {
-                            // Vider d'abord tous les prospects
-                            const deletePromises = prospects.map(p => 
-                              fetch(`/api/aids/prospects/${p.id}`, { method: 'DELETE' })
-                            );
-                            await Promise.all(deletePromises);
-                            setProspects([]);
+                            console.log('Forçage de la resynchronisation...');
                             
-                            // Puis resynchroniser depuis Meta
-                            await syncMetaLeads(true, true);
+                            // Appeler directement l'API Meta avec force=true
+                            // L'API va automatiquement sauvegarder dans Firebase
+                            const response = await fetch('/api/aids/meta/leads?force=true');
+                            const data = await response.json();
+                            
+                            if (data.success) {
+                              console.log(`Force sync: ${data.savedToFirebase} saved, ${data.skipped} skipped`);
+                              
+                              // Recharger les prospects
+                              await loadProspects();
+                              
+                              const message = data.message || `✅ Resynchronisation terminée!\n${data.totalCount} prospects traités.`;
+                              alert(message);
+                            } else {
+                              alert(`❌ Erreur: ${data.error || 'Impossible de récupérer les leads depuis Meta'}`);
+                            }
                           } catch (error) {
                             console.error('Error during force sync:', error);
-                            alert('Erreur lors de la resynchronisation forcée');
+                            alert('❌ Erreur lors de la resynchronisation forcée: ' + error.message);
                           }
                           setSyncLoading(false);
                         }

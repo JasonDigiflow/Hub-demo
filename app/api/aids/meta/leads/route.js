@@ -5,6 +5,10 @@ import { db } from '@/lib/firebase-admin';
 
 export async function GET(request) {
   try {
+    // Check if force parameter is set
+    const { searchParams } = new URL(request.url);
+    const forceSync = searchParams.get('force') === 'true';
+    
     // Get session and selected account
     const cookieStore = cookies();
     const sessionCookie = cookieStore.get('meta_session');
@@ -29,6 +33,7 @@ export async function GET(request) {
     
     console.log('=== FETCHING LEADS FOR ACCOUNT ===');
     console.log('Account ID:', accountId);
+    console.log('Force sync:', forceSync);
     
     // Method 1: Try getting ads with leads directly - GET FULL FIELD DATA
     const adsWithLeadsUrl = `https://graph.facebook.com/v18.0/${accountId}/ads?` +
@@ -409,12 +414,6 @@ export async function GET(request) {
         const batch = db.batch();
         
         for (const lead of allLeads) {
-          // Skip if already exists
-          if (existingMetaIds.has(lead.id)) {
-            skippedCount++;
-            continue;
-          }
-          
           const prospectData = {
             ...lead,
             userId,
@@ -425,16 +424,23 @@ export async function GET(request) {
             syncedAt: new Date().toISOString()
           };
           
-          const docRef = prospectsRef.doc();
-          batch.set(docRef, prospectData);
-          savedCount++;
+          // If force sync or doesn't exist, save it
+          if (forceSync || !existingMetaIds.has(lead.id)) {
+            const docRef = prospectsRef.doc();
+            batch.set(docRef, prospectData);
+            savedCount++;
+          } else {
+            skippedCount++;
+          }
         }
         
         if (savedCount > 0) {
           await batch.commit();
-          console.log(`✅ Saved ${savedCount} new prospects to Firebase`);
+          console.log(`✅ Saved ${savedCount} ${forceSync ? 'forced' : 'new'} prospects to Firebase`);
         }
-        console.log(`⏩ Skipped ${skippedCount} existing prospects`);
+        if (skippedCount > 0) {
+          console.log(`⏩ Skipped ${skippedCount} existing prospects`);
+        }
       }
     } catch (firebaseError) {
       console.error('Error saving to Firebase:', firebaseError);
@@ -455,7 +461,12 @@ export async function GET(request) {
       savedToFirebase: savedCount,
       skipped: skippedCount,
       source: 'lead_forms',
-      message: savedCount > 0 ? `✅ ${savedCount} nouveaux prospects sauvegardés dans Firebase` : null
+      forceSync: forceSync,
+      message: forceSync 
+        ? `✅ Force sync: ${savedCount} prospects importés, ${skippedCount} ignorés`
+        : savedCount > 0 
+          ? `✅ ${savedCount} nouveaux prospects sauvegardés dans Firebase`
+          : `ℹ️ Tous les prospects sont déjà importés (${skippedCount} existants)`
     });
     
   } catch (error) {

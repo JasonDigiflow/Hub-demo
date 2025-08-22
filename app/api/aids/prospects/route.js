@@ -234,6 +234,8 @@ export async function PUT(request) {
       success: true,
       imported: importedIds.length,
       skipped: prospects.length - importedIds.length,
+      existing: existingMetaIds.size,
+      total: prospects.length,
       message: `${importedIds.length} nouveaux prospects importés depuis ${source || 'Meta'}`
     });
 
