@@ -364,6 +364,14 @@ export default function AIDsDashboard() {
             <span>Gérer les revenus</span>
           </a>
 
+          <a
+            href="/app/aids/prospects"
+            className="px-5 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl font-medium transition-all hover:from-purple-700 hover:to-pink-700 shadow-lg shadow-purple-600/20 flex items-center gap-2"
+          >
+            <span className="text-xl">👥</span>
+            <span>Centre de Prospects</span>
+          </a>
+
           {/* Autopilot Toggle */}
           <button
             onClick={handleAutopilotToggle}

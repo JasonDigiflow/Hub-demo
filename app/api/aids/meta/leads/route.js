@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
+import jwt from 'jsonwebtoken';
+import { db } from '@/lib/firebase-admin';
 
 export async function GET(request) {
   try {
@@ -321,11 +323,75 @@ export async function GET(request) {
       });
     }
     
+    // Save leads to Firebase if authenticated
+    let savedCount = 0;
+    let skippedCount = 0;
+    
+    try {
+      const authCookie = cookieStore.get('auth-token');
+      if (authCookie) {
+        const decoded = jwt.verify(authCookie.value, process.env.JWT_SECRET);
+        const userId = decoded.uid;
+        
+        // Get existing Meta IDs to avoid duplicates
+        const prospectsRef = db.collection('aids_prospects');
+        const existingSnapshot = await prospectsRef
+          .where('userId', '==', userId)
+          .where('syncedFromMeta', '==', true)
+          .get();
+        
+        const existingMetaIds = new Set();
+        existingSnapshot.forEach(doc => {
+          const data = doc.data();
+          if (data.metaId) {
+            existingMetaIds.add(data.metaId);
+          }
+        });
+        
+        // Save new leads to Firebase
+        const batch = db.batch();
+        
+        for (const lead of allLeads) {
+          // Skip if already exists
+          if (existingMetaIds.has(lead.id)) {
+            skippedCount++;
+            continue;
+          }
+          
+          const prospectData = {
+            ...lead,
+            userId,
+            metaId: lead.id,
+            syncedFromMeta: true,
+            createdAt: lead.date || new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            syncedAt: new Date().toISOString()
+          };
+          
+          const docRef = prospectsRef.doc();
+          batch.set(docRef, prospectData);
+          savedCount++;
+        }
+        
+        if (savedCount > 0) {
+          await batch.commit();
+          console.log(`✅ Saved ${savedCount} new prospects to Firebase`);
+        }
+        console.log(`⏩ Skipped ${skippedCount} existing prospects`);
+      }
+    } catch (firebaseError) {
+      console.error('Error saving to Firebase:', firebaseError);
+      // Continue even if Firebase save fails
+    }
+    
     return NextResponse.json({
       success: true,
       leads: allLeads,
       totalCount: allLeads.length,
-      source: 'lead_forms'
+      savedToFirebase: savedCount,
+      skipped: skippedCount,
+      source: 'lead_forms',
+      message: savedCount > 0 ? `✅ ${savedCount} nouveaux prospects sauvegardés dans Firebase` : null
     });
     
   } catch (error) {

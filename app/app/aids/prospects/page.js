@@ -14,6 +14,8 @@ export default function ProspectsPage() {
   const [showRawData, setShowRawData] = useState(false);
   const [selectedProspect, setSelectedProspect] = useState(null);
   const [showAdvancedOptions, setShowAdvancedOptions] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filteredProspects, setFilteredProspects] = useState([]);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -36,16 +38,49 @@ export default function ProspectsPage() {
     loadProspects();
   }, [metaConnected]);
 
+  useEffect(() => {
+    // Filtrer les prospects basé sur la recherche
+    if (searchQuery.trim() === '') {
+      setFilteredProspects(prospects);
+    } else {
+      const query = searchQuery.toLowerCase();
+      const filtered = prospects.filter(prospect => 
+        prospect.name?.toLowerCase().includes(query) ||
+        prospect.email?.toLowerCase().includes(query) ||
+        prospect.phone?.includes(query) ||
+        prospect.company?.toLowerCase().includes(query) ||
+        prospect.status?.toLowerCase().includes(query) ||
+        prospect.source?.toLowerCase().includes(query)
+      );
+      setFilteredProspects(filtered);
+    }
+  }, [searchQuery, prospects]);
+
   const loadProspects = async () => {
     setLoading(true);
     try {
-      // Pour l'instant, utiliser localStorage directement
-      const savedProspects = localStorage.getItem('aids_prospects');
-      if (savedProspects) {
-        setProspects(JSON.parse(savedProspects));
-        console.log(`Loaded ${JSON.parse(savedProspects).length} prospects from localStorage`);
+      // Charger depuis Firebase
+      const response = await fetch('/api/aids/prospects');
+      const data = await response.json();
+      
+      if (data.success && data.prospects) {
+        setProspects(data.prospects);
+        console.log(`Loaded ${data.prospects.length} prospects from Firebase`);
       } else {
-        setProspects([]);
+        // Fallback to localStorage if Firebase fails
+        const savedProspects = localStorage.getItem('aids_prospects');
+        if (savedProspects) {
+          const localProspects = JSON.parse(savedProspects);
+          setProspects(localProspects);
+          console.log(`Loaded ${localProspects.length} prospects from localStorage (fallback)`);
+          
+          // Try to migrate to Firebase
+          if (localProspects.length > 0) {
+            migrateLocalProspectsToFirebase(localProspects);
+          }
+        } else {
+          setProspects([]);
+        }
       }
       
       // Si connecté à Meta, essayer de charger les nouveaux leads
@@ -55,9 +90,38 @@ export default function ProspectsPage() {
       }
     } catch (error) {
       console.error('Error loading prospects:', error);
-      setProspects([]);
+      // Fallback to localStorage
+      const savedProspects = localStorage.getItem('aids_prospects');
+      if (savedProspects) {
+        setProspects(JSON.parse(savedProspects));
+      } else {
+        setProspects([]);
+      }
     }
     setLoading(false);
+  };
+
+  const migrateLocalProspectsToFirebase = async (localProspects) => {
+    try {
+      console.log('Migrating local prospects to Firebase...');
+      const response = await fetch('/api/aids/prospects', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prospects: localProspects,
+          source: 'localStorage_migration'
+        })
+      });
+      
+      const data = await response.json();
+      if (data.success) {
+        console.log(`Migrated ${data.imported} prospects to Firebase`);
+        // Clear localStorage after successful migration
+        localStorage.removeItem('aids_prospects');
+      }
+    } catch (error) {
+      console.error('Error migrating prospects to Firebase:', error);
+    }
   };
 
   const syncMetaLeads = async (showLoading = true, forceSync = false) => {
@@ -79,33 +143,19 @@ export default function ProspectsPage() {
       }
       
       if (data.success && data.leads && data.leads.length > 0) {
-        // Sauvegarder directement dans localStorage
-        if (forceSync) {
-          // Mode force : remplacer tous les prospects
-          setProspects(data.leads);
-          localStorage.setItem('aids_prospects', JSON.stringify(data.leads));
-          
-          if (showLoading) {
-            alert(`✅ ${data.leads.length} prospects importés depuis Meta Ads!\n\nSource: ${data.source}`);
-          }
-        } else {
-          // Mode normal : fusionner avec existants
-          const existingProspects = JSON.parse(localStorage.getItem('aids_prospects') || '[]');
-          const existingIds = new Set(existingProspects.map(p => p.id));
-          
-          const newLeads = data.leads.filter(lead => !existingIds.has(lead.id));
-          
-          if (newLeads.length > 0) {
-            const updatedProspects = [...newLeads, ...existingProspects];
-            setProspects(updatedProspects);
-            localStorage.setItem('aids_prospects', JSON.stringify(updatedProspects));
-            
-            if (showLoading) {
-              alert(`✅ ${newLeads.length} nouveaux prospects importés!\n\nTotal: ${updatedProspects.length} prospects`);
-            }
-          } else if (showLoading) {
-            alert(`ℹ️ Aucun nouveau prospect à importer.\n\n${existingProspects.length} prospects déjà enregistrés.\n\nUtilisez "Forcer la resynchronisation" pour réimporter tous les prospects.`);
-          }
+        // Les leads sont maintenant automatiquement sauvegardés dans Firebase par l'API
+        if (data.savedToFirebase && data.savedToFirebase > 0) {
+          console.log(`✅ ${data.savedToFirebase} prospects automatiquement sauvegardés dans Firebase`);
+        }
+        
+        // Recharger les prospects depuis Firebase
+        await loadProspects();
+        
+        if (showLoading) {
+          const message = data.savedToFirebase > 0 
+            ? `✅ ${data.savedToFirebase} nouveaux prospects importés depuis Meta!\n${data.skipped} déjà existants.\n\nSource: ${data.source}`
+            : `ℹ️ Tous les prospects sont déjà importés.\n${data.skipped} prospects existants.`;
+          alert(message);
         }
       } else if (showLoading) {
         alert(`⚠️ ${data.message || 'Aucun lead trouvé dans votre compte Meta.'}\n\nVérifiez que vous avez:\n- Des formulaires de leads configurés\n- Des campagnes actives\n- Les bonnes permissions`);
@@ -162,18 +212,27 @@ export default function ProspectsPage() {
     };
 
     try {
-      // Sauvegarder dans localStorage directement
-      let updatedProspects;
-      if (editingProspect) {
-        updatedProspects = prospects.map(p => 
-          p.id === editingProspect.id ? prospectData : p
-        );
-      } else {
-        updatedProspects = [prospectData, ...prospects];
-      }
+      // Sauvegarder dans Firebase
+      const url = editingProspect 
+        ? `/api/aids/prospects/${editingProspect.id}`
+        : '/api/aids/prospects';
       
-      setProspects(updatedProspects);
-      localStorage.setItem('aids_prospects', JSON.stringify(updatedProspects));
+      const method = editingProspect ? 'PUT' : 'POST';
+      
+      const response = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(prospectData)
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        // Recharger les prospects depuis Firebase
+        await loadProspects();
+      } else {
+        throw new Error(result.error || 'Erreur lors de la sauvegarde');
+      }
       
       resetForm();
     } catch (error) {
@@ -205,35 +264,81 @@ export default function ProspectsPage() {
     if (!confirm('Voulez-vous vraiment supprimer ce prospect ?')) return;
 
     try {
-      const updatedProspects = prospects.filter(p => p.id !== id);
-      setProspects(updatedProspects);
-      localStorage.setItem('aids_prospects', JSON.stringify(updatedProspects));
+      const response = await fetch(`/api/aids/prospects/${id}`, {
+        method: 'DELETE'
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        // Recharger les prospects depuis Firebase
+        await loadProspects();
+      } else {
+        throw new Error(result.error || 'Erreur lors de la suppression');
+      }
     } catch (error) {
       console.error('Error deleting prospect:', error);
+      alert('❌ Erreur lors de la suppression du prospect');
     }
   };
 
   const clearLocalCache = async () => {
-    if (!confirm('⚠️ Voulez-vous vraiment supprimer tous les prospects ?\n\nCela supprimera tous les prospects enregistrés.\nVous pourrez les réimporter depuis Meta.')) return;
+    if (!confirm('⚠️ Voulez-vous vraiment supprimer tous les prospects ?\n\nCela supprimera tous les prospects enregistrés dans Firebase.\nVous pourrez les réimporter depuis Meta.')) return;
     
     try {
-      // Pour l'instant, on vide juste l'état local
-      // TODO: Ajouter une API pour supprimer tous les prospects Firebase de l'utilisateur
+      // Supprimer tous les prospects un par un (Firebase ne supporte pas la suppression en masse)
+      const deletePromises = prospects.map(prospect => 
+        fetch(`/api/aids/prospects/${prospect.id}`, { method: 'DELETE' })
+      );
+      
+      await Promise.all(deletePromises);
+      
+      // Vider aussi localStorage au cas où
       localStorage.removeItem('aids_prospects');
       setProspects([]);
-      alert('✅ Prospects supprimés avec succès!\n\nCliquez sur "Synchroniser Meta Ads" pour réimporter vos prospects.');
+      
+      alert('✅ Tous les prospects ont été supprimés avec succès!\n\nCliquez sur "Synchroniser Meta Ads" pour réimporter vos prospects.');
     } catch (error) {
       console.error('Error clearing prospects:', error);
       alert('❌ Erreur lors de la suppression des prospects');
     }
   };
 
-  const handleStatusChange = async (id, newStatus) => {
-    const updatedProspects = prospects.map(p => 
-      p.id === id ? { ...p, status: newStatus } : p
-    );
-    setProspects(updatedProspects);
-    localStorage.setItem('aids_prospects', JSON.stringify(updatedProspects));
+  const handleStatusChange = async (id, newStatus, revenueAmount = null) => {
+    try {
+      const prospect = prospects.find(p => p.id === id);
+      if (!prospect) return;
+      
+      const updateData = { 
+        status: newStatus 
+      };
+      
+      // Si c'est un closing avec montant, on l'ajoute
+      if (newStatus === 'closing' && revenueAmount) {
+        updateData.revenueAmount = revenueAmount;
+        updateData.closingDate = new Date().toISOString();
+        updateData.notes = (prospect.notes ? prospect.notes + '\n' : '') + 
+          `💰 Closing: ${revenueAmount}€ HT (${new Date().toLocaleDateString('fr-FR')})`;
+      }
+      
+      const response = await fetch(`/api/aids/prospects/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updateData)
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        // Mettre à jour localement pour éviter un rechargement complet
+        const updatedProspects = prospects.map(p => 
+          p.id === id ? { ...p, ...updateData } : p
+        );
+        setProspects(updatedProspects);
+      }
+    } catch (error) {
+      console.error('Error updating prospect status:', error);
+    }
   };
 
   const resetForm = () => {
@@ -259,17 +364,23 @@ export default function ProspectsPage() {
       case 'new': return 'bg-blue-500/20 text-blue-400 border-blue-500/30';
       case 'contacted': return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30';
       case 'qualified': return 'bg-purple-500/20 text-purple-400 border-purple-500/30';
+      case 'closing': return 'bg-orange-500/20 text-orange-400 border-orange-500/30';
       case 'converted': return 'bg-green-500/20 text-green-400 border-green-500/30';
       case 'lost': return 'bg-red-500/20 text-red-400 border-red-500/30';
       default: return 'bg-gray-500/20 text-gray-400 border-gray-500/30';
     }
   };
 
-  const getStatusLabel = (status) => {
+  const getStatusLabel = (status, prospect = null) => {
     switch(status) {
       case 'new': return 'Nouveau';
       case 'contacted': return 'Contacté';
       case 'qualified': return 'Qualifié';
+      case 'closing': 
+        if (prospect?.revenueAmount) {
+          return `Closing (${prospect.revenueAmount}€ HT)`;
+        }
+        return 'Closing';
       case 'converted': return 'Converti';
       case 'lost': return 'Perdu';
       default: return status;
@@ -390,19 +501,18 @@ export default function ProspectsPage() {
                           console.log('Direct leads response:', data);
                           
                           if (data.success && data.leads && data.leads.length > 0) {
-                            // Sauvegarder directement les leads
-                            const existingProspects = JSON.parse(localStorage.getItem('aids_prospects') || '[]');
-                            const existingIds = new Set(existingProspects.map(p => p.id));
-                            
-                            const newLeads = data.leads.filter(lead => !existingIds.has(lead.id));
-                            
-                            if (newLeads.length > 0) {
-                              const updatedProspects = [...newLeads, ...existingProspects];
-                              setProspects(updatedProspects);
-                              localStorage.setItem('aids_prospects', JSON.stringify(updatedProspects));
-                              alert(`✅ ${newLeads.length} prospects importés avec succès!\n\n${data.message}`);
+                            // Les leads sont automatiquement sauvegardés dans Firebase par l'API
+                            if (data.savedToFirebase && data.savedToFirebase > 0) {
+                              console.log(`✅ ${data.savedToFirebase} prospects automatiquement sauvegardés dans Firebase`);
+                              // Recharger les prospects depuis Firebase
+                              await loadProspects();
+                              alert(`✅ ${data.savedToFirebase} nouveaux prospects importés avec succès!\n${data.skipped} déjà existants.\n\n${data.message}`);
+                            } else if (data.skipped > 0) {
+                              alert(`ℹ️ Tous les prospects sont déjà importés.\n${data.skipped} prospects existants dans Firebase.`);
                             } else {
-                              alert(`ℹ️ Tous les prospects sont déjà importés.\n\nUtilisez "Vider le cache local" puis réessayez.`);
+                              alert(`✅ ${data.leads.length} prospects récupérés.\n\n${data.message}`);
+                              // Recharger au cas où
+                              await loadProspects();
                             }
                           } else {
                             alert(`❌ Erreur: ${data.message || data.error?.message || 'Impossible de récupérer les leads'}\n\nVérifiez la console pour plus de détails.`);
@@ -494,7 +604,33 @@ export default function ProspectsPage() {
       {/* Prospects Table */}
       <div className="bg-white/5 rounded-xl border border-white/10 overflow-hidden">
         <div className="p-6 border-b border-white/10">
-          <h2 className="text-lg font-semibold text-white">Liste des prospects</h2>
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-white">Liste des prospects</h2>
+            <div className="flex items-center gap-4">
+              <div className="relative">
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="🔍 Rechercher un prospect..."
+                  className="px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-purple-500 w-80"
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+              {searchQuery && (
+                <div className="text-sm text-gray-400">
+                  {filteredProspects.length} résultat{filteredProspects.length > 1 ? 's' : ''}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
         
         <div className="overflow-x-auto">
@@ -528,7 +664,7 @@ export default function ProspectsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5">
-              {prospects.map((prospect) => (
+              {filteredProspects.map((prospect) => (
                 <motion.tr
                   key={prospect.id}
                   initial={{ opacity: 0 }}

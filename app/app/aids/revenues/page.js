@@ -80,18 +80,19 @@ export default function RevenuesPage() {
 
   const loadProspects = async () => {
     try {
-      // Charger les vrais prospects depuis l'API ou localStorage
+      // Charger les prospects depuis Firebase
       const response = await fetch('/api/aids/prospects');
       const data = await response.json();
       
-      if (data.prospects && data.prospects.length > 0) {
+      if (data.success && data.prospects && data.prospects.length > 0) {
         // Filtrer seulement les prospects qualifiés ou nouveaux pour la conversion
         const eligibleProspects = data.prospects.filter(p => 
           p.status === 'qualified' || p.status === 'new' || p.status === 'contacted'
         );
         setProspects(eligibleProspects);
+        console.log(`Loaded ${eligibleProspects.length} eligible prospects from Firebase`);
       } else {
-        // Sinon charger depuis localStorage
+        // Fallback: charger depuis localStorage si Firebase échoue
         const savedProspects = localStorage.getItem('aids_prospects');
         if (savedProspects) {
           const allProspects = JSON.parse(savedProspects);
@@ -99,11 +100,14 @@ export default function RevenuesPage() {
             p.status === 'qualified' || p.status === 'new' || p.status === 'contacted'
           );
           setProspects(eligibleProspects);
+          console.log(`Loaded ${eligibleProspects.length} eligible prospects from localStorage (fallback)`);
+        } else {
+          setProspects([]);
         }
       }
     } catch (error) {
       console.error('Error loading prospects:', error);
-      // Charger depuis localStorage en cas d'erreur
+      // Fallback: charger depuis localStorage en cas d'erreur
       const savedProspects = localStorage.getItem('aids_prospects');
       if (savedProspects) {
         const allProspects = JSON.parse(savedProspects);
@@ -111,6 +115,8 @@ export default function RevenuesPage() {
           p.status === 'qualified' || p.status === 'new' || p.status === 'contacted'
         );
         setProspects(eligibleProspects);
+      } else {
+        setProspects([]);
       }
     }
   };
@@ -154,6 +160,66 @@ export default function RevenuesPage() {
     });
   };
 
+  const updateProspectStatus = async (prospectId, status, amount) => {
+    try {
+      // Préparer les données de mise à jour
+      const updateData = { 
+        status: status 
+      };
+      
+      // Ajouter le montant et la date de closing si applicable
+      if (status === 'closing' && amount) {
+        updateData.revenueAmount = amount;
+        updateData.closingDate = new Date().toISOString();
+        // Note: on ajoute aux notes existantes côté serveur
+      }
+      
+      // Mettre à jour dans Firebase
+      const response = await fetch(`/api/aids/prospects/${prospectId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updateData)
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        console.log(`✅ Prospect ${prospectId} mis à jour dans Firebase: statut "${status}" avec montant ${amount}€`);
+        
+        // Mettre à jour localement aussi pour éviter de recharger
+        const updatedProspects = prospects.map(p => 
+          p.id === prospectId ? { ...p, ...updateData } : p
+        );
+        setProspects(updatedProspects);
+      } else {
+        console.error('Failed to update prospect:', result.error);
+        
+        // Fallback: essayer de mettre à jour dans localStorage
+        const savedProspects = localStorage.getItem('aids_prospects');
+        if (savedProspects) {
+          const allProspects = JSON.parse(savedProspects);
+          const updatedProspects = allProspects.map(p => {
+            if (p.id === prospectId) {
+              const updatedProspect = { ...p, status: status };
+              if (status === 'closing' && amount) {
+                updatedProspect.revenueAmount = amount;
+                updatedProspect.closingDate = new Date().toISOString();
+                updatedProspect.notes = (p.notes ? p.notes + '\n' : '') + 
+                  `💰 Closing: ${amount}€ HT (${new Date().toLocaleDateString('fr-FR')})`;
+              }
+              return updatedProspect;
+            }
+            return p;
+          });
+          localStorage.setItem('aids_prospects', JSON.stringify(updatedProspects));
+          console.log(`✅ Prospect ${prospectId} mis à jour en local (fallback)`);
+        }
+      }
+    } catch (error) {
+      console.error('Error updating prospect status:', error);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     
@@ -178,6 +244,11 @@ export default function RevenuesPage() {
       });
 
       if (response.ok) {
+        // Si un prospect est sélectionné, mettre à jour son statut en "closing" avec le montant
+        if (formData.prospectId && !editingRevenue) {
+          updateProspectStatus(formData.prospectId, 'closing', revenueData.amount);
+        }
+        
         loadRevenues();
         resetForm();
       }
@@ -188,6 +259,10 @@ export default function RevenuesPage() {
         setRevenues(revenues.map(r => r.id === editingRevenue.id ? revenueData : r));
       } else {
         setRevenues([revenueData, ...revenues]);
+        // Si un prospect est sélectionné, mettre à jour son statut en "closing" avec le montant
+        if (formData.prospectId) {
+          updateProspectStatus(formData.prospectId, 'closing', revenueData.amount);
+        }
       }
       calculateStats([revenueData, ...revenues]);
       resetForm();
