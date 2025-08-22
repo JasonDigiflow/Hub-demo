@@ -153,18 +153,18 @@ async function getLeadsFromAds(accountId, accessToken) {
             if (leadCount > 0 || insight.conversions) {
               prospects.push({
                 id: `PROS_${ad.id}`,
-                name: `[${leadCount || 0} leads] ${ad.campaign?.name || 'Campaign'}`,
+                name: `[Données agrégées - ${leadCount || insight.clicks || 0} interactions]`,
                 email: '',
                 phone: '',
-                company: '',
-                source: 'Facebook Ads',
+                company: ad.name || 'Publicité Facebook',
+                source: 'Facebook Ads (Stats)',
                 campaignId: ad.campaign?.id || '',
                 campaignName: ad.campaign?.name || '',
                 adId: ad.id,
                 adName: ad.name,
                 date: new Date().toISOString(),
                 status: 'new',
-                notes: `${leadCount || 0} conversions/leads. CTR: ${((insight.clicks/insight.impressions)*100).toFixed(2)}%`,
+                notes: `Publicité: "${ad.name}". ${leadCount || 0} conversions, ${insight.clicks || 0} clics, CTR: ${((insight.clicks/insight.impressions)*100).toFixed(2)}%. Pour avoir les noms individuels, utilisez les Facebook Lead Forms.`,
                 isAggregated: true,
                 leadCount: leadCount || 0
               });
@@ -191,18 +191,18 @@ async function getLeadsFromAds(accountId, accessToken) {
             if (parseInt(insight.clicks) > 0) {
               prospects.push({
                 id: `CAMP_${campaign.id}`,
-                name: `[${insight.clicks} clics] ${campaign.name}`,
+                name: `[Données campagne - ${insight.clicks} clics]`,
                 email: '',
                 phone: '',
-                company: '',
-                source: 'Facebook Campaign',
+                company: campaign.name || 'Campagne Facebook',
+                source: 'Facebook Campaign (Stats)',
                 campaignId: campaign.id,
                 campaignName: campaign.name,
                 adId: '',
                 adName: '',
                 date: new Date().toISOString(),
                 status: 'new',
-                notes: `${insight.clicks} clics, ${insight.impressions} impressions, CTR: ${((insight.clicks/insight.impressions)*100).toFixed(2)}%`,
+                notes: `Campagne: "${campaign.name}". ${insight.clicks} clics, ${insight.impressions} impressions, CTR: ${((insight.clicks/insight.impressions)*100).toFixed(2)}%. Configurez des Lead Forms pour capturer les informations individuelles.`,
                 isAggregated: true,
                 clickCount: parseInt(insight.clicks) || 0
               });
@@ -221,7 +221,7 @@ async function getLeadsFromAds(accountId, accessToken) {
       source: 'ads_insights',
       message: prospects.length === 0 
         ? 'Aucun lead trouvé. Vérifiez que vous avez des formulaires de leads configurés sur vos campagnes.'
-        : null
+        : 'Données agrégées récupérées. Pour avoir les noms individuels des prospects, configurez des Facebook Lead Forms dans vos campagnes.'
     });
     
   } catch (error) {

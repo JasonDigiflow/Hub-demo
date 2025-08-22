@@ -414,9 +414,18 @@ export default function ProspectsPage() {
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-white">{prospect.name || 'Sans nom'}</div>
-                    {prospect.company && (
-                      <div className="text-xs text-gray-500">{prospect.company}</div>
+                    {prospect.isAggregated ? (
+                      <div>
+                        <div className="text-sm font-medium text-yellow-400">{prospect.name}</div>
+                        <div className="text-xs text-gray-500">{prospect.company}</div>
+                      </div>
+                    ) : (
+                      <div>
+                        <div className="text-sm font-medium text-white">{prospect.name || 'Sans nom'}</div>
+                        {prospect.company && (
+                          <div className="text-xs text-gray-500">{prospect.company}</div>
+                        )}
+                      </div>
                     )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm">
