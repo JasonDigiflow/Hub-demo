@@ -645,6 +645,47 @@ export default function ProspectsPage() {
                     <button
                       onClick={async () => {
                         setShowAdvancedOptions(false);
+                        console.log('Running FULL debug...');
+                        const response = await fetch('/api/aids/meta/full-debug');
+                        const data = await response.json();
+                        
+                        console.log('=== FULL DEBUG RESULTS ===');
+                        console.log(data);
+                        
+                        let message = '🔍 DEBUG COMPLET:\n\n';
+                        
+                        if (data.summary) {
+                          message += `📊 RÉSUMÉ:\n`;
+                          message += `- Total leads trouvés: ${data.summary.totalLeadsFound}\n`;
+                          message += `- Nombre de comptes pub: ${data.summary.totalAdAccounts}\n`;
+                          message += `- Compte sélectionné: ${data.summary.currentlySelected || 'AUCUN'}\n\n`;
+                          
+                          if (data.summary.accountWithMostLeads) {
+                            message += `🎯 COMPTE AVEC LE PLUS DE LEADS:\n`;
+                            message += `"${data.summary.accountWithMostLeads.name}"\n`;
+                            message += `${data.summary.accountWithMostLeads.leads} leads\n`;
+                            message += `ID: ${data.summary.accountWithMostLeads.id}\n\n`;
+                          }
+                        }
+                        
+                        if (data.recommendations?.length > 0) {
+                          message += `💡 RECOMMANDATIONS:\n`;
+                          data.recommendations.forEach(rec => {
+                            message += `${rec}\n`;
+                          });
+                        }
+                        
+                        message += '\n📋 Détails COMPLETS dans la console (F12)';
+                        alert(message);
+                      }}
+                      className="w-full text-left px-3 py-2 text-sm text-purple-500 hover:bg-gray-800 rounded flex items-center gap-2 font-bold"
+                    >
+                      <span>🚨</span>
+                      DEBUG ULTIME - Trouve mes 107 prospects!
+                    </button>
+                    <button
+                      onClick={async () => {
+                        setShowAdvancedOptions(false);
                         console.log('Running Lead Center diagnostic...');
                         const response = await fetch('/api/aids/meta/test-leadcenter');
                         const data = await response.json();
