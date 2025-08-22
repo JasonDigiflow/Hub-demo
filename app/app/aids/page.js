@@ -41,6 +41,9 @@ export default function AIDsDashboard() {
   const [autopilotEnabled, setAutopilotEnabled] = useState(false);
   const [showAutopilotModal, setShowAutopilotModal] = useState(false);
   const [analyzingAI, setAnalyzingAI] = useState(false);
+  const [accounts, setAccounts] = useState([]);
+  const [selectedAccount, setSelectedAccount] = useState(null);
+  const [showAccountSelector, setShowAccountSelector] = useState(false);
 
   useEffect(() => {
     checkMetaConnection();
@@ -53,6 +56,8 @@ export default function AIDsDashboard() {
       const data = await response.json();
       setMetaConnected(data.connected);
       setUserInfo(data.user);
+      setAccounts(data.accounts || []);
+      setSelectedAccount(data.selectedAccount);
     } catch (error) {
       console.error('Error checking Meta connection:', error);
     }
@@ -190,6 +195,32 @@ export default function AIDsDashboard() {
   const confirmAutopilot = () => {
     setAutopilotEnabled(true);
     setShowAutopilotModal(false);
+  };
+
+  const handleAccountChange = async (accountId) => {
+    try {
+      const response = await fetch('/api/aids/meta/select-account', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ accountId })
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        setSelectedAccount(accountId);
+        setShowAccountSelector(false);
+        // Reload dashboard data with new account
+        loadDashboardData();
+      }
+    } catch (error) {
+      console.error('Error switching account:', error);
+    }
+  };
+
+  const getCurrentAccountName = () => {
+    const account = accounts.find(acc => acc.id === selectedAccount);
+    return account ? account.name : 'Sélectionner un compte';
   };
 
   if (loading) {
@@ -346,6 +377,100 @@ export default function AIDsDashboard() {
                 </button>
               </div>
             </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Account Selector for connected users */}
+      {metaConnected && accounts.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-gradient-to-r from-purple-600/20 to-pink-600/20 rounded-xl p-4 border border-white/10"
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div>
+                <p className="text-sm text-gray-400 mb-1">Compte publicitaire actif</p>
+                <p className="text-lg font-semibold text-white">
+                  {getCurrentAccountName()}
+                </p>
+              </div>
+              {selectedAccount && (
+                <div className="text-xs text-gray-500">
+                  ID: {selectedAccount}
+                </div>
+              )}
+            </div>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setShowAccountSelector(!showAccountSelector)}
+                className="px-4 py-2 bg-purple-600/20 text-purple-400 rounded-lg hover:bg-purple-600/30 transition-colors flex items-center gap-2 border border-purple-600/30"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l4-4 4 4m0 6l-4 4-4-4" />
+                </svg>
+                Changer de compte
+              </button>
+              <a
+                href="/app/aids/connect"
+                className="px-4 py-2 bg-blue-600/20 text-blue-400 rounded-lg hover:bg-blue-600/30 transition-colors border border-blue-600/30"
+              >
+                Gérer la connexion
+              </a>
+            </div>
+          </div>
+        </motion.div>
+      )}
+
+      {/* Account Selector Dropdown */}
+      <AnimatePresence>
+        {showAccountSelector && accounts.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="bg-gray-900 rounded-xl border border-white/10 p-4"
+          >
+            <h3 className="text-white font-semibold mb-3">Sélectionner un compte publicitaire</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              {accounts.map((account) => (
+                <button
+                  key={account.id}
+                  onClick={() => handleAccountChange(account.id)}
+                  className={`
+                    p-3 rounded-lg border transition-all text-left
+                    ${selectedAccount === account.id
+                      ? 'border-purple-500 bg-purple-500/10'
+                      : 'border-white/10 hover:border-white/20 bg-white/5 hover:bg-white/10'
+                    }
+                  `}
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <p className="font-medium text-white text-sm">{account.name}</p>
+                      <p className="text-xs text-gray-400 mt-1">ID: {account.id}</p>
+                      {account.currency && (
+                        <p className="text-xs text-gray-500 mt-1">
+                          {account.currency} • {account.timezone_name}
+                        </p>
+                      )}
+                    </div>
+                    {selectedAccount === account.id && (
+                      <span className="text-green-400 text-xs">✓</span>
+                    )}
+                  </div>
+                </button>
+              ))}
+            </div>
+            <div className="mt-4 flex justify-end">
+              <button
+                onClick={() => setShowAccountSelector(false)}
+                className="px-4 py-2 text-gray-400 hover:text-white transition-colors"
+              >
+                Fermer
+              </button>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>

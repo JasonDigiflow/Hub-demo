@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 import { ConfigService } from '@/lib/aids/services/config';
 import { MetricsService } from '@/lib/aids/services/metrics';
 
@@ -6,6 +7,27 @@ export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
     const range = searchParams.get('range') || 'daily';
+    
+    // Get selected account from cookies
+    const cookieStore = cookies();
+    const selectedAccountCookie = cookieStore.get('selected_ad_account');
+    const metaSessionCookie = cookieStore.get('meta_session');
+    
+    let selectedAccount = null;
+    let accessToken = null;
+    
+    if (selectedAccountCookie) {
+      selectedAccount = selectedAccountCookie.value;
+    }
+    
+    if (metaSessionCookie) {
+      try {
+        const session = JSON.parse(metaSessionCookie.value);
+        accessToken = session.accessToken;
+      } catch (e) {
+        console.error('Error parsing session:', e);
+      }
+    }
     
     const config = new ConfigService();
     const metricsService = new MetricsService(config);
@@ -36,13 +58,14 @@ export async function GET(request) {
       console.log('Could not fetch revenue data:', error);
     }
     
-    // Generate demo recent actions
+    // Generate recent actions with account context
+    const accountPrefix = selectedAccount ? `[${selectedAccount.slice(-6)}] ` : '';
     const recentActions = [
       {
         id: Date.now(),
         type: 'GENERATE_CREATIVE',
         status: 'success',
-        message: `Octavia generated new creative for ${metrics.data?.[0]?.name || 'Campaign'}`,
+        message: `${accountPrefix}Octavia generated new creative for ${metrics.data?.[0]?.name || 'Campaign'}`,
         time: '2 min ago'
       },
       {
