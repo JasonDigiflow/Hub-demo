@@ -25,7 +25,8 @@ export async function GET(request) {
     const session = JSON.parse(sessionCookie.value);
     const accountId = selectedAccountCookie.value;
     
-    console.log('Fetching leads for account:', accountId);
+    console.log('=== FETCHING LEADS FOR ACCOUNT ===');
+    console.log('Account ID:', accountId);
     
     // Get all lead forms for this account
     const leadFormsUrl = `https://graph.facebook.com/v18.0/${accountId}/leadgen_forms?` +
@@ -33,8 +34,16 @@ export async function GET(request) {
       `limit=100&` +
       `access_token=${session.accessToken}`;
     
+    console.log('Lead Forms URL:', leadFormsUrl.replace(session.accessToken, 'TOKEN'));
+    
     const formsResponse = await fetch(leadFormsUrl);
     const formsData = await formsResponse.json();
+    
+    console.log('=== LEAD FORMS RESPONSE ===');
+    console.log('Forms found:', formsData.data?.length || 0);
+    if (formsData.data?.length > 0) {
+      console.log('Form names:', formsData.data.map(f => f.name));
+    }
     
     if (formsData.error) {
       console.error('Error fetching lead forms:', formsData.error);
@@ -52,12 +61,31 @@ export async function GET(request) {
           `limit=100&` +
           `access_token=${session.accessToken}`;
         
+        console.log(`\n=== FETCHING LEADS FOR FORM: ${form.name} ===`);
+        console.log('Leads URL:', leadsUrl.replace(session.accessToken, 'TOKEN'));
+        
         const leadsResponse = await fetch(leadsUrl);
         const leadsData = await leadsResponse.json();
         
-        if (leadsData.data) {
+        console.log(`Leads found in form ${form.name}:`, leadsData.data?.length || 0);
+        
+        if (leadsData.data && leadsData.data.length > 0) {
+          console.log('\n=== SAMPLE LEAD DATA (First Lead) ===');
+          const sampleLead = leadsData.data[0];
+          console.log('Lead ID:', sampleLead.id);
+          console.log('Created Time:', sampleLead.created_time);
+          console.log('Campaign:', sampleLead.campaign_name);
+          console.log('Ad:', sampleLead.ad_name);
+          
+          if (sampleLead.field_data) {
+            console.log('\n=== FIELD DATA ===');
+            sampleLead.field_data.forEach(field => {
+              console.log(`Field "${field.name}":`, field.values?.[0] || 'empty');
+            });
+          }
+          
           // Process each lead
-          const processedLeads = leadsData.data.map(lead => {
+          const processedLeads = leadsData.data.map((lead, index) => {
             const fieldData = {};
             if (lead.field_data) {
               lead.field_data.forEach(field => {
@@ -65,12 +93,39 @@ export async function GET(request) {
               });
             }
             
+            if (index === 0) {
+              console.log('\n=== PROCESSED FIELD DATA (First Lead) ===');
+              console.log('All fields:', Object.keys(fieldData));
+              console.log('Field values:', fieldData);
+            }
+            
+            // Try many possible field names
+            const possibleName = 
+              fieldData.full_name || 
+              fieldData['full_name'] ||
+              fieldData.first_name || 
+              fieldData['first_name'] ||
+              fieldData.last_name || 
+              fieldData['last_name'] ||
+              (fieldData.first_name && fieldData.last_name ? `${fieldData.first_name} ${fieldData.last_name}` : '') ||
+              fieldData.name || 
+              fieldData.nom || 
+              fieldData.prenom || 
+              fieldData['nom_complet'] ||
+              fieldData['nom_prenom'] ||
+              Object.keys(fieldData).find(key => key.toLowerCase().includes('name') || key.toLowerCase().includes('nom')) ?
+                fieldData[Object.keys(fieldData).find(key => key.toLowerCase().includes('name') || key.toLowerCase().includes('nom'))] : null ||
+              fieldData.email?.split('@')[0] || 
+              'Prospect sans nom';
+            
+            if (index === 0) {
+              console.log('\n=== NAME EXTRACTION (First Lead) ===');
+              console.log('Extracted name:', possibleName);
+            }
+            
             return {
               id: `LEAD_${lead.id}`,
-              name: fieldData.full_name || fieldData.first_name || fieldData.last_name || 
-                    (fieldData.first_name && fieldData.last_name ? `${fieldData.first_name} ${fieldData.last_name}` : '') ||
-                    fieldData.name || fieldData.nom || fieldData.prenom || 
-                    fieldData.email?.split('@')[0] || 'Prospect sans nom',
+              name: possibleName,
               email: fieldData.email || fieldData.e_mail || fieldData['e-mail'] || '',
               phone: fieldData.phone_number || fieldData.mobile_number || fieldData.telephone || fieldData.tel || '',
               company: fieldData.company_name || fieldData.company || fieldData.entreprise || fieldData.societe || '',
@@ -98,7 +153,14 @@ export async function GET(request) {
       return await getLeadsFromAds(accountId, session.accessToken);
     }
     
-    console.log(`Found ${allLeads.length} leads from forms`);
+    console.log('\n=== FINAL RESULTS ===');
+    console.log(`Total leads found: ${allLeads.length}`);
+    if (allLeads.length > 0) {
+      console.log('First 3 leads:');
+      allLeads.slice(0, 3).forEach(lead => {
+        console.log(`- ${lead.id}: ${lead.name} (${lead.source})`);
+      });
+    }
     
     return NextResponse.json({
       success: true,

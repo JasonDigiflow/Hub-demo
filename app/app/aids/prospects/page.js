@@ -11,6 +11,8 @@ export default function ProspectsPage() {
   const [metaConnected, setMetaConnected] = useState(false);
   const [campaigns, setCampaigns] = useState([]);
   const [syncLoading, setSyncLoading] = useState(false);
+  const [showRawData, setShowRawData] = useState(false);
+  const [selectedProspect, setSelectedProspect] = useState(null);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -460,6 +462,18 @@ export default function ProspectsPage() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm">
                     <div className="flex items-center gap-2">
+                      {prospect.rawData && (
+                        <button
+                          onClick={() => {
+                            setSelectedProspect(prospect);
+                            setShowRawData(true);
+                          }}
+                          className="text-purple-400 hover:text-purple-300"
+                          title="Voir les données brutes"
+                        >
+                          🔍
+                        </button>
+                      )}
                       <button
                         onClick={() => handleEdit(prospect)}
                         className="text-blue-400 hover:text-blue-300"
@@ -696,6 +710,90 @@ export default function ProspectsPage() {
                   </button>
                 </div>
               </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Raw Data Modal */}
+      <AnimatePresence>
+        {showRawData && selectedProspect && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            onClick={() => {
+              setShowRawData(false);
+              setSelectedProspect(null);
+            }}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl p-6 max-w-3xl w-full border border-white/20 shadow-2xl max-h-[80vh] overflow-y-auto"
+            >
+              <h2 className="text-xl font-bold text-white mb-4">
+                Données brutes Facebook - {selectedProspect.name}
+              </h2>
+              
+              <div className="space-y-3">
+                <div className="bg-white/5 rounded-lg p-4">
+                  <h3 className="text-sm font-semibold text-purple-400 mb-2">Informations traitées</h3>
+                  <div className="text-xs text-gray-300 space-y-1">
+                    <div><span className="text-gray-500">ID:</span> {selectedProspect.id}</div>
+                    <div><span className="text-gray-500">Nom extrait:</span> {selectedProspect.name}</div>
+                    <div><span className="text-gray-500">Email:</span> {selectedProspect.email || 'Non fourni'}</div>
+                    <div><span className="text-gray-500">Téléphone:</span> {selectedProspect.phone || 'Non fourni'}</div>
+                    <div><span className="text-gray-500">Entreprise:</span> {selectedProspect.company || 'Non fourni'}</div>
+                  </div>
+                </div>
+                
+                {selectedProspect.rawData && (
+                  <div className="bg-white/5 rounded-lg p-4">
+                    <h3 className="text-sm font-semibold text-blue-400 mb-2">Champs reçus de Facebook</h3>
+                    <div className="text-xs font-mono bg-black/50 rounded p-3 overflow-x-auto">
+                      {Object.entries(selectedProspect.rawData).map(([key, value]) => (
+                        <div key={key} className="mb-1">
+                          <span className="text-yellow-400">"{key}"</span>:
+                          <span className="text-green-400 ml-2">"{value}"</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                
+                <div className="bg-white/5 rounded-lg p-4">
+                  <h3 className="text-sm font-semibold text-orange-400 mb-2">Métadonnées</h3>
+                  <div className="text-xs text-gray-300 space-y-1">
+                    <div><span className="text-gray-500">Campagne ID:</span> {selectedProspect.campaignId}</div>
+                    <div><span className="text-gray-500">Campagne:</span> {selectedProspect.campaignName}</div>
+                    <div><span className="text-gray-500">Publicité ID:</span> {selectedProspect.adId}</div>
+                    <div><span className="text-gray-500">Publicité:</span> {selectedProspect.adName}</div>
+                    <div><span className="text-gray-500">Formulaire:</span> {selectedProspect.formName}</div>
+                    <div><span className="text-gray-500">Date:</span> {new Date(selectedProspect.date).toLocaleString('fr-FR')}</div>
+                  </div>
+                </div>
+                
+                <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3">
+                  <p className="text-xs text-yellow-400">
+                    💡 Si le nom n'apparaît pas correctement, vérifiez les champs ci-dessus.
+                    Facebook utilise des noms de champs différents selon la langue du formulaire.
+                  </p>
+                </div>
+              </div>
+              
+              <button
+                onClick={() => {
+                  setShowRawData(false);
+                  setSelectedProspect(null);
+                }}
+                className="mt-4 px-4 py-2 bg-white/10 text-white rounded-lg hover:bg-white/20 transition-colors"
+              >
+                Fermer
+              </button>
             </motion.div>
           </motion.div>
         )}
