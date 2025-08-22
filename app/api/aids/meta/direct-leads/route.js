@@ -21,7 +21,7 @@ export async function GET(request) {
     // Get leads directly from the form
     const leadsUrl = `https://graph.facebook.com/v18.0/${FORM_ID}/leads?` +
       `fields=id,created_time,field_data&` +
-      `limit=200&` +
+      `limit=500&` + // Augmenté pour récupérer TOUS les leads
       `access_token=${PAGE_TOKEN}`;
     
     console.log('Fetching leads from:', leadsUrl.replace(PAGE_TOKEN, 'PAGE_TOKEN'));

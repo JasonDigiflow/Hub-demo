@@ -23,13 +23,21 @@ export async function GET(request) {
       .orderBy('createdAt', 'desc')
       .get();
 
-    const prospects = [];
+    const allProspects = [];
     snapshot.forEach(doc => {
-      prospects.push({
-        id: doc.id,
-        ...doc.data()
-      });
+      const data = doc.data();
+      // Filtrer les données agrégées
+      if (!data.isAggregated && 
+          !data.name?.includes('[Données agrégées') &&
+          !data.name?.includes('[Données campagne')) {
+        allProspects.push({
+          id: doc.id,
+          ...data
+        });
+      }
     });
+    
+    const prospects = allProspects;
 
     return NextResponse.json({
       success: true,

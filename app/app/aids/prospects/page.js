@@ -32,11 +32,8 @@ export default function ProspectsPage() {
 
   useEffect(() => {
     checkMetaConnection();
-  }, []);
-  
-  useEffect(() => {
     loadProspects();
-  }, [metaConnected]);
+  }, []);
 
   useEffect(() => {
     // Filtrer les prospects basé sur la recherche
@@ -64,8 +61,14 @@ export default function ProspectsPage() {
       const data = await response.json();
       
       if (data.success && data.prospects) {
-        setProspects(data.prospects);
-        console.log(`Loaded ${data.prospects.length} prospects from Firebase`);
+        // Filtrer les données agrégées (ne pas les afficher)
+        const realProspects = data.prospects.filter(p => 
+          !p.isAggregated && 
+          !p.name?.includes('[Données agrégées') &&
+          !p.name?.includes('[Données campagne')
+        );
+        setProspects(realProspects);
+        console.log(`Loaded ${realProspects.length} real prospects from Firebase (filtered ${data.prospects.length - realProspects.length} aggregated)`);
       } else {
         // Fallback to localStorage if Firebase fails
         const savedProspects = localStorage.getItem('aids_prospects');

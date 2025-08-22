@@ -84,8 +84,9 @@ export async function GET(request) {
         
         // Get lead forms for this page
         const pageFormsUrl = `https://graph.facebook.com/v18.0/${page.id}/leadgen_forms?` +
-          `fields=id,name,status,leads_count&` +
+          `fields=id,name,status,leads_count,created_time&` +
           `limit=100&` +
+          `filtering=[{field:"time_created",operator:"GREATER_THAN",value:${Math.floor(Date.now()/1000) - 180*24*60*60}}]&` + // Récupérer les leads des 6 derniers mois
           `access_token=${pageToken}`;
         
         console.log('Getting forms with page token...');
@@ -107,7 +108,7 @@ export async function GET(request) {
               // Get leads from this form using PAGE TOKEN
               const formLeadsUrl = `https://graph.facebook.com/v18.0/${form.id}/leads?` +
                 `fields=id,created_time,field_data&` +
-                `limit=200&` + // Augmenté à 200 pour récupérer tous les leads
+                `limit=500&` + // Augmenté à 500 pour récupérer TOUS les leads
                 `access_token=${pageToken}`; // USE PAGE TOKEN!
               
               console.log('Fetching leads with page access token...');
@@ -384,10 +385,17 @@ export async function GET(request) {
       // Continue even if Firebase save fails
     }
     
+    // Filtrer les données agrégées avant de retourner
+    const realLeads = allLeads.filter(lead => 
+      !lead.isAggregated && 
+      !lead.name?.includes('[Données agrégées') &&
+      !lead.name?.includes('[Données campagne')
+    );
+    
     return NextResponse.json({
       success: true,
-      leads: allLeads,
-      totalCount: allLeads.length,
+      leads: realLeads,
+      totalCount: realLeads.length,
       savedToFirebase: savedCount,
       skipped: skippedCount,
       source: 'lead_forms',
