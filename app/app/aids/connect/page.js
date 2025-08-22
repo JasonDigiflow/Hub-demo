@@ -338,11 +338,10 @@ export default function ConnectMetaAds() {
                   border rounded-lg p-4 cursor-pointer transition-all
                   ${selectedAccount === account.id
                     ? 'border-purple-500 bg-purple-500/10'
-                    : 'border-white/10 hover:border-white/20 bg-white/5'
+                    : 'border-white/10 hover:border-white/20 bg-white/5 hover:bg-white/10'
                   }
-                  ${!account.isActive ? 'opacity-60' : ''}
                 `}
-                onClick={() => account.isActive && handleSelectAccount(account.id)}
+                onClick={() => handleSelectAccount(account.id)}
               >
                 <div className="flex items-center justify-between">
                   <div>
@@ -350,8 +349,12 @@ export default function ConnectMetaAds() {
                     <p className="text-sm text-gray-400">ID: {account.id}</p>
                     <p className="text-sm text-gray-500">
                       {account.currency} • {account.timezone_name}
-                      {!account.isActive && ' • ' + (account.statusText || 'Inactif')}
                     </p>
+                    {account.status && account.status !== 1 && (
+                      <p className="text-xs text-yellow-400 mt-1">
+                        Statut: {account.statusText || 'Vérification requise'}
+                      </p>
+                    )}
                   </div>
                   {selectedAccount === account.id && (
                     <span className="text-2xl">✅</span>
