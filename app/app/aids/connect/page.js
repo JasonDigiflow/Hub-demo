@@ -124,7 +124,7 @@ export default function ConnectMetaAds() {
         setLoading(false);
       }
     }, {
-      scope: 'email,ads_management,ads_read,business_management,pages_read_engagement',
+      scope: 'email,ads_management,ads_read,business_management,pages_read_engagement,leads_retrieval,pages_manage_metadata',
       auth_type: 'rerequest',
       return_scopes: true
     });
@@ -309,6 +309,10 @@ export default function ConnectMetaAds() {
                 <li className="flex items-center gap-2 text-gray-300">
                   <span className="text-green-400">✓</span>
                   Gestion des créatives publicitaires
+                </li>
+                <li className="flex items-center gap-2 text-gray-300">
+                  <span className="text-orange-400">⚠️</span>
+                  <strong>Récupération des leads (IMPORTANT pour voir les noms)</strong>
                 </li>
               </ul>
             </div>
