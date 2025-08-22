@@ -372,6 +372,21 @@ export default function ProspectsPage() {
                       Vider le cache local
                     </button>
                     <div className="border-t border-gray-700 my-2"></div>
+                    <button
+                      onClick={async () => {
+                        setShowAdvancedOptions(false);
+                        const response = await fetch('/api/aids/meta/test-leads');
+                        const data = await response.json();
+                        console.log('=== TEST API RESULTS ===');
+                        console.log(JSON.stringify(data, null, 2));
+                        alert('Vérifiez la console pour voir les résultats du test API');
+                      }}
+                      className="w-full text-left px-3 py-2 text-sm text-yellow-400 hover:bg-gray-800 rounded flex items-center gap-2"
+                    >
+                      <span>🧪</span>
+                      Tester l'API Facebook
+                    </button>
+                    <div className="border-t border-gray-700 my-2"></div>
                     <div className="px-3 py-2 text-xs text-gray-500">
                       {prospects.length} prospects en cache
                     </div>

@@ -28,17 +28,96 @@ export async function GET(request) {
     console.log('=== FETCHING LEADS FOR ACCOUNT ===');
     console.log('Account ID:', accountId);
     
-    // First, try to get pages associated with this ad account
-    const pagesUrl = `https://graph.facebook.com/v18.0/${accountId}?` +
-      `fields=promote_pages&` +
+    // Method 1: Try getting ads with leads directly
+    const adsWithLeadsUrl = `https://graph.facebook.com/v18.0/${accountId}/ads?` +
+      `fields=id,name,adset{id,name},campaign{id,name},leads&` +
+      `limit=500&` +
       `access_token=${session.accessToken}`;
     
-    console.log('Getting pages for account...');
+    console.log('Getting ads with leads...');
+    const adsResponse = await fetch(adsWithLeadsUrl);
+    const adsData = await adsResponse.json();
+    
+    console.log('=== ADS WITH LEADS ===');
+    console.log('Total ads found:', adsData.data?.length || 0);
+    
+    let allLeadsFromAds = [];
+    if (adsData.data) {
+      for (const ad of adsData.data) {
+        if (ad.leads && ad.leads.data) {
+          console.log(`Ad "${ad.name}" has ${ad.leads.data.length} leads`);
+          allLeadsFromAds.push(...ad.leads.data.map(lead => ({
+            ...lead,
+            ad_name: ad.name,
+            ad_id: ad.id,
+            campaign_name: ad.campaign?.name,
+            campaign_id: ad.campaign?.id,
+            adset_name: ad.adset?.name,
+            adset_id: ad.adset?.id
+          })));
+        }
+      }
+    }
+    
+    console.log('Total leads from ads:', allLeadsFromAds.length);
+    
+    // Method 2: Try getting pages and their forms
+    const pagesUrl = `https://graph.facebook.com/v18.0/me/accounts?` +
+      `access_token=${session.accessToken}`;
+    
+    console.log('Getting user pages...');
     const pagesResponse = await fetch(pagesUrl);
     const pagesData = await pagesResponse.json();
-    console.log('Pages data:', pagesData);
+    console.log('User pages found:', pagesData.data?.length || 0);
     
-    // Get all lead forms for this account
+    let allLeadsFromPages = [];
+    if (pagesData.data) {
+      for (const page of pagesData.data) {
+        console.log(`Checking page: ${page.name} (${page.id})`);
+        
+        // Get lead forms for this page
+        const pageFormsUrl = `https://graph.facebook.com/v18.0/${page.id}/leadgen_forms?` +
+          `fields=id,name,status,leads_count&` +
+          `limit=100&` +
+          `access_token=${page.access_token || session.accessToken}`;
+        
+        const pageFormsResponse = await fetch(pageFormsUrl);
+        const pageFormsData = await pageFormsResponse.json();
+        
+        if (pageFormsData.data && pageFormsData.data.length > 0) {
+          console.log(`Page ${page.name} has ${pageFormsData.data.length} forms`);
+          
+          for (const form of pageFormsData.data) {
+            if (form.leads_count > 0) {
+              console.log(`Form "${form.name}" has ${form.leads_count} leads`);
+              
+              // Get leads from this form
+              const formLeadsUrl = `https://graph.facebook.com/v18.0/${form.id}/leads?` +
+                `fields=id,created_time,field_data&` +
+                `limit=100&` +
+                `access_token=${page.access_token || session.accessToken}`;
+              
+              const formLeadsResponse = await fetch(formLeadsUrl);
+              const formLeadsData = await formLeadsResponse.json();
+              
+              if (formLeadsData.data) {
+                allLeadsFromPages.push(...formLeadsData.data.map(lead => ({
+                  ...lead,
+                  form_id: form.id,
+                  form_name: form.name,
+                  page_id: page.id,
+                  page_name: page.name
+                })));
+              }
+            }
+          }
+        }
+      }
+    }
+    
+    console.log('Total leads from pages:', allLeadsFromPages.length);
+    
+    // Method 3: Original method - Get lead forms from ad account
     const leadFormsUrl = `https://graph.facebook.com/v18.0/${accountId}/leadgen_forms?` +
       `fields=id,name,status,created_time,leads_count,page,questions&` +
       `limit=100&` +
@@ -61,10 +140,16 @@ export async function GET(request) {
       return await getLeadsFromAds(accountId, session.accessToken);
     }
     
-    const allLeads = [];
+    // Combine all leads from different sources
+    let allLeads = [...allLeadsFromAds, ...allLeadsFromPages];
     
-    // For each form, get the leads
-    if (formsData.data && formsData.data.length > 0) {
+    console.log(`\n=== COMBINED LEADS ===`);
+    console.log(`From ads: ${allLeadsFromAds.length}`);
+    console.log(`From pages: ${allLeadsFromPages.length}`);
+    console.log(`Total before form processing: ${allLeads.length}`);
+    
+    // For each form, get the leads (original method)
+    if (allLeads.length === 0 && formsData.data && formsData.data.length > 0) {
       for (const form of formsData.data) {
         const leadsUrl = `https://graph.facebook.com/v18.0/${form.id}/leads?` +
           `fields=id,created_time,field_data,campaign_name,campaign_id,ad_id,ad_name,adset_id,adset_name,form_id,is_organic,platform&` +
