@@ -67,10 +67,13 @@ export async function GET(request) {
             
             return {
               id: `LEAD_${lead.id}`,
-              name: fieldData.full_name || fieldData.first_name || fieldData.email || 'Prospect sans nom',
-              email: fieldData.email || '',
-              phone: fieldData.phone_number || fieldData.mobile_number || '',
-              company: fieldData.company_name || '',
+              name: fieldData.full_name || fieldData.first_name || fieldData.last_name || 
+                    (fieldData.first_name && fieldData.last_name ? `${fieldData.first_name} ${fieldData.last_name}` : '') ||
+                    fieldData.name || fieldData.nom || fieldData.prenom || 
+                    fieldData.email?.split('@')[0] || 'Prospect sans nom',
+              email: fieldData.email || fieldData.e_mail || fieldData['e-mail'] || '',
+              phone: fieldData.phone_number || fieldData.mobile_number || fieldData.telephone || fieldData.tel || '',
+              company: fieldData.company_name || fieldData.company || fieldData.entreprise || fieldData.societe || '',
               source: lead.platform || 'Facebook',
               campaignId: lead.campaign_id || '',
               campaignName: lead.campaign_name || '',
@@ -150,7 +153,7 @@ async function getLeadsFromAds(accountId, accessToken) {
             if (leadCount > 0 || insight.conversions) {
               prospects.push({
                 id: `PROS_${ad.id}`,
-                name: `Prospects from ${ad.name}`,
+                name: `[${leadCount || 0} leads] ${ad.campaign?.name || 'Campaign'}`,
                 email: '',
                 phone: '',
                 company: '',
@@ -161,7 +164,7 @@ async function getLeadsFromAds(accountId, accessToken) {
                 adName: ad.name,
                 date: new Date().toISOString(),
                 status: 'new',
-                notes: `${leadCount || 0} leads from ad. Clicks: ${insight.clicks || 0}, Impressions: ${insight.impressions || 0}`,
+                notes: `${leadCount || 0} conversions/leads. CTR: ${((insight.clicks/insight.impressions)*100).toFixed(2)}%`,
                 isAggregated: true,
                 leadCount: leadCount || 0
               });
@@ -188,7 +191,7 @@ async function getLeadsFromAds(accountId, accessToken) {
             if (parseInt(insight.clicks) > 0) {
               prospects.push({
                 id: `CAMP_${campaign.id}`,
-                name: `Clics from ${campaign.name}`,
+                name: `[${insight.clicks} clics] ${campaign.name}`,
                 email: '',
                 phone: '',
                 company: '',
@@ -199,7 +202,7 @@ async function getLeadsFromAds(accountId, accessToken) {
                 adName: '',
                 date: new Date().toISOString(),
                 status: 'new',
-                notes: `Clicks: ${insight.clicks}, Impressions: ${insight.impressions}`,
+                notes: `${insight.clicks} clics, ${insight.impressions} impressions, CTR: ${((insight.clicks/insight.impressions)*100).toFixed(2)}%`,
                 isAggregated: true,
                 clickCount: parseInt(insight.clicks) || 0
               });

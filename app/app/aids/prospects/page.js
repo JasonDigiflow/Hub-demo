@@ -374,10 +374,10 @@ export default function ProspectsPage() {
                   Date
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-                  Nom
+                  ID / Source
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-                  Entreprise
+                  Nom Client
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                   Contact
@@ -408,11 +408,16 @@ export default function ProspectsPage() {
                     {new Date(prospect.date).toLocaleDateString('fr-FR')}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-white">{prospect.name}</div>
-                    <div className="text-xs text-gray-500">{prospect.id}</div>
+                    <div className="text-xs font-mono text-gray-400">{prospect.id}</div>
+                    <div className="text-xs text-gray-500">
+                      {prospect.adName ? `Ad: ${prospect.adName.substring(0, 30)}...` : prospect.source}
+                    </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                    {prospect.company || '-'}
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm font-medium text-white">{prospect.name || 'Sans nom'}</div>
+                    {prospect.company && (
+                      <div className="text-xs text-gray-500">{prospect.company}</div>
+                    )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm">
                     <div className="text-gray-300">{prospect.email || '-'}</div>
