@@ -377,6 +377,49 @@ export default function ProspectsPage() {
                       <span>🧪</span>
                       Tester l'API Facebook
                     </button>
+                    <button
+                      onClick={async () => {
+                        setShowAdvancedOptions(false);
+                        setSyncLoading(true);
+                        
+                        try {
+                          console.log('=== TEST DIRECT LEADS ===');
+                          const response = await fetch('/api/aids/meta/direct-leads');
+                          const data = await response.json();
+                          
+                          console.log('Direct leads response:', data);
+                          
+                          if (data.success && data.leads && data.leads.length > 0) {
+                            // Sauvegarder directement les leads
+                            const existingProspects = JSON.parse(localStorage.getItem('aids_prospects') || '[]');
+                            const existingIds = new Set(existingProspects.map(p => p.id));
+                            
+                            const newLeads = data.leads.filter(lead => !existingIds.has(lead.id));
+                            
+                            if (newLeads.length > 0) {
+                              const updatedProspects = [...newLeads, ...existingProspects];
+                              setProspects(updatedProspects);
+                              localStorage.setItem('aids_prospects', JSON.stringify(updatedProspects));
+                              alert(`✅ ${newLeads.length} prospects importés avec succès!\n\n${data.message}`);
+                            } else {
+                              alert(`ℹ️ Tous les prospects sont déjà importés.\n\nUtilisez "Vider le cache local" puis réessayez.`);
+                            }
+                          } else {
+                            alert(`❌ Erreur: ${data.message || data.error?.message || 'Impossible de récupérer les leads'}\n\nVérifiez la console pour plus de détails.`);
+                            console.error('Direct leads error:', data);
+                          }
+                        } catch (error) {
+                          console.error('Error:', error);
+                          alert('❌ Erreur lors de la récupération directe');
+                        }
+                        
+                        setSyncLoading(false);
+                      }}
+                      className="w-full text-left px-3 py-2 text-sm text-green-400 hover:bg-gray-800 rounded flex items-center gap-2"
+                    >
+                      <span>🎯</span>
+                      Import direct (106 prospects)
+                    </button>
                     <div className="border-t border-gray-700 my-2"></div>
                     <div className="px-3 py-2 text-xs text-gray-500">
                       {prospects.length} prospects en cache
