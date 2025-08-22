@@ -158,8 +158,33 @@ export async function PUT(request) {
 
     // Process each prospect
     for (const prospect of prospects) {
-      // Skip if already exists (based on Meta ID)
+      // Check if prospect exists
       if (prospect.metaId && existingMetaIds.has(prospect.metaId)) {
+        // Update existing prospect's status if changed
+        const existingProspectQuery = await prospectsRef
+          .where('userId', '==', userId)
+          .where('metaId', '==', prospect.metaId)
+          .limit(1)
+          .get();
+        
+        if (!existingProspectQuery.empty) {
+          const existingDoc = existingProspectQuery.docs[0];
+          const existingData = existingDoc.data();
+          
+          // Update if status changed or other important fields
+          if (existingData.status !== prospect.status || 
+              existingData.email !== prospect.email ||
+              existingData.phone !== prospect.phone) {
+            await existingDoc.ref.update({
+              status: prospect.status || existingData.status,
+              email: prospect.email || existingData.email,
+              phone: prospect.phone || existingData.phone,
+              updatedAt: new Date().toISOString(),
+              lastSyncedAt: new Date().toISOString()
+            });
+            console.log(`Updated prospect ${prospect.metaId} status/info`);
+          }
+        }
         continue;
       }
 

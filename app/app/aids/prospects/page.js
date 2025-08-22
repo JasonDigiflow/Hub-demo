@@ -60,7 +60,7 @@ export default function ProspectsPage() {
       const response = await fetch('/api/aids/prospects');
       const data = await response.json();
       
-      if (data.success && data.prospects) {
+      if (data.success && data.prospects && data.prospects.length > 0) {
         // Filtrer les données agrégées (ne pas les afficher)
         const realProspects = data.prospects.filter(p => 
           !p.isAggregated && 
@@ -177,7 +177,7 @@ export default function ProspectsPage() {
     try {
       const response = await fetch('/api/aids/meta/status');
       const data = await response.json();
-      setMetaConnected(data.connected);
+      setMetaConnected(data.connected || true); // Toujours activer les boutons pour l'instant
       
       if (data.connected) {
         // Charger les campagnes Meta si connecté
@@ -185,6 +185,7 @@ export default function ProspectsPage() {
       }
     } catch (error) {
       console.error('Error checking Meta connection:', error);
+      setMetaConnected(true); // En cas d'erreur, activer quand même les boutons
     }
   };
 
@@ -424,36 +425,34 @@ export default function ProspectsPage() {
         </div>
         
         <div className="flex items-center gap-3">
-          {metaConnected && (
-            <>
-              <button
-                onClick={() => syncMetaLeads(true, false)}
-                disabled={syncLoading}
-                className="px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all font-medium flex items-center gap-2 disabled:opacity-50"
-              >
-                {syncLoading ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                    Synchronisation...
-                  </>
-                ) : (
-                  <>
-                    <span className="text-xl">🔄</span>
-                    Synchroniser Meta Ads
-                  </>
-                )}
-              </button>
-              
-              <div className="relative">
-                <button
-                  onClick={() => setShowAdvancedOptions(!showAdvancedOptions)}
-                  className="px-4 py-3 bg-gray-800 text-gray-300 rounded-lg hover:bg-gray-700 transition-all font-medium flex items-center gap-2"
-                >
-                  <span className="text-xl">⚙️</span>
-                  Options
-                </button>
-                
-                {showAdvancedOptions && (
+          <button
+            onClick={() => syncMetaLeads(true, false)}
+            disabled={syncLoading}
+            className="px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all font-medium flex items-center gap-2 disabled:opacity-50"
+          >
+            {syncLoading ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                Synchronisation...
+              </>
+            ) : (
+              <>
+                <span className="text-xl">🔄</span>
+                Synchroniser Meta Ads
+              </>
+            )}
+          </button>
+          
+          <div className="relative">
+            <button
+              onClick={() => setShowAdvancedOptions(!showAdvancedOptions)}
+              className="px-4 py-3 bg-gray-800 text-gray-300 rounded-lg hover:bg-gray-700 transition-all font-medium flex items-center gap-2"
+            >
+              <span className="text-xl">⚙️</span>
+              Options
+            </button>
+            
+            {showAdvancedOptions && (
                   <div className="absolute right-0 top-full mt-2 bg-gray-900 border border-gray-700 rounded-lg shadow-xl p-2 z-10 min-w-[200px]">
                     <button
                       onClick={() => {
@@ -540,8 +539,7 @@ export default function ProspectsPage() {
                   </div>
                 )}
               </div>
-            </>
-          )}
+          
           <button
             onClick={() => setShowAddModal(true)}
             className="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all font-medium flex items-center gap-2"
