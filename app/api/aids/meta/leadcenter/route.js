@@ -245,10 +245,88 @@ export async function GET(request) {
         const decoded = jwt.verify(authCookie.value, process.env.JWT_SECRET);
         const userId = decoded.uid;
         
-        // Get existing leads
-        const prospectsRef = db.collection('aids_prospects');
+        // Get user's organization and ad account
+        const userDoc = await db.collection('users').doc(userId).get();
+        const userData = userDoc.data();
+        
+        // Create user doc if it doesn't exist
+        if (!userDoc.exists) {
+          console.log('Creating user document...');
+          await db.collection('users').doc(userId).set({
+            email: decoded.email || `user${userId}@example.com`,
+            orgIds: [],
+            primaryOrgId: null,
+            createdAt: new Date().toISOString()
+          });
+        }
+        
+        let orgId = userData?.primaryOrgId;
+        let adAccountId;
+        
+        // Create organization if needed
+        if (!orgId) {
+          console.log('Creating organization for user...');
+          orgId = `org_${userId}_${Date.now()}`;
+          const orgName = userData?.email?.split('@')[0] || 'Mon Organisation';
+          
+          await db.collection('organizations').doc(orgId).set({
+            name: orgName,
+            slug: orgName.toLowerCase().replace(/[^a-z0-9]/g, '-'),
+            owner: userId,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          });
+          
+          // Add user as admin
+          await db.collection('organizations').doc(orgId)
+            .collection('members').doc(userId).set({
+              uid: userId,
+              role: 'admin',
+              invitedBy: userId,
+              createdAt: new Date().toISOString()
+            });
+          
+          // Update user doc
+          await db.collection('users').doc(userId).update({
+            orgIds: [orgId],
+            primaryOrgId: orgId
+          });
+        }
+        
+        // Get or create Meta ad account
+        const adAccountsSnapshot = await db
+          .collection('organizations').doc(orgId)
+          .collection('adAccounts')
+          .where('platform', '==', 'meta')
+          .limit(1)
+          .get();
+        
+        if (adAccountsSnapshot.empty) {
+          console.log('Creating Meta ad account...');
+          adAccountId = `adacc_meta_${Date.now()}`;
+          await db.collection('organizations').doc(orgId)
+            .collection('adAccounts').doc(adAccountId).set({
+              platform: 'meta',
+              externalId: accountId,
+              name: 'Compte Meta',
+              currency: 'EUR',
+              status: 'active',
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString()
+            });
+        } else {
+          adAccountId = adAccountsSnapshot.docs[0].id;
+        }
+        
+        console.log(`Saving to org: ${orgId}, adAccount: ${adAccountId}`);
+        
+        // Get existing leads in new structure
+        const prospectsRef = db
+          .collection('organizations').doc(orgId)
+          .collection('adAccounts').doc(adAccountId)
+          .collection('prospects');
+        
         const existingSnapshot = await prospectsRef
-          .where('userId', '==', userId)
           .where('syncedFromMeta', '==', true)
           .get();
         
@@ -267,7 +345,6 @@ export async function GET(request) {
           if (!existingMetaIds.has(lead.metaId)) {
             const prospectData = {
               ...lead,
-              userId,
               syncedFromMeta: true,
               createdAt: lead.date || new Date().toISOString(),
               updatedAt: new Date().toISOString(),
@@ -284,7 +361,7 @@ export async function GET(request) {
         
         if (savedCount > 0) {
           await batch.commit();
-          console.log(`✅ Saved ${savedCount} new prospects to Firebase`);
+          console.log(`✅ Saved ${savedCount} new prospects to Firebase (org: ${orgId})`);
         }
       }
     } catch (error) {
