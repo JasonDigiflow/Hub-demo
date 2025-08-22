@@ -39,26 +39,23 @@ export default function ProspectsPage() {
   const loadProspects = async () => {
     setLoading(true);
     try {
-      // Charger depuis Firebase
-      const response = await fetch('/api/aids/prospects/sync');
-      const data = await response.json();
-      
-      if (data.success && data.prospects) {
-        setProspects(data.prospects);
-        console.log(`Loaded ${data.prospects.length} prospects from Firebase`);
+      // Pour l'instant, utiliser localStorage directement
+      const savedProspects = localStorage.getItem('aids_prospects');
+      if (savedProspects) {
+        setProspects(JSON.parse(savedProspects));
+        console.log(`Loaded ${JSON.parse(savedProspects).length} prospects from localStorage`);
+      } else {
+        setProspects([]);
       }
       
       // Si connecté à Meta, essayer de charger les nouveaux leads
       if (metaConnected) {
-        await syncMetaLeads(false);
+        // Ne pas attendre la sync pour éviter le blocage
+        syncMetaLeads(false).catch(console.error);
       }
     } catch (error) {
       console.error('Error loading prospects:', error);
-      // Fallback sur localStorage si Firebase échoue
-      const savedProspects = localStorage.getItem('aids_prospects');
-      if (savedProspects) {
-        setProspects(JSON.parse(savedProspects));
-      }
+      setProspects([]);
     }
     setLoading(false);
   };
@@ -82,31 +79,33 @@ export default function ProspectsPage() {
       }
       
       if (data.success && data.leads && data.leads.length > 0) {
-        // Sauvegarder dans Firebase
-        const syncResponse = await fetch('/api/aids/prospects/sync', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            prospects: data.leads,
-            forceSync: forceSync
-          })
-        });
-        
-        const syncResult = await syncResponse.json();
-        
-        if (syncResult.success) {
-          // Recharger les prospects depuis Firebase
-          await loadProspects();
+        // Sauvegarder directement dans localStorage
+        if (forceSync) {
+          // Mode force : remplacer tous les prospects
+          setProspects(data.leads);
+          localStorage.setItem('aids_prospects', JSON.stringify(data.leads));
           
           if (showLoading) {
-            if (syncResult.savedCount > 0) {
-              alert(`✅ ${syncResult.savedCount} prospects importés depuis Meta Ads!\n\nSource: ${data.source}\n\n${syncResult.message}`);
-            } else {
-              alert(`ℹ️ ${syncResult.message}\n\nUtilisez "Forcer la resynchronisation" pour réimporter tous les prospects.`);
-            }
+            alert(`✅ ${data.leads.length} prospects importés depuis Meta Ads!\n\nSource: ${data.source}`);
           }
         } else {
-          throw new Error(syncResult.error || 'Erreur lors de la synchronisation');
+          // Mode normal : fusionner avec existants
+          const existingProspects = JSON.parse(localStorage.getItem('aids_prospects') || '[]');
+          const existingIds = new Set(existingProspects.map(p => p.id));
+          
+          const newLeads = data.leads.filter(lead => !existingIds.has(lead.id));
+          
+          if (newLeads.length > 0) {
+            const updatedProspects = [...newLeads, ...existingProspects];
+            setProspects(updatedProspects);
+            localStorage.setItem('aids_prospects', JSON.stringify(updatedProspects));
+            
+            if (showLoading) {
+              alert(`✅ ${newLeads.length} nouveaux prospects importés!\n\nTotal: ${updatedProspects.length} prospects`);
+            }
+          } else if (showLoading) {
+            alert(`ℹ️ Aucun nouveau prospect à importer.\n\n${existingProspects.length} prospects déjà enregistrés.\n\nUtilisez "Forcer la resynchronisation" pour réimporter tous les prospects.`);
+          }
         }
       } else if (showLoading) {
         alert(`⚠️ ${data.message || 'Aucun lead trouvé dans votre compte Meta.'}\n\nVérifiez que vous avez:\n- Des formulaires de leads configurés\n- Des campagnes actives\n- Les bonnes permissions`);
@@ -163,25 +162,20 @@ export default function ProspectsPage() {
     };
 
     try {
-      // Sauvegarder dans Firebase via l'API sync
-      const response = await fetch('/api/aids/prospects/sync', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          prospects: [prospectData],
-          forceSync: true // Pour forcer la mise à jour si le prospect existe
-        })
-      });
-      
-      const result = await response.json();
-      
-      if (result.success) {
-        // Recharger les prospects depuis Firebase
-        await loadProspects();
-        resetForm();
+      // Sauvegarder dans localStorage directement
+      let updatedProspects;
+      if (editingProspect) {
+        updatedProspects = prospects.map(p => 
+          p.id === editingProspect.id ? prospectData : p
+        );
       } else {
-        throw new Error(result.error || 'Erreur lors de la sauvegarde');
+        updatedProspects = [prospectData, ...prospects];
       }
+      
+      setProspects(updatedProspects);
+      localStorage.setItem('aids_prospects', JSON.stringify(updatedProspects));
+      
+      resetForm();
     } catch (error) {
       console.error('Error saving prospect:', error);
       alert('❌ Erreur lors de la sauvegarde du prospect');
@@ -214,9 +208,6 @@ export default function ProspectsPage() {
       const updatedProspects = prospects.filter(p => p.id !== id);
       setProspects(updatedProspects);
       localStorage.setItem('aids_prospects', JSON.stringify(updatedProspects));
-      
-      // Essayer de supprimer via API
-      await fetch(`/api/aids/prospects/${id}`, { method: 'DELETE' });
     } catch (error) {
       console.error('Error deleting prospect:', error);
     }
