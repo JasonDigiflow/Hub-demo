@@ -1,51 +1,59 @@
-import { db } from './firebase';
-import { 
-  collection, 
-  addDoc, 
-  updateDoc, 
-  deleteDoc, 
-  doc, 
-  getDocs, 
-  query, 
-  where, 
-  orderBy,
-  serverTimestamp,
-  setDoc
-} from 'firebase/firestore';
+// Temporary in-memory storage until Firebase is properly configured
+// This will use localStorage in production for now
 
 const COLLECTION_NAME = 'aids_prospects';
+
+// Temporary implementation using in-memory storage
+// Will be replaced with Firebase when properly configured
+
+// In-memory storage
+let prospectsStore = {};
+
+// Helper to get storage key
+function getStorageKey(userId) {
+  return `${COLLECTION_NAME}_${userId}`;
+}
 
 // Créer ou mettre à jour un prospect
 export async function saveProspect(prospect, userId) {
   try {
-    if (prospect.id && prospect.id.startsWith('LEAD_')) {
-      // Pour les leads Meta, utiliser setDoc pour éviter les doublons
-      const docRef = doc(db, COLLECTION_NAME, prospect.id);
-      await setDoc(docRef, {
-        ...prospect,
-        userId,
-        updatedAt: serverTimestamp(),
-        createdAt: prospect.createdAt || serverTimestamp()
-      }, { merge: true });
-      return prospect.id;
-    } else if (prospect.id) {
-      // Mise à jour
-      const docRef = doc(db, COLLECTION_NAME, prospect.id);
-      await updateDoc(docRef, {
-        ...prospect,
-        userId,
-        updatedAt: serverTimestamp()
-      });
+    const key = getStorageKey(userId);
+    if (!prospectsStore[key]) {
+      prospectsStore[key] = [];
+    }
+    
+    const now = new Date().toISOString();
+    
+    if (prospect.id) {
+      // Update existing
+      const index = prospectsStore[key].findIndex(p => p.id === prospect.id);
+      if (index >= 0) {
+        prospectsStore[key][index] = {
+          ...prospect,
+          userId,
+          updatedAt: now
+        };
+      } else {
+        // Add new with existing ID
+        prospectsStore[key].push({
+          ...prospect,
+          userId,
+          createdAt: prospect.createdAt || now,
+          updatedAt: now
+        });
+      }
       return prospect.id;
     } else {
-      // Création
-      const docRef = await addDoc(collection(db, COLLECTION_NAME), {
+      // Create new
+      const newId = `PROS${Date.now()}`;
+      prospectsStore[key].push({
         ...prospect,
+        id: newId,
         userId,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp()
+        createdAt: now,
+        updatedAt: now
       });
-      return docRef.id;
+      return newId;
     }
   } catch (error) {
     console.error('Error saving prospect:', error);
@@ -56,38 +64,28 @@ export async function saveProspect(prospect, userId) {
 // Récupérer tous les prospects d'un utilisateur
 export async function getProspects(userId) {
   try {
-    const q = query(
-      collection(db, COLLECTION_NAME),
-      where('userId', '==', userId),
-      orderBy('createdAt', 'desc')
-    );
+    const key = getStorageKey(userId);
+    const prospects = prospectsStore[key] || [];
     
-    const querySnapshot = await getDocs(q);
-    const prospects = [];
-    
-    querySnapshot.forEach((doc) => {
-      prospects.push({
-        id: doc.id,
-        ...doc.data()
-      });
+    // Sort by createdAt desc
+    return prospects.sort((a, b) => {
+      const dateA = new Date(a.createdAt || 0);
+      const dateB = new Date(b.createdAt || 0);
+      return dateB - dateA;
     });
-    
-    return prospects;
   } catch (error) {
     console.error('Error getting prospects:', error);
-    // Si l'index n'existe pas encore, retourner un tableau vide
-    if (error.code === 'failed-precondition') {
-      console.log('Index not yet created, returning empty array');
-      return [];
-    }
-    throw error;
+    return [];
   }
 }
 
 // Supprimer un prospect
-export async function deleteProspect(prospectId) {
+export async function deleteProspect(prospectId, userId) {
   try {
-    await deleteDoc(doc(db, COLLECTION_NAME, prospectId));
+    const key = getStorageKey(userId);
+    if (prospectsStore[key]) {
+      prospectsStore[key] = prospectsStore[key].filter(p => p.id !== prospectId);
+    }
   } catch (error) {
     console.error('Error deleting prospect:', error);
     throw error;
@@ -112,26 +110,15 @@ export async function saveProspectsBatch(prospects, userId) {
 // Vérifier si des prospects existent déjà (par leurs IDs)
 export async function checkExistingProspects(prospectIds, userId) {
   try {
+    const key = getStorageKey(userId);
+    const prospects = prospectsStore[key] || [];
     const existingIds = new Set();
     
-    // Diviser en chunks de 10 (limite Firestore pour 'in' queries)
-    const chunks = [];
-    for (let i = 0; i < prospectIds.length; i += 10) {
-      chunks.push(prospectIds.slice(i, i + 10));
-    }
-    
-    for (const chunk of chunks) {
-      const q = query(
-        collection(db, COLLECTION_NAME),
-        where('userId', '==', userId),
-        where('id', 'in', chunk)
-      );
-      
-      const querySnapshot = await getDocs(q);
-      querySnapshot.forEach((doc) => {
-        existingIds.add(doc.id);
-      });
-    }
+    prospects.forEach(prospect => {
+      if (prospectIds.includes(prospect.id)) {
+        existingIds.add(prospect.id);
+      }
+    });
     
     return existingIds;
   } catch (error) {
