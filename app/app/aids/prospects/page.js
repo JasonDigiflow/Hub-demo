@@ -642,7 +642,50 @@ export default function ProspectsPage() {
                       Import direct (106 prospects)
                     </button>
                     <div className="border-t border-gray-700 my-2"></div>
-                    <div className="px-3 py-2 text-xs text-gray-500">
+                    <button
+                      onClick={async () => {
+                        setShowAdvancedOptions(false);
+                        console.log('Running Lead Center diagnostic...');
+                        const response = await fetch('/api/aids/meta/test-leadcenter');
+                        const data = await response.json();
+                        
+                        console.log('=== LEAD CENTER DIAGNOSTIC ===');
+                        console.log(data);
+                        
+                        let message = '🔍 Diagnostic Lead Center:\n\n';
+                        
+                        // Check each test
+                        data.tests?.forEach(test => {
+                          if (test.test === 'Token Validity') {
+                            message += test.valid ? '✅ Token valide\n' : '❌ Token invalide\n';
+                          }
+                          if (test.test === 'Permissions') {
+                            message += test.hasLeadsRetrieval ? '✅ Permission leads_retrieval\n' : '❌ Permission leads_retrieval manquante\n';
+                          }
+                          if (test.test === 'Lead Forms in Account') {
+                            message += `📊 ${test.formsCount} formulaires, ${test.totalLeadsAcrossForms} leads total\n`;
+                          }
+                          if (test.test === 'Pages and Their Forms') {
+                            message += `📄 ${test.totalLeadsAcrossPages} leads dans les pages\n`;
+                          }
+                        });
+                        
+                        if (data.recommendations?.length > 0) {
+                          message += '\n💡 Recommandations:\n';
+                          data.recommendations.forEach(rec => {
+                            message += `${rec}\n`;
+                          });
+                        }
+                        
+                        message += '\n📋 Détails complets dans la console (F12)';
+                        alert(message);
+                      }}
+                      className="w-full text-left px-3 py-2 text-sm text-red-400 hover:bg-gray-800 rounded flex items-center gap-2"
+                    >
+                      <span>🔍</span>
+                      Diagnostic: Pourquoi 0 prospects?
+                    </button>
+                    <div className="px-3 py-2 text-xs text-gray-500 mt-2">
                       {prospects.length} prospects en cache
                     </div>
                   </div>
