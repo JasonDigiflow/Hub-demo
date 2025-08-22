@@ -14,8 +14,12 @@ export default function RevenuesPage() {
     amount: '',
     date: new Date().toISOString().split('T')[0],
     campaignId: '',
-    description: ''
+    description: '',
+    prospectId: '',
+    tva: 20 // TVA par défaut à 20%
   });
+  const [prospects, setProspects] = useState([]);
+  const [nextClientId, setNextClientId] = useState('CLI001');
   const [stats, setStats] = useState({
     totalRevenue: 0,
     totalClients: 0,
@@ -25,6 +29,7 @@ export default function RevenuesPage() {
 
   useEffect(() => {
     loadRevenues();
+    loadProspects();
   }, []);
 
   const loadRevenues = async () => {
@@ -32,28 +37,69 @@ export default function RevenuesPage() {
     try {
       const response = await fetch('/api/aids/revenues');
       const data = await response.json();
-      setRevenues(data.revenues || []);
+      const revenuesList = data.revenues || [];
+      setRevenues(revenuesList);
       setStats(data.stats || {
         totalRevenue: 0,
         totalClients: 0,
         averageTicket: 0,
         monthlyGrowth: 0
       });
+      
+      // Générer le prochain ID client
+      generateNextClientId(revenuesList);
     } catch (error) {
       console.error('Error loading revenues:', error);
       // Load demo data
-      setRevenues(getDemoRevenues());
-      calculateStats(getDemoRevenues());
+      const demoData = getDemoRevenues();
+      setRevenues(demoData);
+      calculateStats(demoData);
+      generateNextClientId(demoData);
     }
     setLoading(false);
   };
 
+  const loadProspects = async () => {
+    try {
+      // Simuler la récupération des prospects depuis le centre de prospects
+      // En production, cela viendrait de votre API de prospects
+      const demoProspects = [
+        { id: 'PROS001', name: 'Nouvelle Boutique Lyon', campaignId: 'CAM_FB_001', source: 'Facebook', date: '2024-08-20' },
+        { id: 'PROS002', name: 'Restaurant Marseille', campaignId: 'CAM_IG_002', source: 'Instagram', date: '2024-08-19' },
+        { id: 'PROS003', name: 'Startup Tech Paris', campaignId: 'CAM_FB_003', source: 'Facebook', date: '2024-08-18' },
+        { id: 'PROS004', name: 'Cabinet Avocat Nice', campaignId: 'CAM_FB_001', source: 'Facebook', date: '2024-08-17' },
+        { id: 'PROS005', name: 'Agence Immo Bordeaux', campaignId: 'CAM_IG_004', source: 'Instagram', date: '2024-08-16' }
+      ];
+      setProspects(demoProspects);
+    } catch (error) {
+      console.error('Error loading prospects:', error);
+    }
+  };
+
+  const generateNextClientId = (revenuesList) => {
+    if (revenuesList.length === 0) {
+      setNextClientId('CLI001');
+      return;
+    }
+    
+    // Extraire tous les numéros de client existants
+    const clientNumbers = revenuesList
+      .map(r => r.clientId)
+      .filter(id => id && id.startsWith('CLI'))
+      .map(id => parseInt(id.replace('CLI', '')))
+      .filter(num => !isNaN(num));
+    
+    const maxNumber = clientNumbers.length > 0 ? Math.max(...clientNumbers) : 0;
+    const nextNumber = maxNumber + 1;
+    setNextClientId(`CLI${nextNumber.toString().padStart(3, '0')}`);
+  };
+
   const getDemoRevenues = () => [
-    { id: 1, clientId: 'CLI001', clientName: 'Boutique Mode Paris', amount: 2500, date: '2024-08-15', campaignId: 'CAM_FB_001', description: 'Vente via campagne été' },
-    { id: 2, clientId: 'CLI002', clientName: 'Restaurant Le Gourmet', amount: 1800, date: '2024-08-14', campaignId: 'CAM_IG_002', description: 'Réservations weekend' },
-    { id: 3, clientId: 'CLI003', clientName: 'Fitness Club Pro', amount: 3200, date: '2024-08-13', campaignId: 'CAM_FB_003', description: 'Abonnements annuels' },
-    { id: 4, clientId: 'CLI004', clientName: 'Tech Solutions', amount: 5500, date: '2024-08-12', campaignId: 'CAM_FB_001', description: 'Contrat B2B' },
-    { id: 5, clientId: 'CLI005', clientName: 'Beauty Spa Zen', amount: 890, date: '2024-08-11', campaignId: 'CAM_IG_004', description: 'Forfait soins' }
+    { id: 1, clientId: 'CLI001', clientName: 'Boutique Mode Paris', amount: 2083.33, date: '2024-08-15', campaignId: 'CAM_FB_001', description: 'Vente via campagne été' },
+    { id: 2, clientId: 'CLI002', clientName: 'Restaurant Le Gourmet', amount: 1500.00, date: '2024-08-14', campaignId: 'CAM_IG_002', description: 'Réservations weekend' },
+    { id: 3, clientId: 'CLI003', clientName: 'Fitness Club Pro', amount: 2666.67, date: '2024-08-13', campaignId: 'CAM_FB_003', description: 'Abonnements annuels' },
+    { id: 4, clientId: 'CLI004', clientName: 'Tech Solutions', amount: 4583.33, date: '2024-08-12', campaignId: 'CAM_FB_001', description: 'Contrat B2B' },
+    { id: 5, clientId: 'CLI005', clientName: 'Beauty Spa Zen', amount: 741.67, date: '2024-08-11', campaignId: 'CAM_IG_004', description: 'Forfait soins' }
   ];
 
   const calculateStats = (revenueData) => {
@@ -74,6 +120,7 @@ export default function RevenuesPage() {
     
     const revenueData = {
       ...formData,
+      clientId: formData.clientId || nextClientId,
       amount: parseFloat(formData.amount),
       id: editingRevenue?.id || Date.now()
     };
@@ -116,7 +163,9 @@ export default function RevenuesPage() {
       amount: revenue.amount.toString(),
       date: revenue.date,
       campaignId: revenue.campaignId,
-      description: revenue.description
+      description: revenue.description,
+      prospectId: revenue.prospectId || '',
+      tva: revenue.tva || 20
     });
     setShowAddModal(true);
   };
@@ -143,10 +192,14 @@ export default function RevenuesPage() {
       amount: '',
       date: new Date().toISOString().split('T')[0],
       campaignId: '',
-      description: ''
+      description: '',
+      prospectId: '',
+      tva: 20
     });
     setEditingRevenue(null);
     setShowAddModal(false);
+    // Regénérer le prochain ID client
+    generateNextClientId(revenues);
   };
 
   if (loading) {
@@ -188,7 +241,7 @@ export default function RevenuesPage() {
           className="bg-gradient-to-br from-green-600/20 to-green-600/10 rounded-xl p-6 border border-green-600/20"
         >
           <div className="flex items-center justify-between mb-2">
-            <span className="text-gray-400 text-sm">Revenus totaux</span>
+            <span className="text-gray-400 text-sm">Revenus totaux HT</span>
             <span className="text-2xl">💰</span>
           </div>
           <div className="text-2xl font-bold text-white">
@@ -222,7 +275,7 @@ export default function RevenuesPage() {
           className="bg-gradient-to-br from-purple-600/20 to-purple-600/10 rounded-xl p-6 border border-purple-600/20"
         >
           <div className="flex items-center justify-between mb-2">
-            <span className="text-gray-400 text-sm">Panier moyen</span>
+            <span className="text-gray-400 text-sm">Panier moyen HT</span>
             <span className="text-2xl">🛒</span>
           </div>
           <div className="text-2xl font-bold text-white">
@@ -268,7 +321,7 @@ export default function RevenuesPage() {
                   Nom du client
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-                  Montant TTC
+                  Montant HT
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                   Campagne
@@ -358,6 +411,36 @@ export default function RevenuesPage() {
               </h2>
 
               <form onSubmit={handleSubmit} className="space-y-4">
+                {/* Sélecteur de prospect */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-400 mb-1">
+                    Sélectionner un prospect
+                  </label>
+                  <select
+                    value={formData.prospectId}
+                    onChange={(e) => {
+                      const prospect = prospects.find(p => p.id === e.target.value);
+                      if (prospect) {
+                        setFormData({
+                          ...formData,
+                          prospectId: e.target.value,
+                          clientName: prospect.name,
+                          campaignId: prospect.campaignId,
+                          clientId: nextClientId
+                        });
+                      }
+                    }}
+                    className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                  >
+                    <option value="">-- Choisir un prospect --</option>
+                    {prospects.map(prospect => (
+                      <option key={prospect.id} value={prospect.id}>
+                        {prospect.name} ({prospect.source} - {new Date(prospect.date).toLocaleDateString('fr-FR')})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-400 mb-1">
@@ -365,10 +448,9 @@ export default function RevenuesPage() {
                     </label>
                     <input
                       type="text"
-                      value={formData.clientId}
-                      onChange={(e) => setFormData({...formData, clientId: e.target.value})}
-                      className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-purple-500"
-                      placeholder="CLI001"
+                      value={formData.clientId || nextClientId}
+                      readOnly
+                      className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-gray-400 cursor-not-allowed"
                       required
                     />
                   </div>
@@ -391,7 +473,7 @@ export default function RevenuesPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-400 mb-1">
-                      Montant TTC (€)
+                      Montant HT (€)
                     </label>
                     <input
                       type="number"
@@ -399,9 +481,12 @@ export default function RevenuesPage() {
                       value={formData.amount}
                       onChange={(e) => setFormData({...formData, amount: e.target.value})}
                       className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-purple-500"
-                      placeholder="1500.00"
+                      placeholder="1250.00"
                       required
                     />
+                    <p className="text-xs text-gray-500 mt-1">
+                      TTC: {formData.amount ? (parseFloat(formData.amount) * (1 + formData.tva/100)).toFixed(2) : '0.00'} €
+                    </p>
                   </div>
 
                   <div>
@@ -425,10 +510,18 @@ export default function RevenuesPage() {
                   <input
                     type="text"
                     value={formData.campaignId}
+                    readOnly={formData.prospectId !== ''}
                     onChange={(e) => setFormData({...formData, campaignId: e.target.value})}
-                    className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-purple-500"
+                    className={`w-full px-3 py-2 border rounded-lg text-white focus:outline-none focus:border-purple-500 ${
+                      formData.prospectId ? 'bg-white/5 border-white/10 cursor-not-allowed text-gray-400' : 'bg-white/10 border-white/20 placeholder-gray-500'
+                    }`}
                     placeholder="CAM_FB_001"
                   />
+                  {formData.prospectId && (
+                    <p className="text-xs text-green-400 mt-1">
+                      ID récupéré depuis le prospect
+                    </p>
+                  )}
                 </div>
 
                 <div>
