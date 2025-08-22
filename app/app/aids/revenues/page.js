@@ -20,6 +20,9 @@ export default function RevenuesPage() {
   });
   const [prospects, setProspects] = useState([]);
   const [nextClientId, setNextClientId] = useState('CLI001');
+  const [prospectSearch, setProspectSearch] = useState('');
+  const [showProspectDropdown, setShowProspectDropdown] = useState(false);
+  const [filteredProspects, setFilteredProspects] = useState([]);
   const [stats, setStats] = useState({
     totalRevenue: 0,
     totalClients: 0,
@@ -31,6 +34,22 @@ export default function RevenuesPage() {
     loadRevenues();
     loadProspects();
   }, []);
+
+  useEffect(() => {
+    // Filtrer les prospects basé sur la recherche
+    if (prospectSearch.trim() === '') {
+      setFilteredProspects(prospects);
+    } else {
+      const searchLower = prospectSearch.toLowerCase();
+      const filtered = prospects.filter(prospect => 
+        prospect.name?.toLowerCase().includes(searchLower) ||
+        prospect.company?.toLowerCase().includes(searchLower) ||
+        prospect.email?.toLowerCase().includes(searchLower) ||
+        prospect.phone?.includes(searchLower)
+      );
+      setFilteredProspects(filtered);
+    }
+  }, [prospectSearch, prospects]);
 
   const loadRevenues = async () => {
     setLoading(true);
@@ -218,6 +237,8 @@ export default function RevenuesPage() {
     });
     setEditingRevenue(null);
     setShowAddModal(false);
+    setProspectSearch('');
+    setShowProspectDropdown(false);
     // Regénérer le prochain ID client
     generateNextClientId(revenues);
   };
@@ -431,38 +452,105 @@ export default function RevenuesPage() {
               </h2>
 
               <form onSubmit={handleSubmit} className="space-y-4">
-                {/* Sélecteur de prospect */}
-                <div>
+                {/* Sélecteur de prospect avec recherche */}
+                <div className="relative">
                   <label className="block text-sm font-medium text-gray-400 mb-1">
-                    Sélectionner un prospect
+                    Rechercher un prospect (optionnel)
                   </label>
-                  <select
-                    value={formData.prospectId}
+                  <input
+                    type="text"
+                    value={prospectSearch}
                     onChange={(e) => {
-                      const prospect = prospects.find(p => p.id === e.target.value);
-                      if (prospect) {
-                        setFormData({
-                          ...formData,
-                          prospectId: e.target.value,
-                          clientName: prospect.name,
-                          campaignId: prospect.campaignId,
-                          clientId: nextClientId
-                        });
-                      }
+                      setProspectSearch(e.target.value);
+                      setShowProspectDropdown(true);
                     }}
-                    className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:border-purple-500"
-                  >
-                    <option value="">-- Choisir un prospect --</option>
-                    {prospects.length === 0 ? (
-                      <option disabled>Aucun prospect disponible (créez-en dans le Centre de Prospects)</option>
-                    ) : (
-                      prospects.map(prospect => (
-                        <option key={prospect.id} value={prospect.id}>
-                          {prospect.name} {prospect.company ? `(${prospect.company})` : ''} - {prospect.source} - {new Date(prospect.date).toLocaleDateString('fr-FR')}
-                        </option>
-                      ))
-                    )}
-                  </select>
+                    onFocus={() => setShowProspectDropdown(true)}
+                    onBlur={() => setTimeout(() => setShowProspectDropdown(false), 200)}
+                    placeholder="🔍 Tapez pour rechercher par nom, entreprise, email..."
+                    className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-purple-500"
+                  />
+                  
+                  {formData.prospectId && (
+                    <div className="mt-2 p-2 bg-green-500/10 border border-green-500/30 rounded-lg">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-green-400">✅ Prospect sélectionné</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setFormData({
+                              ...formData,
+                              prospectId: '',
+                              clientName: '',
+                              campaignId: ''
+                            });
+                            setProspectSearch('');
+                          }}
+                          className="text-red-400 hover:text-red-300 text-xs"
+                        >
+                          ✕ Retirer
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Dropdown des résultats */}
+                  {showProspectDropdown && filteredProspects.length > 0 && !formData.prospectId && (
+                    <div className="absolute z-50 w-full mt-1 bg-gray-900 border border-white/20 rounded-lg shadow-xl max-h-60 overflow-y-auto">
+                      <div className="p-2 text-xs text-gray-400 border-b border-white/10 sticky top-0 bg-gray-900">
+                        {filteredProspects.length} prospect{filteredProspects.length > 1 ? 's' : ''} trouvé{filteredProspects.length > 1 ? 's' : ''}
+                      </div>
+                      {filteredProspects.slice(0, 50).map(prospect => (
+                        <button
+                          key={prospect.id}
+                          type="button"
+                          onClick={() => {
+                            setFormData({
+                              ...formData,
+                              prospectId: prospect.id,
+                              clientName: prospect.name || prospect.company || 'Sans nom',
+                              campaignId: prospect.campaignId || formData.campaignId,
+                              clientId: nextClientId
+                            });
+                            setProspectSearch(prospect.name || prospect.company || 'Prospect sélectionné');
+                            setShowProspectDropdown(false);
+                          }}
+                          className="w-full text-left px-3 py-2 hover:bg-white/10 transition-colors border-b border-white/5"
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex-1">
+                              <div className="text-white font-medium">
+                                {prospect.name || 'Sans nom'}
+                              </div>
+                              <div className="text-xs text-gray-400 flex flex-wrap gap-2">
+                                {prospect.company && <span className="bg-white/5 px-1 rounded">{prospect.company}</span>}
+                                {prospect.email && <span className="text-blue-400">{prospect.email}</span>}
+                                {prospect.phone && <span className="text-green-400">{prospect.phone}</span>}
+                              </div>
+                            </div>
+                            <div className="text-xs text-gray-500 ml-2">
+                              <div>{prospect.source}</div>
+                              <div>{new Date(prospect.date).toLocaleDateString('fr-FR')}</div>
+                            </div>
+                          </div>
+                        </button>
+                      ))}
+                      {filteredProspects.length > 50 && (
+                        <div className="p-2 text-xs text-gray-500 text-center sticky bottom-0 bg-gray-900 border-t border-white/10">
+                          ... et {filteredProspects.length - 50} autres résultats
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  
+                  {showProspectDropdown && prospectSearch && filteredProspects.length === 0 && (
+                    <div className="absolute z-50 w-full mt-1 bg-gray-900 border border-white/20 rounded-lg shadow-xl p-4">
+                      <div className="text-center text-gray-400">
+                        <div className="text-2xl mb-2">🔍</div>
+                        <div>Aucun prospect trouvé</div>
+                        <div className="text-xs mt-1">Essayez avec d'autres termes de recherche</div>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
