@@ -60,6 +60,14 @@ export default function ProspectsPage() {
       const response = await fetch('/api/aids/prospects');
       const data = await response.json();
       
+      console.log('=== LOAD PROSPECTS RESPONSE ===');
+      console.log('Success:', data.success);
+      console.log('Count:', data.count);
+      console.log('Prospects array length:', data.prospects?.length);
+      if (data.prospects?.length > 0) {
+        console.log('First prospect:', data.prospects[0]);
+      }
+      
       if (data.success) {
         // Toujours définir les prospects même si vide
         const prospects = data.prospects || [];
@@ -70,7 +78,7 @@ export default function ProspectsPage() {
           !p.name?.includes('[Données campagne')
         );
         setProspects(realProspects);
-        console.log(`Loaded ${realProspects.length} real prospects from Firebase (total: ${prospects.length})`);
+        console.log(`Loaded ${realProspects.length} real prospects from Firebase (filtered from ${prospects.length} total)`);
       } else {
         // Fallback to localStorage if Firebase fails
         const savedProspects = localStorage.getItem('aids_prospects');

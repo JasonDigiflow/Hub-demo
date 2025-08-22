@@ -391,9 +391,12 @@ export async function GET(request) {
     
     try {
       const authCookie = cookieStore.get('auth-token');
+      console.log('Auth cookie present:', !!authCookie);
+      
       if (authCookie) {
         const decoded = jwt.verify(authCookie.value, process.env.JWT_SECRET);
         const userId = decoded.uid;
+        console.log('User ID for saving:', userId);
         
         // Get existing Meta IDs to avoid duplicates
         const prospectsRef = db.collection('aids_prospects');
@@ -412,6 +415,7 @@ export async function GET(request) {
         
         // Save new leads to Firebase
         const batch = db.batch();
+        console.log(`Preparing to save ${allLeads.length} leads to Firebase`);
         
         for (const lead of allLeads) {
           const prospectData = {
@@ -427,6 +431,7 @@ export async function GET(request) {
           // If force sync or doesn't exist, save it
           if (forceSync || !existingMetaIds.has(lead.id)) {
             const docRef = prospectsRef.doc();
+            console.log(`Adding to batch: ${lead.name} (${lead.id})`);
             batch.set(docRef, prospectData);
             savedCount++;
           } else {

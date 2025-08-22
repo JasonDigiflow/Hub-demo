@@ -45,7 +45,11 @@ export async function GET(request) {
     }
 
     const allProspects = [];
+    let totalDocs = 0;
+    let filteredOut = 0;
+    
     snapshot.forEach(doc => {
+      totalDocs++;
       const data = doc.data();
       // Filtrer les données agrégées
       if (!data.isAggregated && 
@@ -55,8 +59,13 @@ export async function GET(request) {
           id: doc.id,
           ...data
         });
+      } else {
+        filteredOut++;
+        console.log(`Filtered out prospect: ${data.name} (isAggregated: ${data.isAggregated})`);
       }
     });
+    
+    console.log(`GET /api/aids/prospects - Total docs: ${totalDocs}, Filtered out: ${filteredOut}, Returning: ${allProspects.length}`);
     
     const prospects = allProspects;
 
