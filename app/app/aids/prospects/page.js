@@ -573,6 +573,38 @@ export default function ProspectsPage() {
                         setSyncLoading(true);
                         
                         try {
+                          console.log('=== TEST LEAD CENTER API ===');
+                          const response = await fetch('/api/aids/meta/leadcenter');
+                          const data = await response.json();
+                          
+                          console.log('Lead Center response:', data);
+                          
+                          if (data.success) {
+                            alert(`✅ Lead Center API:\n\n${data.totalCount} prospects trouvés\n${data.savedToFirebase || 0} nouveaux sauvegardés\n${data.skipped || 0} déjà existants\n\nVos prospects devraient maintenant apparaître dans la liste.`);
+                            // Recharger les prospects
+                            await loadProspects();
+                          } else {
+                            alert(`❌ Erreur Lead Center:\n${data.error || 'Erreur inconnue'}\n\nDétails: ${data.details || 'Aucun détail'}`);
+                          }
+                        } catch (error) {
+                          console.error('Lead Center error:', error);
+                          alert('❌ Erreur: ' + error.message);
+                        }
+                        
+                        setSyncLoading(false);
+                      }}
+                      disabled={syncLoading}
+                      className="w-full text-left px-3 py-2 text-sm text-purple-400 hover:bg-gray-800 rounded flex items-center gap-2"
+                    >
+                      <span>🎯</span>
+                      Récupérer les 107 prospects du Lead Center
+                    </button>
+                    <button
+                      onClick={async () => {
+                        setShowAdvancedOptions(false);
+                        setSyncLoading(true);
+                        
+                        try {
                           console.log('=== TEST DIRECT LEADS ===');
                           const response = await fetch('/api/aids/meta/direct-leads');
                           const data = await response.json();
