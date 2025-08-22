@@ -28,6 +28,16 @@ export async function GET(request) {
     console.log('=== FETCHING LEADS FOR ACCOUNT ===');
     console.log('Account ID:', accountId);
     
+    // First, try to get pages associated with this ad account
+    const pagesUrl = `https://graph.facebook.com/v18.0/${accountId}?` +
+      `fields=promote_pages&` +
+      `access_token=${session.accessToken}`;
+    
+    console.log('Getting pages for account...');
+    const pagesResponse = await fetch(pagesUrl);
+    const pagesData = await pagesResponse.json();
+    console.log('Pages data:', pagesData);
+    
     // Get all lead forms for this account
     const leadFormsUrl = `https://graph.facebook.com/v18.0/${accountId}/leadgen_forms?` +
       `fields=id,name,status,created_time,leads_count,page,questions&` +
@@ -99,18 +109,17 @@ export async function GET(request) {
               console.log('Field values:', fieldData);
             }
             
-            // Try many possible field names
-            const possibleName = 
+            // Try many possible field names - prioritize FIRST_NAME
+            const firstName = fieldData['FIRST_NAME'] || fieldData['first_name'] || fieldData.first_name || 
+                            fieldData['First Name'] || fieldData['First name'] || fieldData.prenom || '';
+            const lastName = fieldData['LAST_NAME'] || fieldData['last_name'] || fieldData.last_name || 
+                           fieldData['Last Name'] || fieldData['Last name'] || fieldData.nom || '';
+            
+            const possibleName = firstName || lastName ? 
+              `${firstName} ${lastName}`.trim() :
               fieldData.full_name || 
               fieldData['full_name'] ||
-              fieldData.first_name || 
-              fieldData['first_name'] ||
-              fieldData.last_name || 
-              fieldData['last_name'] ||
-              (fieldData.first_name && fieldData.last_name ? `${fieldData.first_name} ${fieldData.last_name}` : '') ||
               fieldData.name || 
-              fieldData.nom || 
-              fieldData.prenom || 
               fieldData['nom_complet'] ||
               fieldData['nom_prenom'] ||
               Object.keys(fieldData).find(key => key.toLowerCase().includes('name') || key.toLowerCase().includes('nom')) ?
@@ -123,12 +132,26 @@ export async function GET(request) {
               console.log('Extracted name:', possibleName);
             }
             
+            // Extract email with multiple field name variations
+            const email = fieldData.EMAIL || fieldData.email || fieldData['E-MAIL'] || fieldData['e_mail'] || 
+                         fieldData['work_email'] || fieldData['WORK_EMAIL'] || fieldData['Work Email'] || '';
+            
+            // Extract phone with multiple field name variations  
+            const phone = fieldData.PHONE || fieldData.phone || fieldData['phone_number'] || fieldData['PHONE_NUMBER'] ||
+                         fieldData['work_phone'] || fieldData['WORK_PHONE'] || fieldData['Work Phone'] ||
+                         fieldData.mobile_number || fieldData.telephone || fieldData.tel || '';
+            
+            // Extract company with multiple field name variations
+            const company = fieldData['COMPANY_NAME'] || fieldData['company_name'] || fieldData.company || 
+                          fieldData['Company Name'] || fieldData['Company name'] || fieldData.entreprise || 
+                          fieldData.societe || '';
+            
             return {
               id: `LEAD_${lead.id}`,
               name: possibleName,
-              email: fieldData.email || fieldData.e_mail || fieldData['e-mail'] || '',
-              phone: fieldData.phone_number || fieldData.mobile_number || fieldData.telephone || fieldData.tel || '',
-              company: fieldData.company_name || fieldData.company || fieldData.entreprise || fieldData.societe || '',
+              email: email,
+              phone: phone,
+              company: company,
               source: lead.platform || 'Facebook',
               campaignId: lead.campaign_id || '',
               campaignName: lead.campaign_name || '',

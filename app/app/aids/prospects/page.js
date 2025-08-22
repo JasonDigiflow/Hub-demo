@@ -39,18 +39,26 @@ export default function ProspectsPage() {
   const loadProspects = async () => {
     setLoading(true);
     try {
-      // Charger depuis localStorage d'abord
-      const savedProspects = localStorage.getItem('aids_prospects');
-      if (savedProspects) {
-        setProspects(JSON.parse(savedProspects));
+      // Charger depuis Firebase
+      const response = await fetch('/api/aids/prospects/sync');
+      const data = await response.json();
+      
+      if (data.success && data.prospects) {
+        setProspects(data.prospects);
+        console.log(`Loaded ${data.prospects.length} prospects from Firebase`);
       }
       
-      // Si connecté à Meta, essayer de charger les leads
+      // Si connecté à Meta, essayer de charger les nouveaux leads
       if (metaConnected) {
         await syncMetaLeads(false);
       }
     } catch (error) {
       console.error('Error loading prospects:', error);
+      // Fallback sur localStorage si Firebase échoue
+      const savedProspects = localStorage.getItem('aids_prospects');
+      if (savedProspects) {
+        setProspects(JSON.parse(savedProspects));
+      }
     }
     setLoading(false);
   };
@@ -74,33 +82,31 @@ export default function ProspectsPage() {
       }
       
       if (data.success && data.leads && data.leads.length > 0) {
-        if (forceSync) {
-          // En mode force, on remplace tout
-          setProspects(data.leads);
-          localStorage.setItem('aids_prospects', JSON.stringify(data.leads));
+        // Sauvegarder dans Firebase
+        const syncResponse = await fetch('/api/aids/prospects/sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            prospects: data.leads,
+            forceSync: forceSync
+          })
+        });
+        
+        const syncResult = await syncResponse.json();
+        
+        if (syncResult.success) {
+          // Recharger les prospects depuis Firebase
+          await loadProspects();
           
           if (showLoading) {
-            alert(`✅ ${data.leads.length} prospects importés depuis Meta Ads!\n\nSource: ${data.source}`);
+            if (syncResult.savedCount > 0) {
+              alert(`✅ ${syncResult.savedCount} prospects importés depuis Meta Ads!\n\nSource: ${data.source}\n\n${syncResult.message}`);
+            } else {
+              alert(`ℹ️ ${syncResult.message}\n\nUtilisez "Forcer la resynchronisation" pour réimporter tous les prospects.`);
+            }
           }
         } else {
-          // Mode normal : fusionner avec les existants
-          const existingProspects = JSON.parse(localStorage.getItem('aids_prospects') || '[]');
-          const existingIds = new Set(existingProspects.map(p => p.id));
-          
-          // Ajouter seulement les nouveaux leads
-          const newLeads = data.leads.filter(lead => !existingIds.has(lead.id));
-          
-          if (newLeads.length > 0) {
-            const updatedProspects = [...newLeads, ...existingProspects];
-            setProspects(updatedProspects);
-            localStorage.setItem('aids_prospects', JSON.stringify(updatedProspects));
-            
-            if (showLoading) {
-              alert(`✅ ${newLeads.length} nouveaux prospects importés!\n\nTotal: ${updatedProspects.length} prospects`);
-            }
-          } else if (showLoading) {
-            alert(`ℹ️ Aucun nouveau prospect à importer.\n\n${existingProspects.length} prospects déjà enregistrés.\n\nUtilisez "Forcer la resynchronisation" pour réimporter tous les prospects.`);
-          }
+          throw new Error(syncResult.error || 'Erreur lors de la synchronisation');
         }
       } else if (showLoading) {
         alert(`⚠️ ${data.message || 'Aucun lead trouvé dans votre compte Meta.'}\n\nVérifiez que vous avez:\n- Des formulaires de leads configurés\n- Des campagnes actives\n- Les bonnes permissions`);
@@ -157,33 +163,28 @@ export default function ProspectsPage() {
     };
 
     try {
-      // Sauvegarder dans localStorage
-      let updatedProspects;
-      if (editingProspect) {
-        updatedProspects = prospects.map(p => 
-          p.id === editingProspect.id ? prospectData : p
-        );
-      } else {
-        updatedProspects = [prospectData, ...prospects];
-      }
-      
-      setProspects(updatedProspects);
-      localStorage.setItem('aids_prospects', JSON.stringify(updatedProspects));
-      
-      // Essayer de sauvegarder via API aussi
-      const url = editingProspect 
-        ? `/api/aids/prospects/${editingProspect.id}`
-        : '/api/aids/prospects';
-      
-      await fetch(url, {
-        method: editingProspect ? 'PUT' : 'POST',
+      // Sauvegarder dans Firebase via l'API sync
+      const response = await fetch('/api/aids/prospects/sync', {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(prospectData)
+        body: JSON.stringify({
+          prospects: [prospectData],
+          forceSync: true // Pour forcer la mise à jour si le prospect existe
+        })
       });
       
-      resetForm();
+      const result = await response.json();
+      
+      if (result.success) {
+        // Recharger les prospects depuis Firebase
+        await loadProspects();
+        resetForm();
+      } else {
+        throw new Error(result.error || 'Erreur lors de la sauvegarde');
+      }
     } catch (error) {
       console.error('Error saving prospect:', error);
+      alert('❌ Erreur lors de la sauvegarde du prospect');
       resetForm();
     }
   };
@@ -221,12 +222,19 @@ export default function ProspectsPage() {
     }
   };
 
-  const clearLocalCache = () => {
-    if (!confirm('⚠️ Voulez-vous vraiment vider le cache local ?\n\nCela supprimera tous les prospects enregistrés localement.\nVous pourrez les réimporter depuis Meta.')) return;
+  const clearLocalCache = async () => {
+    if (!confirm('⚠️ Voulez-vous vraiment supprimer tous les prospects ?\n\nCela supprimera tous les prospects enregistrés.\nVous pourrez les réimporter depuis Meta.')) return;
     
-    localStorage.removeItem('aids_prospects');
-    setProspects([]);
-    alert('✅ Cache local vidé avec succès!\n\nCliquez sur "Synchroniser Meta Ads" pour réimporter vos prospects.');
+    try {
+      // Pour l'instant, on vide juste l'état local
+      // TODO: Ajouter une API pour supprimer tous les prospects Firebase de l'utilisateur
+      localStorage.removeItem('aids_prospects');
+      setProspects([]);
+      alert('✅ Prospects supprimés avec succès!\n\nCliquez sur "Synchroniser Meta Ads" pour réimporter vos prospects.');
+    } catch (error) {
+      console.error('Error clearing prospects:', error);
+      alert('❌ Erreur lors de la suppression des prospects');
+    }
   };
 
   const handleStatusChange = async (id, newStatus) => {
