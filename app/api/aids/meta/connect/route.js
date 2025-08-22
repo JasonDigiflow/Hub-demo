@@ -3,16 +3,19 @@ import { cookies } from 'next/headers';
 
 // Helper to validate token with app secret if available
 async function validateToken(accessToken) {
+  // Skip validation for now to avoid rate limiting
+  // The token will be validated when we try to use it
+  return { valid: true };
+  
+  /* Commented out to reduce API calls and avoid rate limiting
   const appSecret = process.env.META_APP_SECRET;
   const appId = process.env.META_APP_ID || process.env.NEXT_PUBLIC_META_APP_ID;
   
   if (!appSecret || !appId) {
-    // No app secret, just do basic validation
     return { valid: true };
   }
   
   try {
-    // Verify token with app secret
     const response = await fetch(
       `https://graph.facebook.com/debug_token?` +
       `input_token=${accessToken}&` +
@@ -28,8 +31,9 @@ async function validateToken(accessToken) {
     return { valid: false, error: 'Invalid token' };
   } catch (error) {
     console.error('Token validation error:', error);
-    return { valid: true }; // Fallback to allowing if validation fails
+    return { valid: true };
   }
+  */
 }
 
 export async function POST(request) {

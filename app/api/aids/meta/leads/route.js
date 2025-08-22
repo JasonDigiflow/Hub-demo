@@ -63,14 +63,24 @@ export async function GET(request) {
     
     console.log('Total leads from ads:', allLeadsFromAds.length);
     
-    // Method 2: Try getting pages and their forms - USE PAGE ACCESS TOKEN
-    const pagesUrl = `https://graph.facebook.com/v18.0/me/accounts?` +
-      `access_token=${session.accessToken}`;
+    // Check if we have cached pages data (to reduce API calls)
+    const cachedPages = session.cachedPages;
+    let pagesData;
     
-    console.log('Getting user pages...');
-    const pagesResponse = await fetch(pagesUrl);
-    const pagesData = await pagesResponse.json();
-    console.log('User pages found:', pagesData.data?.length || 0);
+    if (cachedPages && Date.now() - (session.cacheTimestamp || 0) < 5 * 60 * 1000) {
+      // Use cached data if less than 5 minutes old
+      console.log('Using cached pages data to reduce API calls');
+      pagesData = { data: cachedPages };
+    } else {
+      // Method 2: Try getting pages and their forms - USE PAGE ACCESS TOKEN
+      const pagesUrl = `https://graph.facebook.com/v18.0/me/accounts?` +
+        `access_token=${session.accessToken}`;
+      
+      console.log('Getting user pages...');
+      const pagesResponse = await fetch(pagesUrl);
+      pagesData = await pagesResponse.json();
+      console.log('User pages found:', pagesData.data?.length || 0);
+    }
     
     let allLeadsFromPages = [];
     if (pagesData.data) {
