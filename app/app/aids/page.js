@@ -88,6 +88,8 @@ export default function AIDsDashboard() {
           const insightsResponse = await fetch(url);
           const insightsData = await insightsResponse.json();
           
+          console.log('Insights response for', timeRange, ':', insightsData);
+          
           if (insightsData.success && insightsData.metrics) {
             // Use real Meta Ads data with fallback trend if missing
             const metricsWithTrend = {
@@ -99,9 +101,11 @@ export default function AIDsDashboard() {
             analyzeWithAI(metricsWithTrend);
             setLoading(false);
             return;
+          } else {
+            console.error('Failed to get real data:', insightsData.error || 'Unknown error');
           }
         } catch (metaError) {
-          console.log('Could not fetch Meta insights, falling back to demo:', metaError);
+          console.error('Could not fetch Meta insights, falling back to demo:', metaError);
         }
       }
       

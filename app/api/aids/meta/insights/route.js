@@ -92,20 +92,27 @@ export async function GET(request) {
       `access_token=${session.accessToken}`;
     
     console.log('Fetching insights from:', insightsUrl.replace(session.accessToken, 'TOKEN'));
+    console.log('Date params:', dateParams);
+    console.log('Range:', range);
     
     const insightsResponse = await fetch(insightsUrl);
     const insightsData = await insightsResponse.json();
+    
+    console.log('Insights data received:', JSON.stringify(insightsData).substring(0, 200));
     
     if (insightsData.error) {
       console.error('Facebook API error:', insightsData.error);
       return NextResponse.json({ 
         error: insightsData.error.message,
-        fallback: true 
+        fallback: true,
+        details: insightsData.error
       }, { status: 400 });
     }
     
     // Process the data
     const data = insightsData.data?.[0] || {};
+    
+    console.log('Processing data:', Object.keys(data));
     
     // Extract conversions from actions
     let conversions = 0;
@@ -136,6 +143,8 @@ export async function GET(request) {
     // Calculate ROAS
     const spend = parseFloat(data.spend) || 0;
     const roas = spend > 0 ? (revenue / spend) : 0;
+    
+    console.log('Metrics extracted - Spend:', spend, 'Revenue:', revenue, 'ROAS:', roas);
     
     // Get campaigns data
     const campaignsUrl = `https://graph.facebook.com/v18.0/${accountId}/campaigns?` +
@@ -229,8 +238,12 @@ export async function GET(request) {
         `access_token=${session.accessToken}`;
     }
     
+    console.log('Fetching trend from:', trendUrl.replace(session.accessToken, 'TOKEN'));
+    
     const trendResponse = await fetch(trendUrl);
     const trendData = await trendResponse.json();
+    
+    console.log('Trend data points:', trendData.data?.length || 0);
     
     if (trendData.data && trendData.data.length > 0) {
       const trend = {
@@ -329,17 +342,23 @@ export async function GET(request) {
       };
     }
     
-    return NextResponse.json({
+    const response = {
       success: true,
       metrics: metrics,
       timestamp: new Date().toISOString()
-    });
+    };
+    
+    console.log('Returning success with hasRealData:', metrics.hasRealData);
+    
+    return NextResponse.json(response);
     
   } catch (error) {
     console.error('Insights API error:', error);
+    console.error('Stack:', error.stack);
     return NextResponse.json({ 
       error: 'Failed to fetch insights',
       details: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined,
       fallback: true
     }, { status: 500 });
   }
