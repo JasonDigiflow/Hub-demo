@@ -78,10 +78,14 @@ export default function AIDsDashboard() {
           const insightsData = await insightsResponse.json();
           
           if (insightsData.success && insightsData.metrics) {
-            // Use real Meta Ads data
-            setMetrics(insightsData.metrics);
-            setRecentActions(generateRecentActions(insightsData.metrics));
-            analyzeWithAI(insightsData.metrics);
+            // Use real Meta Ads data with fallback trend if missing
+            const metricsWithTrend = {
+              ...insightsData.metrics,
+              trend: insightsData.metrics.trend || getDefaultTrend()
+            };
+            setMetrics(metricsWithTrend);
+            setRecentActions(generateRecentActions(metricsWithTrend));
+            analyzeWithAI(metricsWithTrend);
             setLoading(false);
             return;
           }
@@ -130,6 +134,13 @@ export default function AIDsDashboard() {
     setAnalyzingAI(false);
   };
 
+  const getDefaultTrend = () => ({
+    labels: ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'],
+    spend: [650, 720, 680, 590, 710, 670, 600],
+    revenue: [2600, 2880, 2720, 2360, 2840, 2680, 2400],
+    ctr: [2.5, 2.6, 2.8, 2.4, 2.9, 2.7, 2.6]
+  });
+
   const getDemoMetrics = () => ({
     overview: {
       totalSpend: 4567.89,
@@ -144,12 +155,7 @@ export default function AIDsDashboard() {
       conversions: 234,
       conversionRate: 1.9
     },
-    trend: {
-      labels: ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'],
-      spend: [650, 720, 680, 590, 710, 670, 600],
-      revenue: [2600, 2880, 2720, 2360, 2840, 2680, 2400],
-      ctr: [2.5, 2.6, 2.8, 2.4, 2.9, 2.7, 2.6]
-    }
+    trend: getDefaultTrend()
   });
 
   const generateRecentActions = (metrics) => {
@@ -742,11 +748,11 @@ export default function AIDsDashboard() {
           <div className="h-64">
             <Line
               data={{
-                labels: metrics?.trend.labels || [],
+                labels: metrics?.trend?.labels || ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'],
                 datasets: [
                   {
                     label: 'Dépenses',
-                    data: metrics?.trend.spend || [],
+                    data: metrics?.trend?.spend || [0, 0, 0, 0, 0, 0, 0],
                     borderColor: '#3B82F6',
                     backgroundColor: 'rgba(59, 130, 246, 0.1)',
                     tension: 0.4,
@@ -754,7 +760,7 @@ export default function AIDsDashboard() {
                   },
                   {
                     label: 'Revenus',
-                    data: metrics?.trend.revenue || [],
+                    data: metrics?.trend?.revenue || [0, 0, 0, 0, 0, 0, 0],
                     borderColor: '#10B981',
                     backgroundColor: 'rgba(16, 185, 129, 0.1)',
                     tension: 0.4,
@@ -773,11 +779,11 @@ export default function AIDsDashboard() {
           <div className="h-64">
             <Bar
               data={{
-                labels: metrics?.trend.labels || [],
+                labels: metrics?.trend?.labels || ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'],
                 datasets: [
                   {
                     label: 'CTR %',
-                    data: metrics?.trend.ctr || [],
+                    data: metrics?.trend?.ctr || [0, 0, 0, 0, 0, 0, 0],
                     backgroundColor: 'rgba(168, 85, 247, 0.5)',
                     borderColor: '#A855F7',
                     borderWidth: 1

@@ -142,7 +142,7 @@ export async function GET(request) {
     
     const activeAds = adsData.data?.filter(a => a.status === 'ACTIVE').length || 0;
     
-    // Build response
+    // Build response with default values
     const metrics = {
       overview: {
         totalSpend: spend,
@@ -217,6 +217,16 @@ export async function GET(request) {
       });
       
       metrics.trend = trend;
+    } else {
+      // Provide default trend data if API call fails
+      metrics.trend = {
+        labels: ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'],
+        spend: Array(7).fill(0),
+        revenue: Array(7).fill(0),
+        ctr: Array(7).fill(0),
+        clicks: Array(7).fill(0),
+        impressions: Array(7).fill(0)
+      };
     }
     
     // Get top campaigns performance
@@ -236,6 +246,20 @@ export async function GET(request) {
         .slice(0, 5);
       
       metrics.topCampaigns = topCampaigns;
+    } else {
+      metrics.topCampaigns = [];
+    }
+    
+    // Ensure trend always exists
+    if (!metrics.trend) {
+      metrics.trend = {
+        labels: ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'],
+        spend: Array(7).fill(0),
+        revenue: Array(7).fill(0),
+        ctr: Array(7).fill(0),
+        clicks: Array(7).fill(0),
+        impressions: Array(7).fill(0)
+      };
     }
     
     return NextResponse.json({
