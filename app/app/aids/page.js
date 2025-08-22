@@ -47,8 +47,13 @@ export default function AIDsDashboard() {
 
   useEffect(() => {
     checkMetaConnection();
-    loadDashboardData();
-  }, [timeRange]);
+  }, []);
+  
+  useEffect(() => {
+    if (selectedAccount || !metaConnected) {
+      loadDashboardData();
+    }
+  }, [timeRange, selectedAccount, metaConnected]);
 
   const checkMetaConnection = async () => {
     try {
@@ -66,7 +71,26 @@ export default function AIDsDashboard() {
   const loadDashboardData = async () => {
     setLoading(true);
     try {
-      // Load metrics
+      // Try to load real Meta Ads data first if connected
+      if (metaConnected && selectedAccount) {
+        try {
+          const insightsResponse = await fetch(`/api/aids/meta/insights?range=${timeRange}`);
+          const insightsData = await insightsResponse.json();
+          
+          if (insightsData.success && insightsData.metrics) {
+            // Use real Meta Ads data
+            setMetrics(insightsData.metrics);
+            setRecentActions(generateRecentActions(insightsData.metrics));
+            analyzeWithAI(insightsData.metrics);
+            setLoading(false);
+            return;
+          }
+        } catch (metaError) {
+          console.log('Could not fetch Meta insights, falling back to demo:', metaError);
+        }
+      }
+      
+      // Fallback to demo metrics
       const metricsResponse = await fetch(`/api/aids/metrics?range=${timeRange}`);
       const metricsData = await metricsResponse.json();
       setMetrics(metricsData.metrics || getDemoMetrics());
@@ -127,6 +151,54 @@ export default function AIDsDashboard() {
       ctr: [2.5, 2.6, 2.8, 2.4, 2.9, 2.7, 2.6]
     }
   });
+
+  const generateRecentActions = (metrics) => {
+    const actions = [];
+    
+    if (metrics.hasRealData) {
+      // Generate actions based on real data
+      if (metrics.overview.ctr < 1) {
+        actions.push({
+          id: Date.now(),
+          type: 'ALERTE_CTR_BAS',
+          status: 'warning',
+          message: `CTR faible détecté (${metrics.overview.ctr}%), optimisation recommandée`,
+          time: 'à l\'instant'
+        });
+      }
+      
+      if (metrics.overview.roas > 3) {
+        actions.push({
+          id: Date.now() + 1,
+          type: 'PERFORMANCE_EXCELLENTE',
+          status: 'success',
+          message: `ROAS exceptionnel: ${metrics.overview.roas.toFixed(1)}x`,
+          time: '5 min'
+        });
+      }
+      
+      if (metrics.overview.activeAds > 0) {
+        actions.push({
+          id: Date.now() + 2,
+          type: 'ANALYSE_TERMINÉE',
+          status: 'info',
+          message: `${metrics.overview.activeAds} publicités actives analysées`,
+          time: '10 min'
+        });
+      }
+    }
+    
+    // Add some default actions
+    actions.push({
+      id: Date.now() + 3,
+      type: 'SYNC_META',
+      status: 'success',
+      message: 'Synchronisation avec Meta Ads réussie',
+      time: '15 min'
+    });
+    
+    return actions.length > 0 ? actions : getDemoActions();
+  };
 
   const getDemoActions = () => [
     { id: 1, type: 'ANALYSE_PERFORMANCE', status: 'success', message: 'Analyse IA des performances terminée', time: 'à l\'instant' },
@@ -502,6 +574,20 @@ export default function AIDsDashboard() {
         </motion.div>
       )}
 
+      {/* Real Data Indicator */}
+      {metrics?.hasRealData && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-green-500/10 border border-green-500/30 rounded-lg px-4 py-2 flex items-center gap-2"
+        >
+          <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+          <span className="text-green-400 text-sm font-medium">
+            Données réelles de {metrics?.accountInfo?.name || 'votre compte'}
+          </span>
+        </motion.div>
+      )}
+
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <motion.div
@@ -515,7 +601,10 @@ export default function AIDsDashboard() {
             <span className="text-2xl">💰</span>
           </div>
           <div className="text-2xl font-bold text-white">
-            {metrics?.overview.totalSpend.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })}
+            {metrics?.overview.totalSpend?.toLocaleString('fr-FR', { 
+              style: 'currency', 
+              currency: metrics?.accountInfo?.currency || 'EUR' 
+            })}
           </div>
           <div className="text-xs text-green-400 mt-1">↑ 12% vs période précédente</div>
         </motion.div>
@@ -531,7 +620,7 @@ export default function AIDsDashboard() {
             <span className="text-2xl">📈</span>
           </div>
           <div className="text-2xl font-bold text-white">
-            {metrics?.overview.roas.toFixed(1)}x
+            {metrics?.overview.roas?.toFixed(1)}x
           </div>
           <div className="text-xs text-green-400 mt-1">↑ 0.5x amélioration</div>
         </motion.div>
@@ -547,7 +636,7 @@ export default function AIDsDashboard() {
             <span className="text-2xl">🎯</span>
           </div>
           <div className="text-2xl font-bold text-white">
-            {metrics?.overview.ctr}%
+            {metrics?.overview.ctr?.toFixed(2)}%
           </div>
           <div className="text-xs text-green-400 mt-1">↑ 0.3% augmentation</div>
         </motion.div>
@@ -563,9 +652,11 @@ export default function AIDsDashboard() {
             <span className="text-2xl">🚀</span>
           </div>
           <div className="text-2xl font-bold text-white">
-            {metrics?.overview.conversions}
+            {metrics?.overview.conversions || 0}
           </div>
-          <div className="text-xs text-blue-400 mt-1">{metrics?.overview.conversionRate}% taux</div>
+          <div className="text-xs text-blue-400 mt-1">
+            {metrics?.overview.conversionRate?.toFixed(2) || 0}% taux
+          </div>
         </motion.div>
       </div>
 
