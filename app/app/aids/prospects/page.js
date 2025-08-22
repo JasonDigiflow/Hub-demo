@@ -138,8 +138,8 @@ export default function ProspectsPage() {
     if (showLoading) setSyncLoading(true);
     
     try {
-      // Si forceSync, on ajoute un paramètre pour forcer le rechargement
-      const url = forceSync ? '/api/aids/meta/leads?force=true' : '/api/aids/meta/leads';
+      // Utiliser la nouvelle route Lead Center pour récupérer TOUS les leads
+      const url = '/api/aids/meta/leadcenter';
       const response = await fetch(url);
       const data = await response.json();
       
@@ -487,9 +487,8 @@ export default function ProspectsPage() {
                           try {
                             console.log('Forçage de la resynchronisation...');
                             
-                            // Appeler directement l'API Meta avec force=true
-                            // L'API va automatiquement sauvegarder dans Firebase
-                            const response = await fetch('/api/aids/meta/leads?force=true');
+                            // Utiliser la route Lead Center pour récupérer TOUS les leads
+                            const response = await fetch('/api/aids/meta/leadcenter');
                             const data = await response.json();
                             
                             if (data.success) {
