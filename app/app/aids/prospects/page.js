@@ -13,6 +13,7 @@ export default function ProspectsPage() {
   const [syncLoading, setSyncLoading] = useState(false);
   const [showRawData, setShowRawData] = useState(false);
   const [selectedProspect, setSelectedProspect] = useState(null);
+  const [showAdvancedOptions, setShowAdvancedOptions] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -54,39 +55,60 @@ export default function ProspectsPage() {
     setLoading(false);
   };
 
-  const syncMetaLeads = async (showLoading = true) => {
+  const syncMetaLeads = async (showLoading = true, forceSync = false) => {
     if (showLoading) setSyncLoading(true);
     
     try {
-      const response = await fetch('/api/aids/meta/leads');
+      // Si forceSync, on ajoute un paramètre pour forcer le rechargement
+      const url = forceSync ? '/api/aids/meta/leads?force=true' : '/api/aids/meta/leads';
+      const response = await fetch(url);
       const data = await response.json();
       
+      console.log('=== SYNC RESPONSE ===');
+      console.log('Success:', data.success);
+      console.log('Leads count:', data.leads?.length || 0);
+      console.log('Source:', data.source);
+      console.log('Message:', data.message);
+      if (data.leads && data.leads.length > 0) {
+        console.log('First lead:', data.leads[0]);
+      }
+      
       if (data.success && data.leads && data.leads.length > 0) {
-        // Fusionner avec les prospects existants
-        const existingProspects = JSON.parse(localStorage.getItem('aids_prospects') || '[]');
-        const existingIds = new Set(existingProspects.map(p => p.id));
-        
-        // Ajouter seulement les nouveaux leads
-        const newLeads = data.leads.filter(lead => !existingIds.has(lead.id));
-        
-        if (newLeads.length > 0) {
-          const updatedProspects = [...newLeads, ...existingProspects];
-          setProspects(updatedProspects);
-          localStorage.setItem('aids_prospects', JSON.stringify(updatedProspects));
+        if (forceSync) {
+          // En mode force, on remplace tout
+          setProspects(data.leads);
+          localStorage.setItem('aids_prospects', JSON.stringify(data.leads));
           
           if (showLoading) {
-            alert(`${newLeads.length} nouveaux prospects importés depuis Meta Ads!`);
+            alert(`✅ ${data.leads.length} prospects importés depuis Meta Ads!\n\nSource: ${data.source}`);
           }
-        } else if (showLoading) {
-          alert('Aucun nouveau prospect à importer.');
+        } else {
+          // Mode normal : fusionner avec les existants
+          const existingProspects = JSON.parse(localStorage.getItem('aids_prospects') || '[]');
+          const existingIds = new Set(existingProspects.map(p => p.id));
+          
+          // Ajouter seulement les nouveaux leads
+          const newLeads = data.leads.filter(lead => !existingIds.has(lead.id));
+          
+          if (newLeads.length > 0) {
+            const updatedProspects = [...newLeads, ...existingProspects];
+            setProspects(updatedProspects);
+            localStorage.setItem('aids_prospects', JSON.stringify(updatedProspects));
+            
+            if (showLoading) {
+              alert(`✅ ${newLeads.length} nouveaux prospects importés!\n\nTotal: ${updatedProspects.length} prospects`);
+            }
+          } else if (showLoading) {
+            alert(`ℹ️ Aucun nouveau prospect à importer.\n\n${existingProspects.length} prospects déjà enregistrés.\n\nUtilisez "Forcer la resynchronisation" pour réimporter tous les prospects.`);
+          }
         }
       } else if (showLoading) {
-        alert(data.message || 'Aucun lead trouvé dans votre compte Meta.');
+        alert(`⚠️ ${data.message || 'Aucun lead trouvé dans votre compte Meta.'}\n\nVérifiez que vous avez:\n- Des formulaires de leads configurés\n- Des campagnes actives\n- Les bonnes permissions`);
       }
     } catch (error) {
       console.error('Error syncing Meta leads:', error);
       if (showLoading) {
-        alert('Erreur lors de la synchronisation avec Meta.');
+        alert('❌ Erreur lors de la synchronisation avec Meta.\n\n' + error.message);
       }
     }
     
@@ -199,6 +221,14 @@ export default function ProspectsPage() {
     }
   };
 
+  const clearLocalCache = () => {
+    if (!confirm('⚠️ Voulez-vous vraiment vider le cache local ?\n\nCela supprimera tous les prospects enregistrés localement.\nVous pourrez les réimporter depuis Meta.')) return;
+    
+    localStorage.removeItem('aids_prospects');
+    setProspects([]);
+    alert('✅ Cache local vidé avec succès!\n\nCliquez sur "Synchroniser Meta Ads" pour réimporter vos prospects.');
+  };
+
   const handleStatusChange = async (id, newStatus) => {
     const updatedProspects = prospects.map(p => 
       p.id === id ? { ...p, status: newStatus } : p
@@ -282,23 +312,65 @@ export default function ProspectsPage() {
         
         <div className="flex items-center gap-3">
           {metaConnected && (
-            <button
-              onClick={() => syncMetaLeads(true)}
-              disabled={syncLoading}
-              className="px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all font-medium flex items-center gap-2 disabled:opacity-50"
-            >
-              {syncLoading ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                  Synchronisation...
-                </>
-              ) : (
-                <>
-                  <span className="text-xl">🔄</span>
-                  Synchroniser Meta Ads
-                </>
-              )}
-            </button>
+            <>
+              <button
+                onClick={() => syncMetaLeads(true, false)}
+                disabled={syncLoading}
+                className="px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all font-medium flex items-center gap-2 disabled:opacity-50"
+              >
+                {syncLoading ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    Synchronisation...
+                  </>
+                ) : (
+                  <>
+                    <span className="text-xl">🔄</span>
+                    Synchroniser Meta Ads
+                  </>
+                )}
+              </button>
+              
+              <div className="relative">
+                <button
+                  onClick={() => setShowAdvancedOptions(!showAdvancedOptions)}
+                  className="px-4 py-3 bg-gray-800 text-gray-300 rounded-lg hover:bg-gray-700 transition-all font-medium flex items-center gap-2"
+                >
+                  <span className="text-xl">⚙️</span>
+                  Options
+                </button>
+                
+                {showAdvancedOptions && (
+                  <div className="absolute right-0 top-full mt-2 bg-gray-900 border border-gray-700 rounded-lg shadow-xl p-2 z-10 min-w-[200px]">
+                    <button
+                      onClick={() => {
+                        setShowAdvancedOptions(false);
+                        syncMetaLeads(true, true);
+                      }}
+                      disabled={syncLoading}
+                      className="w-full text-left px-3 py-2 text-sm text-orange-400 hover:bg-gray-800 rounded flex items-center gap-2"
+                    >
+                      <span>🔃</span>
+                      Forcer la resynchronisation
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowAdvancedOptions(false);
+                        clearLocalCache();
+                      }}
+                      className="w-full text-left px-3 py-2 text-sm text-red-400 hover:bg-gray-800 rounded flex items-center gap-2"
+                    >
+                      <span>🗑️</span>
+                      Vider le cache local
+                    </button>
+                    <div className="border-t border-gray-700 my-2"></div>
+                    <div className="px-3 py-2 text-xs text-gray-500">
+                      {prospects.length} prospects en cache
+                    </div>
+                  </div>
+                )}
+              </div>
+            </>
           )}
           <button
             onClick={() => setShowAddModal(true)}
