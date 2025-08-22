@@ -10,6 +10,7 @@ export default function ProspectsPage() {
   const [editingProspect, setEditingProspect] = useState(null);
   const [metaConnected, setMetaConnected] = useState(false);
   const [campaigns, setCampaigns] = useState([]);
+  const [syncLoading, setSyncLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -25,34 +26,69 @@ export default function ProspectsPage() {
   });
 
   useEffect(() => {
-    loadProspects();
     checkMetaConnection();
   }, []);
+  
+  useEffect(() => {
+    loadProspects();
+  }, [metaConnected]);
 
   const loadProspects = async () => {
     setLoading(true);
     try {
-      const response = await fetch('/api/aids/prospects');
-      const data = await response.json();
-      
-      // Charger depuis localStorage si l'API ne retourne rien
-      if (!data.prospects || data.prospects.length === 0) {
-        const savedProspects = localStorage.getItem('aids_prospects');
-        if (savedProspects) {
-          setProspects(JSON.parse(savedProspects));
-        }
-      } else {
-        setProspects(data.prospects);
-      }
-    } catch (error) {
-      console.error('Error loading prospects:', error);
-      // Charger depuis localStorage en cas d'erreur
+      // Charger depuis localStorage d'abord
       const savedProspects = localStorage.getItem('aids_prospects');
       if (savedProspects) {
         setProspects(JSON.parse(savedProspects));
       }
+      
+      // Si connecté à Meta, essayer de charger les leads
+      if (metaConnected) {
+        await syncMetaLeads(false);
+      }
+    } catch (error) {
+      console.error('Error loading prospects:', error);
     }
     setLoading(false);
+  };
+
+  const syncMetaLeads = async (showLoading = true) => {
+    if (showLoading) setSyncLoading(true);
+    
+    try {
+      const response = await fetch('/api/aids/meta/leads');
+      const data = await response.json();
+      
+      if (data.success && data.leads && data.leads.length > 0) {
+        // Fusionner avec les prospects existants
+        const existingProspects = JSON.parse(localStorage.getItem('aids_prospects') || '[]');
+        const existingIds = new Set(existingProspects.map(p => p.id));
+        
+        // Ajouter seulement les nouveaux leads
+        const newLeads = data.leads.filter(lead => !existingIds.has(lead.id));
+        
+        if (newLeads.length > 0) {
+          const updatedProspects = [...newLeads, ...existingProspects];
+          setProspects(updatedProspects);
+          localStorage.setItem('aids_prospects', JSON.stringify(updatedProspects));
+          
+          if (showLoading) {
+            alert(`${newLeads.length} nouveaux prospects importés depuis Meta Ads!`);
+          }
+        } else if (showLoading) {
+          alert('Aucun nouveau prospect à importer.');
+        }
+      } else if (showLoading) {
+        alert(data.message || 'Aucun lead trouvé dans votre compte Meta.');
+      }
+    } catch (error) {
+      console.error('Error syncing Meta leads:', error);
+      if (showLoading) {
+        alert('Erreur lors de la synchronisation avec Meta.');
+      }
+    }
+    
+    if (showLoading) setSyncLoading(false);
   };
 
   const checkMetaConnection = async () => {
@@ -242,13 +278,34 @@ export default function ProspectsPage() {
           </p>
         </div>
         
-        <button
-          onClick={() => setShowAddModal(true)}
-          className="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all font-medium flex items-center gap-2"
-        >
-          <span className="text-xl">+</span>
-          Ajouter un prospect
-        </button>
+        <div className="flex items-center gap-3">
+          {metaConnected && (
+            <button
+              onClick={() => syncMetaLeads(true)}
+              disabled={syncLoading}
+              className="px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all font-medium flex items-center gap-2 disabled:opacity-50"
+            >
+              {syncLoading ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  Synchronisation...
+                </>
+              ) : (
+                <>
+                  <span className="text-xl">🔄</span>
+                  Synchroniser Meta Ads
+                </>
+              )}
+            </button>
+          )}
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all font-medium flex items-center gap-2"
+          >
+            <span className="text-xl">+</span>
+            Ajouter un prospect
+          </button>
+        </div>
       </div>
 
       {/* Stats Cards */}
