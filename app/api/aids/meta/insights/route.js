@@ -4,7 +4,9 @@ import { cookies } from 'next/headers';
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
-    const range = searchParams.get('range') || 'last_7_days';
+    const range = searchParams.get('range') || 'daily';
+    const startDate = searchParams.get('start_date');
+    const endDate = searchParams.get('end_date');
     
     // Get session and selected account
     const cookieStore = cookies();
@@ -28,15 +30,42 @@ export async function GET(request) {
     const session = JSON.parse(sessionCookie.value);
     const accountId = selectedAccountCookie.value;
     
-    // Map our range to Facebook date preset
-    const datePreset = {
-      'daily': 'yesterday',
-      'weekly': 'last_7_days',
-      'monthly': 'last_30_days',
-      'last_7_days': 'last_7_days',
-      'last_30_days': 'last_30_days',
-      'yesterday': 'yesterday'
-    }[range] || 'last_7_days';
+    // Map our range to Facebook date preset or use custom dates
+    let dateParams = '';
+    let trendIncrement = '1'; // daily by default
+    let trendDays = 7;
+    
+    if (range === 'custom' && startDate && endDate) {
+      dateParams = `&since=${startDate}&until=${endDate}`;
+      // Calculate days between dates
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      trendDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
+      trendIncrement = trendDays > 31 ? '7' : '1'; // Weekly if > 31 days
+    } else {
+      const datePreset = {
+        'daily': 'yesterday',
+        'weekly': 'last_7_days',
+        'monthly': 'last_30_days',
+        'quarterly': 'last_90_days'
+      }[range] || 'last_7_days';
+      dateParams = `&date_preset=${datePreset}`;
+      
+      // Set trend parameters based on range
+      if (range === 'monthly') {
+        trendDays = 30;
+        trendIncrement = '1';
+      } else if (range === 'quarterly') {
+        trendDays = 90;
+        trendIncrement = '7'; // Weekly increments for quarterly
+      } else if (range === 'weekly') {
+        trendDays = 7;
+        trendIncrement = '1';
+      } else {
+        trendDays = 1;
+        trendIncrement = '1';
+      }
+    }
     
     // Fetch account insights from Facebook
     const fields = [
@@ -57,8 +86,8 @@ export async function GET(request) {
     ].join(',');
     
     const insightsUrl = `https://graph.facebook.com/v18.0/${accountId}/insights?` +
-      `fields=${fields}&` +
-      `date_preset=${datePreset}&` +
+      `fields=${fields}` +
+      `${dateParams}&` +
       `level=account&` +
       `access_token=${session.accessToken}`;
     
@@ -168,17 +197,37 @@ export async function GET(request) {
         name: data.account_name || 'Unknown Account',
         currency: data.currency || 'EUR'
       },
-      dateRange: datePreset,
+      dateRange: range === 'custom' ? `${startDate} - ${endDate}` : range,
       hasRealData: true
     };
     
-    // Get trend data (last 7 days breakdown)
-    const trendUrl = `https://graph.facebook.com/v18.0/${accountId}/insights?` +
-      `fields=spend,impressions,clicks,ctr,actions,action_values&` +
-      `date_preset=last_7_days&` +
-      `time_increment=1&` +
-      `level=account&` +
-      `access_token=${session.accessToken}`;
+    // Get trend data based on selected period
+    let trendUrl = '';
+    if (range === 'custom' && startDate && endDate) {
+      trendUrl = `https://graph.facebook.com/v18.0/${accountId}/insights?` +
+        `fields=spend,impressions,clicks,ctr,actions,action_values&` +
+        `since=${startDate}&until=${endDate}&` +
+        `time_increment=${trendIncrement}&` +
+        `level=account&` +
+        `access_token=${session.accessToken}`;
+    } else if (range === 'daily') {
+      // For daily, get hourly breakdown of yesterday
+      trendUrl = `https://graph.facebook.com/v18.0/${accountId}/insights?` +
+        `fields=spend,impressions,clicks,ctr,actions,action_values&` +
+        `date_preset=yesterday&` +
+        `breakdowns=hourly_stats_aggregated_by_advertiser_time_zone&` +
+        `level=account&` +
+        `access_token=${session.accessToken}`;
+    } else {
+      // For weekly/monthly, get daily breakdown
+      const preset = range === 'monthly' ? 'last_30_days' : range === 'quarterly' ? 'last_90_days' : 'last_7_days';
+      trendUrl = `https://graph.facebook.com/v18.0/${accountId}/insights?` +
+        `fields=spend,impressions,clicks,ctr,actions,action_values&` +
+        `date_preset=${preset}&` +
+        `time_increment=${trendIncrement}&` +
+        `level=account&` +
+        `access_token=${session.accessToken}`;
+    }
     
     const trendResponse = await fetch(trendUrl);
     const trendData = await trendResponse.json();
@@ -194,9 +243,27 @@ export async function GET(request) {
       };
       
       trendData.data.forEach(day => {
-        const date = new Date(day.date_start);
-        const dayName = date.toLocaleDateString('fr-FR', { weekday: 'short' });
-        trend.labels.push(dayName);
+        let label = '';
+        
+        if (range === 'daily' && day.hourly_stats_aggregated_by_advertiser_time_zone) {
+          // For hourly data
+          label = day.hourly_stats_aggregated_by_advertiser_time_zone;
+        } else if (day.date_start) {
+          const date = new Date(day.date_start);
+          
+          if (range === 'monthly' || (range === 'custom' && trendDays > 14)) {
+            // Show date for monthly view
+            label = date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+          } else if (range === 'quarterly') {
+            // Show week number for quarterly
+            label = `Sem ${Math.ceil(date.getDate() / 7)}`;
+          } else {
+            // Show day name for weekly
+            label = date.toLocaleDateString('fr-FR', { weekday: 'short' });
+          }
+        }
+        
+        trend.labels.push(label);
         trend.spend.push(parseFloat(day.spend) || 0);
         trend.ctr.push(parseFloat(day.ctr) || 0);
         trend.clicks.push(parseInt(day.clicks) || 0);

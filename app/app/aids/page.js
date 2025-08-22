@@ -44,6 +44,11 @@ export default function AIDsDashboard() {
   const [accounts, setAccounts] = useState([]);
   const [selectedAccount, setSelectedAccount] = useState(null);
   const [showAccountSelector, setShowAccountSelector] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [customDateRange, setCustomDateRange] = useState({
+    start: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    end: new Date().toISOString().split('T')[0]
+  });
 
   useEffect(() => {
     checkMetaConnection();
@@ -51,7 +56,9 @@ export default function AIDsDashboard() {
   
   useEffect(() => {
     if (selectedAccount || !metaConnected) {
-      loadDashboardData();
+      if (timeRange !== 'custom') {
+        loadDashboardData();
+      }
     }
   }, [timeRange, selectedAccount, metaConnected]);
 
@@ -74,7 +81,11 @@ export default function AIDsDashboard() {
       // Try to load real Meta Ads data first if connected
       if (metaConnected && selectedAccount) {
         try {
-          const insightsResponse = await fetch(`/api/aids/meta/insights?range=${timeRange}`);
+          let url = `/api/aids/meta/insights?range=${timeRange}`;
+          if (timeRange === 'custom') {
+            url += `&start_date=${customDateRange.start}&end_date=${customDateRange.end}`;
+          }
+          const insightsResponse = await fetch(url);
           const insightsData = await insightsResponse.json();
           
           if (insightsData.success && insightsData.metrics) {
@@ -369,20 +380,72 @@ export default function AIDsDashboard() {
           </button>
 
           {/* Time Range Selector */}
-          <div className="flex items-center gap-1 bg-white/5 rounded-lg p-1">
-            {['daily', 'weekly', 'monthly'].map((range) => (
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 bg-white/5 rounded-lg p-1">
+              {['daily', 'weekly', 'monthly'].map((range) => (
+                <button
+                  key={range}
+                  onClick={() => {
+                    setTimeRange(range);
+                    setShowDatePicker(false);
+                  }}
+                  className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
+                    timeRange === range
+                      ? 'bg-purple-600 text-white'
+                      : 'text-gray-400 hover:text-white'
+                  }`}
+                >
+                  {range === 'daily' ? 'Jour' : range === 'weekly' ? 'Semaine' : 'Mois'}
+                </button>
+              ))}
               <button
-                key={range}
-                onClick={() => setTimeRange(range)}
+                onClick={() => {
+                  setTimeRange('custom');
+                  setShowDatePicker(true);
+                }}
                 className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
-                  timeRange === range
+                  timeRange === 'custom'
                     ? 'bg-purple-600 text-white'
                     : 'text-gray-400 hover:text-white'
                 }`}
               >
-                {range === 'daily' ? 'Jour' : range === 'weekly' ? 'Semaine' : 'Mois'}
+                Personnalisé
               </button>
-            ))}
+            </div>
+            
+            {/* Custom Date Range Picker */}
+            {showDatePicker && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="flex items-center gap-2 bg-white/5 rounded-lg p-2"
+              >
+                <input
+                  type="date"
+                  value={customDateRange.start}
+                  onChange={(e) => setCustomDateRange(prev => ({ ...prev, start: e.target.value }))}
+                  className="bg-white/10 text-white rounded px-2 py-1 text-sm"
+                  max={customDateRange.end}
+                />
+                <span className="text-gray-400 text-sm">à</span>
+                <input
+                  type="date"
+                  value={customDateRange.end}
+                  onChange={(e) => setCustomDateRange(prev => ({ ...prev, end: e.target.value }))}
+                  className="bg-white/10 text-white rounded px-2 py-1 text-sm"
+                  min={customDateRange.start}
+                  max={new Date().toISOString().split('T')[0]}
+                />
+                <button
+                  onClick={() => {
+                    loadDashboardData();
+                  }}
+                  className="px-3 py-1 bg-purple-600 text-white rounded text-sm hover:bg-purple-700 transition-colors"
+                >
+                  Appliquer
+                </button>
+              </motion.div>
+            )}
           </div>
         </div>
       </div>
