@@ -60,15 +60,17 @@ export default function ProspectsPage() {
       const response = await fetch('/api/aids/prospects');
       const data = await response.json();
       
-      if (data.success && data.prospects && data.prospects.length > 0) {
+      if (data.success) {
+        // Toujours définir les prospects même si vide
+        const prospects = data.prospects || [];
         // Filtrer les données agrégées (ne pas les afficher)
-        const realProspects = data.prospects.filter(p => 
+        const realProspects = prospects.filter(p => 
           !p.isAggregated && 
           !p.name?.includes('[Données agrégées') &&
           !p.name?.includes('[Données campagne')
         );
         setProspects(realProspects);
-        console.log(`Loaded ${realProspects.length} real prospects from Firebase (filtered ${data.prospects.length - realProspects.length} aggregated)`);
+        console.log(`Loaded ${realProspects.length} real prospects from Firebase (total: ${prospects.length})`);
       } else {
         // Fallback to localStorage if Firebase fails
         const savedProspects = localStorage.getItem('aids_prospects');
@@ -86,11 +88,8 @@ export default function ProspectsPage() {
         }
       }
       
-      // Si connecté à Meta, essayer de charger les nouveaux leads
-      if (metaConnected) {
-        // Ne pas attendre la sync pour éviter le blocage
-        syncMetaLeads(false).catch(console.error);
-      }
+      // Retirer la sync automatique qui cause le rechargement
+      // L'utilisateur doit cliquer sur le bouton pour synchroniser
     } catch (error) {
       console.error('Error loading prospects:', error);
       // Fallback to localStorage
@@ -455,15 +454,32 @@ export default function ProspectsPage() {
             {showAdvancedOptions && (
                   <div className="absolute right-0 top-full mt-2 bg-gray-900 border border-gray-700 rounded-lg shadow-xl p-2 z-10 min-w-[200px]">
                     <button
-                      onClick={() => {
+                      onClick={async () => {
                         setShowAdvancedOptions(false);
-                        syncMetaLeads(true, true);
+                        if (confirm('Voulez-vous vraiment forcer la resynchronisation complète?\n\nCela va supprimer tous les prospects existants et les réimporter depuis Meta.')) {
+                          setSyncLoading(true);
+                          try {
+                            // Vider d'abord tous les prospects
+                            const deletePromises = prospects.map(p => 
+                              fetch(`/api/aids/prospects/${p.id}`, { method: 'DELETE' })
+                            );
+                            await Promise.all(deletePromises);
+                            setProspects([]);
+                            
+                            // Puis resynchroniser depuis Meta
+                            await syncMetaLeads(true, true);
+                          } catch (error) {
+                            console.error('Error during force sync:', error);
+                            alert('Erreur lors de la resynchronisation forcée');
+                          }
+                          setSyncLoading(false);
+                        }
                       }}
                       disabled={syncLoading}
                       className="w-full text-left px-3 py-2 text-sm text-orange-400 hover:bg-gray-800 rounded flex items-center gap-2"
                     >
                       <span>🔃</span>
-                      Forcer la resynchronisation
+                      Forcer la resynchronisation complète
                     </button>
                     <button
                       onClick={() => {

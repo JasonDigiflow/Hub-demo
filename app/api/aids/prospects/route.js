@@ -18,10 +18,31 @@ export async function GET(request) {
 
     // Get user's prospects from Firebase
     const prospectsRef = db.collection('aids_prospects');
-    const snapshot = await prospectsRef
-      .where('userId', '==', userId)
-      .orderBy('createdAt', 'desc')
-      .get();
+    let snapshot;
+    
+    try {
+      snapshot = await prospectsRef
+        .where('userId', '==', userId)
+        .orderBy('createdAt', 'desc')
+        .get();
+    } catch (queryError) {
+      console.log('Query error (normal if no index):', queryError.message);
+      // Fallback: get without orderBy if index doesn't exist
+      try {
+        snapshot = await prospectsRef
+          .where('userId', '==', userId)
+          .get();
+      } catch (fallbackError) {
+        console.log('Fallback query also failed:', fallbackError.message);
+        // Return empty array if queries fail
+        return NextResponse.json({
+          success: true,
+          prospects: [],
+          count: 0,
+          message: 'No prospects found or query failed'
+        });
+      }
+    }
 
     const allProspects = [];
     snapshot.forEach(doc => {
@@ -132,7 +153,7 @@ export async function PUT(request) {
 
     const decoded = jwt.verify(token.value, process.env.JWT_SECRET);
     const userId = decoded.uid;
-    const { prospects, source } = await request.json();
+    const { prospects, source, forceSync } = await request.json();
 
     if (!prospects || !Array.isArray(prospects)) {
       return NextResponse.json({ error: 'Invalid prospects data' }, { status: 400 });
@@ -158,8 +179,8 @@ export async function PUT(request) {
 
     // Process each prospect
     for (const prospect of prospects) {
-      // Check if prospect exists
-      if (prospect.metaId && existingMetaIds.has(prospect.metaId)) {
+      // Check if prospect exists (skip if not forcing sync)
+      if (!forceSync && prospect.metaId && existingMetaIds.has(prospect.metaId)) {
         // Update existing prospect's status if changed
         const existingProspectQuery = await prospectsRef
           .where('userId', '==', userId)
