@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { saveProspectsBatch, getProspects, checkExistingProspects } from '@/lib/firebase-prospects';
-import { verifyToken } from '@/lib/jwt';
+import { saveProspectsBatch, getProspects, checkExistingProspects } from '@/app/lib/firebase-prospects';
+import { verifyToken } from '@/app/lib/jwt';
 
 export async function POST(request) {
   try {
