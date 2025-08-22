@@ -61,7 +61,7 @@ export async function GET(request) {
     
     console.log('Total leads from ads:', allLeadsFromAds.length);
     
-    // Method 2: Try getting pages and their forms
+    // Method 2: Try getting pages and their forms - USE PAGE ACCESS TOKEN
     const pagesUrl = `https://graph.facebook.com/v18.0/me/accounts?` +
       `access_token=${session.accessToken}`;
     
@@ -73,34 +73,72 @@ export async function GET(request) {
     let allLeadsFromPages = [];
     if (pagesData.data) {
       for (const page of pagesData.data) {
-        console.log(`Checking page: ${page.name} (${page.id})`);
+        console.log(`\n=== CHECKING PAGE: ${page.name} (${page.id}) ===`);
+        console.log('Page has access_token:', !!page.access_token);
+        console.log('Page tasks:', page.tasks);
+        
+        // IMPORTANT: Use PAGE access token which has MANAGE_LEADS permission
+        const pageToken = page.access_token || session.accessToken;
         
         // Get lead forms for this page
         const pageFormsUrl = `https://graph.facebook.com/v18.0/${page.id}/leadgen_forms?` +
           `fields=id,name,status,leads_count&` +
           `limit=100&` +
-          `access_token=${page.access_token || session.accessToken}`;
+          `access_token=${pageToken}`;
         
+        console.log('Getting forms with page token...');
         const pageFormsResponse = await fetch(pageFormsUrl);
         const pageFormsData = await pageFormsResponse.json();
+        
+        if (pageFormsData.error) {
+          console.error('Error getting forms:', pageFormsData.error);
+          continue;
+        }
         
         if (pageFormsData.data && pageFormsData.data.length > 0) {
           console.log(`Page ${page.name} has ${pageFormsData.data.length} forms`);
           
           for (const form of pageFormsData.data) {
             if (form.leads_count > 0) {
-              console.log(`Form "${form.name}" has ${form.leads_count} leads`);
+              console.log(`\n=== FORM: "${form.name}" (${form.leads_count} leads) ===`);
               
-              // Get leads from this form
+              // Get leads from this form using PAGE TOKEN
               const formLeadsUrl = `https://graph.facebook.com/v18.0/${form.id}/leads?` +
                 `fields=id,created_time,field_data&` +
-                `limit=100&` +
-                `access_token=${page.access_token || session.accessToken}`;
+                `limit=200&` + // Augmenté à 200 pour récupérer tous les leads
+                `access_token=${pageToken}`; // USE PAGE TOKEN!
               
+              console.log('Fetching leads with page access token...');
               const formLeadsResponse = await fetch(formLeadsUrl);
               const formLeadsData = await formLeadsResponse.json();
               
-              if (formLeadsData.data) {
+              if (formLeadsData.error) {
+                console.error('Error getting leads:', formLeadsData.error);
+                console.log('Trying with user token instead...');
+                
+                // Retry with user token if page token fails
+                const retryUrl = formLeadsUrl.replace(pageToken, session.accessToken);
+                const retryResponse = await fetch(retryUrl);
+                const retryData = await retryResponse.json();
+                
+                if (retryData.data) {
+                  console.log(`Success with user token! Got ${retryData.data.length} leads`);
+                  allLeadsFromPages.push(...retryData.data.map(lead => ({
+                    ...lead,
+                    form_id: form.id,
+                    form_name: form.name,
+                    page_id: page.id,
+                    page_name: page.name
+                  })));
+                }
+              } else if (formLeadsData.data) {
+                console.log(`Success! Got ${formLeadsData.data.length} leads from form`);
+                
+                // Log first lead as sample
+                if (formLeadsData.data.length > 0) {
+                  console.log('Sample lead field_data:', formLeadsData.data[0].field_data);
+                }
+                
                 allLeadsFromPages.push(...formLeadsData.data.map(lead => ({
                   ...lead,
                   form_id: form.id,
@@ -140,15 +178,28 @@ export async function GET(request) {
       return await getLeadsFromAds(accountId, session.accessToken);
     }
     
-    // Combine all leads from different sources
-    let allLeads = [...allLeadsFromAds, ...allLeadsFromPages];
+    // Prioritize leads from pages (they have the page access token)
+    let allLeads = [];
+    
+    // First, use leads from pages if we got any
+    if (allLeadsFromPages.length > 0) {
+      console.log(`\n=== USING LEADS FROM PAGES (WITH PAGE TOKEN) ===`);
+      console.log(`Got ${allLeadsFromPages.length} leads with page access token`);
+      allLeads = allLeadsFromPages;
+    } 
+    // Otherwise, try leads from ads
+    else if (allLeadsFromAds.length > 0) {
+      console.log(`\n=== USING LEADS FROM ADS ===`);
+      console.log(`Got ${allLeadsFromAds.length} leads from ads`);
+      allLeads = allLeadsFromAds;
+    }
     
     console.log(`\n=== COMBINED LEADS ===`);
     console.log(`From ads: ${allLeadsFromAds.length}`);
-    console.log(`From pages: ${allLeadsFromPages.length}`);
-    console.log(`Total before form processing: ${allLeads.length}`);
+    console.log(`From pages (with page token): ${allLeadsFromPages.length}`);
+    console.log(`Total selected: ${allLeads.length}`);
     
-    // For each form, get the leads (original method)
+    // For each form, get the leads (original method - only if no leads yet)
     if (allLeads.length === 0 && formsData.data && formsData.data.length > 0) {
       for (const form of formsData.data) {
         const leadsUrl = `https://graph.facebook.com/v18.0/${form.id}/leads?` +
