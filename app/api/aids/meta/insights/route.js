@@ -43,12 +43,17 @@ export async function GET(request) {
       trendDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
       trendIncrement = trendDays > 31 ? '7' : '1'; // Weekly if > 31 days
     } else {
+      // Use correct Facebook date_preset values
+      // Valid values: today, yesterday, this_month, last_month, this_quarter, 
+      // maximum, last_3d, last_7d, last_14d, last_28d, last_30d, last_90d, 
+      // last_week_mon_sun, last_week_sun_sat, last_quarter, last_year,
+      // this_week_mon_today, this_week_sun_today, this_year
       const datePreset = {
         'daily': 'yesterday',
-        'weekly': 'last_7_days',
-        'monthly': 'last_30_days',
-        'quarterly': 'last_90_days'
-      }[range] || 'last_7_days';
+        'weekly': 'last_7d',  // Changed from last_7_days
+        'monthly': 'last_30d', // Changed from last_30_days
+        'quarterly': 'last_90d' // Changed from last_90_days
+      }[range] || 'last_7d';
       dateParams = `&date_preset=${datePreset}`;
       
       // Set trend parameters based on range
@@ -228,8 +233,8 @@ export async function GET(request) {
         `level=account&` +
         `access_token=${session.accessToken}`;
     } else {
-      // For weekly/monthly, get daily breakdown
-      const preset = range === 'monthly' ? 'last_30_days' : range === 'quarterly' ? 'last_90_days' : 'last_7_days';
+      // For weekly/monthly, get daily breakdown with correct presets
+      const preset = range === 'monthly' ? 'last_30d' : range === 'quarterly' ? 'last_90d' : 'last_7d';
       trendUrl = `https://graph.facebook.com/v18.0/${accountId}/insights?` +
         `fields=spend,impressions,clicks,ctr,actions,action_values&` +
         `date_preset=${preset}&` +
