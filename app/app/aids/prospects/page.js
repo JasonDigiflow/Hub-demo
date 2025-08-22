@@ -1,0 +1,634 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+
+export default function ProspectsPage() {
+  const [prospects, setProspects] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [editingProspect, setEditingProspect] = useState(null);
+  const [metaConnected, setMetaConnected] = useState(false);
+  const [campaigns, setCampaigns] = useState([]);
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    company: '',
+    source: 'Facebook',
+    campaignId: '',
+    campaignName: '',
+    adId: '',
+    status: 'new',
+    notes: '',
+    date: new Date().toISOString().split('T')[0]
+  });
+
+  useEffect(() => {
+    loadProspects();
+    checkMetaConnection();
+  }, []);
+
+  const loadProspects = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch('/api/aids/prospects');
+      const data = await response.json();
+      
+      // Charger depuis localStorage si l'API ne retourne rien
+      if (!data.prospects || data.prospects.length === 0) {
+        const savedProspects = localStorage.getItem('aids_prospects');
+        if (savedProspects) {
+          setProspects(JSON.parse(savedProspects));
+        }
+      } else {
+        setProspects(data.prospects);
+      }
+    } catch (error) {
+      console.error('Error loading prospects:', error);
+      // Charger depuis localStorage en cas d'erreur
+      const savedProspects = localStorage.getItem('aids_prospects');
+      if (savedProspects) {
+        setProspects(JSON.parse(savedProspects));
+      }
+    }
+    setLoading(false);
+  };
+
+  const checkMetaConnection = async () => {
+    try {
+      const response = await fetch('/api/aids/meta/status');
+      const data = await response.json();
+      setMetaConnected(data.connected);
+      
+      if (data.connected) {
+        // Charger les campagnes Meta si connecté
+        loadMetaCampaigns();
+      }
+    } catch (error) {
+      console.error('Error checking Meta connection:', error);
+    }
+  };
+
+  const loadMetaCampaigns = async () => {
+    try {
+      // Simuler le chargement des campagnes Meta
+      // En production, cela viendrait de l'API Meta
+      const demoCampaigns = [
+        { id: 'CAM_FB_001', name: 'Campagne Acquisition Q4', platform: 'Facebook' },
+        { id: 'CAM_FB_002', name: 'Retargeting Paniers', platform: 'Facebook' },
+        { id: 'CAM_FB_003', name: 'Lookalike Clients', platform: 'Facebook' },
+        { id: 'CAM_IG_001', name: 'Stories Branding', platform: 'Instagram' },
+        { id: 'CAM_IG_002', name: 'Reels Performance', platform: 'Instagram' }
+      ];
+      setCampaigns(demoCampaigns);
+    } catch (error) {
+      console.error('Error loading campaigns:', error);
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    
+    const prospectData = {
+      ...formData,
+      id: editingProspect?.id || `PROS${Date.now()}`,
+      createdAt: editingProspect?.createdAt || new Date().toISOString()
+    };
+
+    try {
+      // Sauvegarder dans localStorage
+      let updatedProspects;
+      if (editingProspect) {
+        updatedProspects = prospects.map(p => 
+          p.id === editingProspect.id ? prospectData : p
+        );
+      } else {
+        updatedProspects = [prospectData, ...prospects];
+      }
+      
+      setProspects(updatedProspects);
+      localStorage.setItem('aids_prospects', JSON.stringify(updatedProspects));
+      
+      // Essayer de sauvegarder via API aussi
+      const url = editingProspect 
+        ? `/api/aids/prospects/${editingProspect.id}`
+        : '/api/aids/prospects';
+      
+      await fetch(url, {
+        method: editingProspect ? 'PUT' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(prospectData)
+      });
+      
+      resetForm();
+    } catch (error) {
+      console.error('Error saving prospect:', error);
+      resetForm();
+    }
+  };
+
+  const handleEdit = (prospect) => {
+    setEditingProspect(prospect);
+    setFormData({
+      name: prospect.name,
+      email: prospect.email || '',
+      phone: prospect.phone || '',
+      company: prospect.company || '',
+      source: prospect.source,
+      campaignId: prospect.campaignId,
+      campaignName: prospect.campaignName || '',
+      adId: prospect.adId || '',
+      status: prospect.status,
+      notes: prospect.notes || '',
+      date: prospect.date
+    });
+    setShowAddModal(true);
+  };
+
+  const handleDelete = async (id) => {
+    if (!confirm('Voulez-vous vraiment supprimer ce prospect ?')) return;
+
+    try {
+      const updatedProspects = prospects.filter(p => p.id !== id);
+      setProspects(updatedProspects);
+      localStorage.setItem('aids_prospects', JSON.stringify(updatedProspects));
+      
+      // Essayer de supprimer via API
+      await fetch(`/api/aids/prospects/${id}`, { method: 'DELETE' });
+    } catch (error) {
+      console.error('Error deleting prospect:', error);
+    }
+  };
+
+  const handleStatusChange = async (id, newStatus) => {
+    const updatedProspects = prospects.map(p => 
+      p.id === id ? { ...p, status: newStatus } : p
+    );
+    setProspects(updatedProspects);
+    localStorage.setItem('aids_prospects', JSON.stringify(updatedProspects));
+  };
+
+  const resetForm = () => {
+    setFormData({
+      name: '',
+      email: '',
+      phone: '',
+      company: '',
+      source: 'Facebook',
+      campaignId: '',
+      campaignName: '',
+      adId: '',
+      status: 'new',
+      notes: '',
+      date: new Date().toISOString().split('T')[0]
+    });
+    setEditingProspect(null);
+    setShowAddModal(false);
+  };
+
+  const getStatusColor = (status) => {
+    switch(status) {
+      case 'new': return 'bg-blue-500/20 text-blue-400 border-blue-500/30';
+      case 'contacted': return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30';
+      case 'qualified': return 'bg-purple-500/20 text-purple-400 border-purple-500/30';
+      case 'converted': return 'bg-green-500/20 text-green-400 border-green-500/30';
+      case 'lost': return 'bg-red-500/20 text-red-400 border-red-500/30';
+      default: return 'bg-gray-500/20 text-gray-400 border-gray-500/30';
+    }
+  };
+
+  const getStatusLabel = (status) => {
+    switch(status) {
+      case 'new': return 'Nouveau';
+      case 'contacted': return 'Contacté';
+      case 'qualified': return 'Qualifié';
+      case 'converted': return 'Converti';
+      case 'lost': return 'Perdu';
+      default: return status;
+    }
+  };
+
+  const stats = {
+    total: prospects.length,
+    new: prospects.filter(p => p.status === 'new').length,
+    qualified: prospects.filter(p => p.status === 'qualified').length,
+    converted: prospects.filter(p => p.status === 'converted').length,
+    conversionRate: prospects.length > 0 
+      ? ((prospects.filter(p => p.status === 'converted').length / prospects.length) * 100).toFixed(1)
+      : 0
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="text-white text-xl">Chargement des prospects...</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-4xl font-bold text-white mb-2">
+            <span className="bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+              Centre de Prospects
+            </span>
+          </h1>
+          <p className="text-gray-400 text-lg">
+            Gérez vos prospects issus de vos campagnes publicitaires
+          </p>
+        </div>
+        
+        <button
+          onClick={() => setShowAddModal(true)}
+          className="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all font-medium flex items-center gap-2"
+        >
+          <span className="text-xl">+</span>
+          Ajouter un prospect
+        </button>
+      </div>
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-gradient-to-br from-blue-600/20 to-blue-600/10 rounded-xl p-4 border border-blue-600/20"
+        >
+          <div className="text-gray-400 text-sm mb-1">Total prospects</div>
+          <div className="text-2xl font-bold text-white">{stats.total}</div>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="bg-gradient-to-br from-cyan-600/20 to-cyan-600/10 rounded-xl p-4 border border-cyan-600/20"
+        >
+          <div className="text-gray-400 text-sm mb-1">Nouveaux</div>
+          <div className="text-2xl font-bold text-cyan-400">{stats.new}</div>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="bg-gradient-to-br from-purple-600/20 to-purple-600/10 rounded-xl p-4 border border-purple-600/20"
+        >
+          <div className="text-gray-400 text-sm mb-1">Qualifiés</div>
+          <div className="text-2xl font-bold text-purple-400">{stats.qualified}</div>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+          className="bg-gradient-to-br from-green-600/20 to-green-600/10 rounded-xl p-4 border border-green-600/20"
+        >
+          <div className="text-gray-400 text-sm mb-1">Convertis</div>
+          <div className="text-2xl font-bold text-green-400">{stats.converted}</div>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+          className="bg-gradient-to-br from-orange-600/20 to-orange-600/10 rounded-xl p-4 border border-orange-600/20"
+        >
+          <div className="text-gray-400 text-sm mb-1">Taux conversion</div>
+          <div className="text-2xl font-bold text-orange-400">{stats.conversionRate}%</div>
+        </motion.div>
+      </div>
+
+      {/* Prospects Table */}
+      <div className="bg-white/5 rounded-xl border border-white/10 overflow-hidden">
+        <div className="p-6 border-b border-white/10">
+          <h2 className="text-lg font-semibold text-white">Liste des prospects</h2>
+        </div>
+        
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-white/5">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                  Date
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                  Nom
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                  Entreprise
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                  Contact
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                  Source
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                  Campagne
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                  Statut
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-white/5">
+              {prospects.map((prospect) => (
+                <motion.tr
+                  key={prospect.id}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="hover:bg-white/5 transition-colors"
+                >
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                    {new Date(prospect.date).toLocaleDateString('fr-FR')}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm font-medium text-white">{prospect.name}</div>
+                    <div className="text-xs text-gray-500">{prospect.id}</div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                    {prospect.company || '-'}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm">
+                    <div className="text-gray-300">{prospect.email || '-'}</div>
+                    <div className="text-gray-500 text-xs">{prospect.phone || '-'}</div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className={`px-2 py-1 text-xs rounded-full ${
+                      prospect.source === 'Facebook' 
+                        ? 'bg-blue-500/20 text-blue-400' 
+                        : 'bg-purple-500/20 text-purple-400'
+                    }`}>
+                      {prospect.source}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                    <div>{prospect.campaignId}</div>
+                    <div className="text-xs text-gray-500">{prospect.campaignName}</div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <select
+                      value={prospect.status}
+                      onChange={(e) => handleStatusChange(prospect.id, e.target.value)}
+                      className={`px-3 py-1 text-xs rounded-lg border bg-black/50 ${getStatusColor(prospect.status)}`}
+                    >
+                      <option value="new">Nouveau</option>
+                      <option value="contacted">Contacté</option>
+                      <option value="qualified">Qualifié</option>
+                      <option value="converted">Converti</option>
+                      <option value="lost">Perdu</option>
+                    </select>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm">
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleEdit(prospect)}
+                        className="text-blue-400 hover:text-blue-300"
+                      >
+                        ✏️
+                      </button>
+                      <button
+                        onClick={() => handleDelete(prospect.id)}
+                        className="text-red-400 hover:text-red-300"
+                      >
+                        🗑️
+                      </button>
+                    </div>
+                  </td>
+                </motion.tr>
+              ))}
+            </tbody>
+          </table>
+          
+          {prospects.length === 0 && (
+            <div className="text-center py-12 text-gray-400">
+              Aucun prospect enregistré. Commencez par ajouter vos premiers prospects.
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Add/Edit Modal */}
+      <AnimatePresence>
+        {showAddModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            onClick={resetForm}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl p-8 max-w-2xl w-full border border-white/20 shadow-2xl max-h-[90vh] overflow-y-auto"
+            >
+              <h2 className="text-2xl font-bold text-white mb-6">
+                {editingProspect ? 'Modifier le prospect' : 'Ajouter un prospect'}
+              </h2>
+
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-400 mb-1">
+                      Nom complet *
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.name}
+                      onChange={(e) => setFormData({...formData, name: e.target.value})}
+                      className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-purple-500"
+                      placeholder="Jean Dupont"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-400 mb-1">
+                      Entreprise
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.company}
+                      onChange={(e) => setFormData({...formData, company: e.target.value})}
+                      className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-purple-500"
+                      placeholder="Société ABC"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-400 mb-1">
+                      Email
+                    </label>
+                    <input
+                      type="email"
+                      value={formData.email}
+                      onChange={(e) => setFormData({...formData, email: e.target.value})}
+                      className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-purple-500"
+                      placeholder="jean@example.com"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-400 mb-1">
+                      Téléphone
+                    </label>
+                    <input
+                      type="tel"
+                      value={formData.phone}
+                      onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                      className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-purple-500"
+                      placeholder="06 12 34 56 78"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-400 mb-1">
+                      Source *
+                    </label>
+                    <select
+                      value={formData.source}
+                      onChange={(e) => setFormData({...formData, source: e.target.value})}
+                      className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                      required
+                    >
+                      <option value="Facebook">Facebook</option>
+                      <option value="Instagram">Instagram</option>
+                      <option value="Google">Google Ads</option>
+                      <option value="LinkedIn">LinkedIn</option>
+                      <option value="Direct">Direct</option>
+                      <option value="Other">Autre</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-400 mb-1">
+                      Date
+                    </label>
+                    <input
+                      type="date"
+                      value={formData.date}
+                      onChange={(e) => setFormData({...formData, date: e.target.value})}
+                      className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-400 mb-1">
+                      ID Campagne
+                    </label>
+                    {metaConnected && campaigns.length > 0 ? (
+                      <select
+                        value={formData.campaignId}
+                        onChange={(e) => {
+                          const campaign = campaigns.find(c => c.id === e.target.value);
+                          setFormData({
+                            ...formData, 
+                            campaignId: e.target.value,
+                            campaignName: campaign?.name || ''
+                          });
+                        }}
+                        className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                      >
+                        <option value="">-- Sélectionner --</option>
+                        {campaigns.map(campaign => (
+                          <option key={campaign.id} value={campaign.id}>
+                            {campaign.name} ({campaign.platform})
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <input
+                        type="text"
+                        value={formData.campaignId}
+                        onChange={(e) => setFormData({...formData, campaignId: e.target.value})}
+                        className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-purple-500"
+                        placeholder="CAM_FB_001"
+                      />
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-400 mb-1">
+                      ID Publicité
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.adId}
+                      onChange={(e) => setFormData({...formData, adId: e.target.value})}
+                      className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-purple-500"
+                      placeholder="AD_001"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-400 mb-1">
+                    Statut
+                  </label>
+                  <select
+                    value={formData.status}
+                    onChange={(e) => setFormData({...formData, status: e.target.value})}
+                    className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                  >
+                    <option value="new">Nouveau</option>
+                    <option value="contacted">Contacté</option>
+                    <option value="qualified">Qualifié</option>
+                    <option value="converted">Converti</option>
+                    <option value="lost">Perdu</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-400 mb-1">
+                    Notes
+                  </label>
+                  <textarea
+                    value={formData.notes}
+                    onChange={(e) => setFormData({...formData, notes: e.target.value})}
+                    className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-purple-500"
+                    rows="3"
+                    placeholder="Informations complémentaires..."
+                  />
+                </div>
+
+                <div className="flex gap-3 pt-4">
+                  <button
+                    type="button"
+                    onClick={resetForm}
+                    className="flex-1 px-4 py-3 bg-white/10 text-white rounded-lg hover:bg-white/20 transition-colors font-medium"
+                  >
+                    Annuler
+                  </button>
+                  <button
+                    type="submit"
+                    className="flex-1 px-4 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all font-medium"
+                  >
+                    {editingProspect ? 'Modifier' : 'Ajouter'}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}

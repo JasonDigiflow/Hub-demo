@@ -61,18 +61,38 @@ export default function RevenuesPage() {
 
   const loadProspects = async () => {
     try {
-      // Simuler la récupération des prospects depuis le centre de prospects
-      // En production, cela viendrait de votre API de prospects
-      const demoProspects = [
-        { id: 'PROS001', name: 'Nouvelle Boutique Lyon', campaignId: 'CAM_FB_001', source: 'Facebook', date: '2024-08-20' },
-        { id: 'PROS002', name: 'Restaurant Marseille', campaignId: 'CAM_IG_002', source: 'Instagram', date: '2024-08-19' },
-        { id: 'PROS003', name: 'Startup Tech Paris', campaignId: 'CAM_FB_003', source: 'Facebook', date: '2024-08-18' },
-        { id: 'PROS004', name: 'Cabinet Avocat Nice', campaignId: 'CAM_FB_001', source: 'Facebook', date: '2024-08-17' },
-        { id: 'PROS005', name: 'Agence Immo Bordeaux', campaignId: 'CAM_IG_004', source: 'Instagram', date: '2024-08-16' }
-      ];
-      setProspects(demoProspects);
+      // Charger les vrais prospects depuis l'API ou localStorage
+      const response = await fetch('/api/aids/prospects');
+      const data = await response.json();
+      
+      if (data.prospects && data.prospects.length > 0) {
+        // Filtrer seulement les prospects qualifiés ou nouveaux pour la conversion
+        const eligibleProspects = data.prospects.filter(p => 
+          p.status === 'qualified' || p.status === 'new' || p.status === 'contacted'
+        );
+        setProspects(eligibleProspects);
+      } else {
+        // Sinon charger depuis localStorage
+        const savedProspects = localStorage.getItem('aids_prospects');
+        if (savedProspects) {
+          const allProspects = JSON.parse(savedProspects);
+          const eligibleProspects = allProspects.filter(p => 
+            p.status === 'qualified' || p.status === 'new' || p.status === 'contacted'
+          );
+          setProspects(eligibleProspects);
+        }
+      }
     } catch (error) {
       console.error('Error loading prospects:', error);
+      // Charger depuis localStorage en cas d'erreur
+      const savedProspects = localStorage.getItem('aids_prospects');
+      if (savedProspects) {
+        const allProspects = JSON.parse(savedProspects);
+        const eligibleProspects = allProspects.filter(p => 
+          p.status === 'qualified' || p.status === 'new' || p.status === 'contacted'
+        );
+        setProspects(eligibleProspects);
+      }
     }
   };
 
@@ -433,11 +453,15 @@ export default function RevenuesPage() {
                     className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:border-purple-500"
                   >
                     <option value="">-- Choisir un prospect --</option>
-                    {prospects.map(prospect => (
-                      <option key={prospect.id} value={prospect.id}>
-                        {prospect.name} ({prospect.source} - {new Date(prospect.date).toLocaleDateString('fr-FR')})
-                      </option>
-                    ))}
+                    {prospects.length === 0 ? (
+                      <option disabled>Aucun prospect disponible (créez-en dans le Centre de Prospects)</option>
+                    ) : (
+                      prospects.map(prospect => (
+                        <option key={prospect.id} value={prospect.id}>
+                          {prospect.name} {prospect.company ? `(${prospect.company})` : ''} - {prospect.source} - {new Date(prospect.date).toLocaleDateString('fr-FR')}
+                        </option>
+                      ))
+                    )}
                   </select>
                 </div>
 
