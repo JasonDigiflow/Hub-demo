@@ -31,15 +31,19 @@ export async function GET(request) {
     const session = JSON.parse(sessionCookie.value);
     const accountId = selectedAccountCookie.value;
     
+    // UTILISER LE TOKEN VERCEL EN PRIORITÉ !
+    const accessToken = process.env.META_ACCESS_TOKEN || accessToken;
+    
     console.log('=== FETCHING LEADS FOR ACCOUNT ===');
     console.log('Account ID:', accountId);
     console.log('Force sync:', forceSync);
+    console.log('Using Vercel token:', !!process.env.META_ACCESS_TOKEN);
     
     // Method 1: Try getting ads with leads directly - GET FULL FIELD DATA
     const adsWithLeadsUrl = `https://graph.facebook.com/v18.0/${accountId}/ads?` +
       `fields=id,name,adset{id,name},campaign{id,name},leads{id,created_time,field_data}&` +
       `limit=500&` +
-      `access_token=${session.accessToken}`;
+      `access_token=${accessToken}`;
     
     console.log('Getting ads with leads...');
     const adsResponse = await fetch(adsWithLeadsUrl);
@@ -125,7 +129,7 @@ export async function GET(request) {
     } else {
       // Method 2: Try getting pages and their forms - USE PAGE ACCESS TOKEN
       const pagesUrl = `https://graph.facebook.com/v18.0/me/accounts?` +
-        `access_token=${session.accessToken}`;
+        `access_token=${accessToken}`;
       
       console.log('Getting user pages...');
       const pagesResponse = await fetch(pagesUrl);
@@ -141,7 +145,7 @@ export async function GET(request) {
         console.log('Page tasks:', page.tasks);
         
         // IMPORTANT: Use PAGE access token which has MANAGE_LEADS permission
-        const pageToken = page.access_token || session.accessToken;
+        const pageToken = page.access_token || accessToken;
         
         // Get lead forms for this page
         const pageFormsUrl = `https://graph.facebook.com/v18.0/${page.id}/leadgen_forms?` +
@@ -181,7 +185,7 @@ export async function GET(request) {
                 console.log('Trying with user token instead...');
                 
                 // Retry with user token if page token fails
-                const retryUrl = formLeadsUrl.replace(pageToken, session.accessToken);
+                const retryUrl = formLeadsUrl.replace(pageToken, accessToken);
                 const retryResponse = await fetch(retryUrl);
                 const retryData = await retryResponse.json();
                 
@@ -223,9 +227,9 @@ export async function GET(request) {
     const leadFormsUrl = `https://graph.facebook.com/v18.0/${accountId}/leadgen_forms?` +
       `fields=id,name,status,created_time,leads_count,page,questions&` +
       `limit=100&` +
-      `access_token=${session.accessToken}`;
+      `access_token=${accessToken}`;
     
-    console.log('Lead Forms URL:', leadFormsUrl.replace(session.accessToken, 'TOKEN'));
+    console.log('Lead Forms URL:', leadFormsUrl.replace(accessToken, 'TOKEN'));
     
     const formsResponse = await fetch(leadFormsUrl);
     const formsData = await formsResponse.json();
@@ -239,7 +243,7 @@ export async function GET(request) {
     if (formsData.error) {
       console.error('Error fetching lead forms:', formsData.error);
       // Try alternative: get leads from ads
-      return await getLeadsFromAds(accountId, session.accessToken);
+      return await getLeadsFromAds(accountId, accessToken);
     }
     
     // Prioritize real leads from ads (they have actual field data)
@@ -269,10 +273,10 @@ export async function GET(request) {
         const leadsUrl = `https://graph.facebook.com/v18.0/${form.id}/leads?` +
           `fields=id,created_time,field_data,campaign_name,campaign_id,ad_id,ad_name,adset_id,adset_name,form_id,is_organic,platform&` +
           `limit=100&` +
-          `access_token=${session.accessToken}`;
+          `access_token=${accessToken}`;
         
         console.log(`\n=== FETCHING LEADS FOR FORM: ${form.name} ===`);
-        console.log('Leads URL:', leadsUrl.replace(session.accessToken, 'TOKEN'));
+        console.log('Leads URL:', leadsUrl.replace(accessToken, 'TOKEN'));
         
         const leadsResponse = await fetch(leadsUrl);
         const leadsData = await leadsResponse.json();
@@ -374,7 +378,7 @@ export async function GET(request) {
     // If no leads from forms, try to get from ads/campaigns
     if (allLeads.length === 0) {
       console.log('WARNING: No real leads found, falling back to aggregated data from ads');
-      return await getLeadsFromAds(accountId, session.accessToken);
+      return await getLeadsFromAds(accountId, accessToken);
     }
     
     console.log('\n=== FINAL RESULTS ===');

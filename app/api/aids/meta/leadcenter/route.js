@@ -18,8 +18,12 @@ export async function GET(request) {
     const session = JSON.parse(sessionCookie.value);
     const accountId = selectedAccountCookie.value;
     
+    // UTILISER LE TOKEN VERCEL EN PRIORITÉ !
+    const accessToken = process.env.META_ACCESS_TOKEN || accessToken;
+    
     console.log('=== FETCHING LEADS FROM LEAD CENTER ===');
     console.log('Account ID:', accountId);
+    console.log('Using Vercel token:', !!process.env.META_ACCESS_TOKEN);
     
     const allLeads = [];
     
@@ -27,7 +31,7 @@ export async function GET(request) {
     const leadFormsUrl = `https://graph.facebook.com/v18.0/${accountId}/leadgen_forms?` +
       `fields=id,name,status,created_time,leads_count,page{id,name,access_token}&` +
       `limit=100&` +
-      `access_token=${session.accessToken}`;
+      `access_token=${accessToken}`;
     
     console.log('Fetching lead forms...');
     const formsResponse = await fetch(leadFormsUrl);
@@ -45,7 +49,7 @@ export async function GET(request) {
         console.log(`\nProcessing form: ${form.name} (${form.leads_count} leads)`);
         
         // Use page token if available
-        const accessToken = form.page?.access_token || session.accessToken;
+        const accessToken = form.page?.access_token || accessToken;
         
         // Get ALL leads from this form
         let nextUrl = `https://graph.facebook.com/v18.0/${form.id}/leads?` +
@@ -155,13 +159,13 @@ export async function GET(request) {
     }
     
     // Method 2: Also try getting leads from pages directly
-    const pagesUrl = `https://graph.facebook.com/v18.0/me/accounts?access_token=${session.accessToken}`;
+    const pagesUrl = `https://graph.facebook.com/v18.0/me/accounts?access_token=${accessToken}`;
     const pagesResponse = await fetch(pagesUrl);
     const pagesData = await pagesResponse.json();
     
     if (pagesData.data) {
       for (const page of pagesData.data) {
-        const pageToken = page.access_token || session.accessToken;
+        const pageToken = page.access_token || accessToken;
         
         // Get page's lead forms
         const pageFormsUrl = `https://graph.facebook.com/v18.0/${page.id}/leadgen_forms?` +
