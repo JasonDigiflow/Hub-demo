@@ -726,6 +726,56 @@ export default function ProspectsPage() {
                       <span>🔍</span>
                       Diagnostic: Pourquoi 0 prospects?
                     </button>
+                    <button
+                      onClick={async () => {
+                        setShowAdvancedOptions(false);
+                        setSyncLoading(true);
+                        console.log('Trying DIRECT Lead Center access...');
+                        
+                        try {
+                          const response = await fetch('/api/aids/meta/direct-leadcenter');
+                          const data = await response.json();
+                          
+                          console.log('=== DIRECT LEAD CENTER RESULTS ===');
+                          console.log(data);
+                          
+                          if (data.success && data.leads?.length > 0) {
+                            alert(`✅ TROUVÉ ${data.leads.length} LEADS!\n\nIls vont être importés maintenant...`);
+                            
+                            // TODO: Sauvegarder dans Firebase
+                            await loadProspects();
+                          } else {
+                            let message = '❌ Toujours 0 leads trouvés\n\n';
+                            
+                            if (data.summary?.tests) {
+                              message += 'Tests effectués:\n';
+                              data.summary.tests.forEach(test => {
+                                message += `- ${test.endpoint}: ${test.success ? '✅' : '❌'}\n`;
+                              });
+                            }
+                            
+                            if (data.summary?.recommendations) {
+                              message += '\nRecommandations:\n';
+                              data.summary.recommendations.forEach(rec => {
+                                message += `${rec}\n`;
+                              });
+                            }
+                            
+                            alert(message);
+                          }
+                        } catch (error) {
+                          console.error('Error:', error);
+                          alert('❌ Erreur: ' + error.message);
+                        }
+                        
+                        setSyncLoading(false);
+                      }}
+                      disabled={syncLoading}
+                      className="w-full text-left px-3 py-2 text-sm text-yellow-500 hover:bg-gray-800 rounded flex items-center gap-2 font-bold"
+                    >
+                      <span>⚡</span>
+                      ACCÈS DIRECT Lead Center (Test final)
+                    </button>
                     <div className="px-3 py-2 text-xs text-gray-500 mt-2">
                       {prospects.length} prospects en cache
                     </div>
