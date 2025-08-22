@@ -530,13 +530,40 @@ export default function ProspectsPage() {
                     <button
                       onClick={async () => {
                         setShowAdvancedOptions(false);
+                        const response = await fetch('/api/aids/meta/debug-leads');
+                        const data = await response.json();
+                        console.log('=== DEBUG LEADS RESULTS ===');
+                        console.log(JSON.stringify(data, null, 2));
+                        
+                        // Afficher un résumé
+                        let summary = '📊 Debug Meta Leads:\n\n';
+                        data.tests?.forEach(test => {
+                          summary += `${test.success ? '✅' : '❌'} ${test.name}\n`;
+                          if (test.count !== undefined) {
+                            summary += `   → ${test.count} résultats\n`;
+                          }
+                          if (test.error) {
+                            summary += `   → Erreur: ${test.error}\n`;
+                          }
+                        });
+                        
+                        alert(summary + '\n\nDétails complets dans la console (F12)');
+                      }}
+                      className="w-full text-left px-3 py-2 text-sm text-yellow-400 hover:bg-gray-800 rounded flex items-center gap-2"
+                    >
+                      <span>🐛</span>
+                      Debug Meta Leads
+                    </button>
+                    <button
+                      onClick={async () => {
+                        setShowAdvancedOptions(false);
                         const response = await fetch('/api/aids/meta/test-leads');
                         const data = await response.json();
                         console.log('=== TEST API RESULTS ===');
                         console.log(JSON.stringify(data, null, 2));
                         alert('Vérifiez la console pour voir les résultats du test API');
                       }}
-                      className="w-full text-left px-3 py-2 text-sm text-yellow-400 hover:bg-gray-800 rounded flex items-center gap-2"
+                      className="w-full text-left px-3 py-2 text-sm text-blue-400 hover:bg-gray-800 rounded flex items-center gap-2"
                     >
                       <span>🧪</span>
                       Tester l'API Facebook

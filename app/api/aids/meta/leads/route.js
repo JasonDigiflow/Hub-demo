@@ -373,6 +373,7 @@ export async function GET(request) {
     
     // If no leads from forms, try to get from ads/campaigns
     if (allLeads.length === 0) {
+      console.log('WARNING: No real leads found, falling back to aggregated data from ads');
       return await getLeadsFromAds(accountId, session.accessToken);
     }
     
