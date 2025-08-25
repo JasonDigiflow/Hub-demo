@@ -2,8 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useRouter } from 'next/navigation';
 
 export default function ProspectsPage() {
+  const router = useRouter();
   const [prospects, setProspects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -775,6 +777,27 @@ export default function ProspectsPage() {
                     >
                       <span>⚡</span>
                       ACCÈS DIRECT Lead Center (Test final)
+                    </button>
+                    <div className="border-t border-gray-700 my-2"></div>
+                    <button
+                      onClick={() => {
+                        setShowAdvancedOptions(false);
+                        router.push('/app/aids/fix-leads-permission');
+                      }}
+                      className="w-full text-left px-3 py-2 text-sm text-yellow-400 hover:bg-gray-800 rounded flex items-center gap-2 font-bold"
+                    >
+                      <span>⚠️</span>
+                      Configurer les permissions Meta
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowAdvancedOptions(false);
+                        router.push('/app/aids/token');
+                      }}
+                      className="w-full text-left px-3 py-2 text-sm text-green-400 hover:bg-gray-800 rounded flex items-center gap-2"
+                    >
+                      <span>🔑</span>
+                      Utiliser token Graph API Explorer
                     </button>
                     <div className="px-3 py-2 text-xs text-gray-500 mt-2">
                       {prospects.length} prospects en cache

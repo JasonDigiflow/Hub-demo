@@ -124,9 +124,10 @@ export default function ConnectMetaAds() {
         setLoading(false);
       }
     }, {
-      scope: 'email,ads_management,ads_read,business_management,pages_read_engagement,leads_retrieval,pages_manage_metadata',
+      scope: 'email,ads_management,ads_read,business_management,pages_read_engagement,leads_retrieval,pages_manage_metadata,pages_manage_ads',
       auth_type: 'rerequest',
-      return_scopes: true
+      return_scopes: true,
+      config_id: '1994469434647099' // Force app config
     });
   };
 

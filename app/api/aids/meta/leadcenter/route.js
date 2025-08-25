@@ -18,12 +18,11 @@ export async function GET(request) {
     const session = JSON.parse(sessionCookie.value);
     const accountId = selectedAccountCookie.value;
     
-    // UTILISER LE TOKEN VERCEL EN PRIORITÉ !
-    const accessToken = process.env.META_ACCESS_TOKEN || accessToken;
+    // NE PAS utiliser le token Vercel (problème de sécurité multi-utilisateurs)
+    const accessToken = session.accessToken;
     
     console.log('=== FETCHING LEADS FROM LEAD CENTER ===');
     console.log('Account ID:', accountId);
-    console.log('Using Vercel token:', !!process.env.META_ACCESS_TOKEN);
     
     const allLeads = [];
     

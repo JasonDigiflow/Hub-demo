@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useRouter } from 'next/navigation';
 import { Line, Bar } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -30,6 +31,7 @@ ChartJS.register(
 );
 
 export default function AIDsDashboard() {
+  const router = useRouter();
   const [metrics, setMetrics] = useState(null);
   const [recentActions, setRecentActions] = useState([]);
   const [insights, setInsights] = useState([]);
@@ -355,6 +357,16 @@ export default function AIDsDashboard() {
         </div>
         
         <div className="flex items-center gap-3">
+          {/* App Review Mode Button */}
+          <button
+            onClick={() => router.push('/app/aids/app-review-mode')}
+            className="px-4 py-2 bg-yellow-600 text-white rounded-lg font-medium hover:bg-yellow-700 flex items-center gap-2"
+            title="Mode démonstration pour Facebook App Review"
+          >
+            <span>🎬</span>
+            <span>App Review</span>
+          </button>
+
           {/* Revenue Button */}
           <a
             href="/app/aids/revenues"
