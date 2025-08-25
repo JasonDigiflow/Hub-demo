@@ -81,6 +81,13 @@ export default function AIDsLayout({ children }) {
       path: '/app/aids/logs',
       gradient: 'from-orange-600 to-red-600',
       badge: 'DEV'
+    },
+    { 
+      id: 'debug-leads', 
+      name: '🐛 Debug Leads', 
+      path: '/app/aids/debug-leads',
+      gradient: 'from-red-600 to-pink-600',
+      badge: 'DEBUG'
     }
   ];
 

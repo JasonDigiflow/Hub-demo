@@ -367,6 +367,13 @@ export async function GET(request) {
         
         console.log(`Saving to org: ${orgId}, adAccount: ${adAccountId}`);
         
+        // Ajouter un log pour le debug final
+        aidsLogger.info(LogCategories.PROSPECT, 'Lead Center: Préparation sauvegarde Firebase', {
+          orgId,
+          adAccountId,
+          totalLeadsToSave: allLeads.length
+        });
+        
         // Get existing leads in new structure
         const prospectsRef = db
           .collection('organizations').doc(orgId)
