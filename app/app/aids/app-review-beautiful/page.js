@@ -548,6 +548,290 @@ export default function AppReviewBeautiful() {
           </motion.div>
         )}
 
+        {/* Campaigns Section - ads_management */}
+        {activeSection === 'campaigns' && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="space-y-6"
+          >
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-3xl font-bold text-white">Gestion des Campagnes</h2>
+              <button 
+                onClick={() => setShowCreateCampaignModal(true)}
+                className="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl font-bold hover:from-purple-700 hover:to-pink-700 transition-all shadow-lg shadow-purple-600/20"
+              >
+                + Créer une campagne
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              {campaigns.map((campaign, i) => (
+                <motion.div 
+                  key={campaign.id}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: i * 0.1 }}
+                  className="bg-black/40 backdrop-blur-xl rounded-2xl p-6 border border-white/10 hover:border-purple-500/30 transition-all"
+                  whileHover={{ scale: 1.01 }}
+                >
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-4">
+                      <h3 className="text-xl font-bold text-white">{campaign.name}</h3>
+                      <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                        campaign.status === 'ACTIVE' 
+                          ? 'bg-green-500/20 text-green-400' 
+                          : 'bg-yellow-500/20 text-yellow-400'
+                      }`}>
+                        {campaign.status}
+                      </span>
+                    </div>
+                    <div className="flex gap-2">
+                      <button className="px-4 py-2 bg-blue-600/20 text-blue-400 rounded-lg hover:bg-blue-600/30 transition-all">
+                        Modifier Budget
+                      </button>
+                      <button className="px-4 py-2 bg-purple-600/20 text-purple-400 rounded-lg hover:bg-purple-600/30 transition-all">
+                        Optimiser avec IA
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-5 gap-4">
+                    <div>
+                      <p className="text-xs text-gray-500 mb-1">Budget</p>
+                      <p className="text-lg font-bold text-white">€{campaign.budget}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500 mb-1">Dépensé</p>
+                      <p className="text-lg font-bold text-blue-400">€{campaign.spent}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500 mb-1">CTR</p>
+                      <p className="text-lg font-bold text-green-400">{campaign.ctr}%</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500 mb-1">CPC</p>
+                      <p className="text-lg font-bold text-purple-400">€{campaign.cpc}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500 mb-1">Conversions</p>
+                      <p className="text-lg font-bold text-pink-400">{campaign.conversions}</p>
+                    </div>
+                  </div>
+
+                  {/* Mini graph de performance */}
+                  <div className="mt-4 h-12 flex items-end gap-1">
+                    {[...Array(10)].map((_, i) => (
+                      <motion.div
+                        key={i}
+                        className="flex-1 bg-gradient-to-t from-purple-600/50 to-pink-600/50 rounded-t"
+                        initial={{ height: 0 }}
+                        animate={{ height: `${Math.random() * 100}%` }}
+                        transition={{ delay: i * 0.05 }}
+                      />
+                    ))}
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </motion.div>
+        )}
+
+        {/* Leads Section - leads_retrieval */}
+        {activeSection === 'leads' && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="space-y-6"
+          >
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-3xl font-bold text-white">Centre de Prospects</h2>
+              <div className="flex gap-3">
+                <button className="px-6 py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-all">
+                  🔄 Synchroniser Meta Leads
+                </button>
+                <button className="px-6 py-3 bg-green-600 text-white rounded-xl font-bold hover:bg-green-700 transition-all">
+                  📥 Exporter CSV
+                </button>
+              </div>
+            </div>
+
+            {/* Stats cards */}
+            <div className="grid grid-cols-4 gap-4 mb-6">
+              {[
+                { label: 'Total Leads', value: leads.length, color: 'from-blue-600 to-cyan-600' },
+                { label: 'Nouveaux', value: leads.filter(l => l.status === 'new').length, color: 'from-green-600 to-emerald-600' },
+                { label: 'Qualifiés', value: leads.filter(l => l.status === 'qualified').length, color: 'from-purple-600 to-pink-600' },
+                { label: 'Score Moyen', value: Math.round(leads.reduce((acc, l) => acc + l.score, 0) / leads.length), color: 'from-orange-600 to-red-600' }
+              ].map((stat, i) => (
+                <motion.div
+                  key={stat.label}
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: i * 0.1 }}
+                  className="bg-black/40 backdrop-blur-xl rounded-xl p-4 border border-white/10"
+                >
+                  <p className="text-sm text-gray-400 mb-2">{stat.label}</p>
+                  <p className={`text-3xl font-bold bg-gradient-to-r ${stat.color} bg-clip-text text-transparent`}>
+                    {stat.value}
+                  </p>
+                </motion.div>
+              ))}
+            </div>
+
+            {/* Table de leads */}
+            <div className="bg-black/40 backdrop-blur-xl rounded-2xl border border-white/10 overflow-hidden">
+              <table className="w-full">
+                <thead className="bg-white/5">
+                  <tr>
+                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Nom</th>
+                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Email</th>
+                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Entreprise</th>
+                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Score</th>
+                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Statut</th>
+                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/5">
+                  {leads.slice(0, 8).map((lead, i) => (
+                    <motion.tr
+                      key={lead.id}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: i * 0.05 }}
+                      className="hover:bg-white/5 transition-colors"
+                    >
+                      <td className="px-6 py-4 text-sm text-white">{lead.name}</td>
+                      <td className="px-6 py-4 text-sm text-gray-300">{lead.email}</td>
+                      <td className="px-6 py-4 text-sm text-gray-300">{lead.company}</td>
+                      <td className="px-6 py-4">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                          lead.score >= 80 ? 'bg-green-500/20 text-green-400' : 
+                          lead.score >= 60 ? 'bg-yellow-500/20 text-yellow-400' :
+                          'bg-red-500/20 text-red-400'
+                        }`}>
+                          {lead.score}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-500/20 text-blue-400">
+                          {lead.status}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-sm">
+                        <button className="text-purple-400 hover:text-purple-300 transition-colors">
+                          Voir détails →
+                        </button>
+                      </td>
+                    </motion.tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </motion.div>
+        )}
+
+        {/* Insights Section - read_insights */}
+        {activeSection === 'insights' && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="space-y-6"
+          >
+            <h2 className="text-3xl font-bold text-white mb-6">Insights Avancés</h2>
+
+            {/* Démographie */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <motion.div
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                className="bg-black/40 backdrop-blur-xl rounded-2xl p-6 border border-white/10"
+              >
+                <h3 className="text-xl font-bold text-white mb-4">Répartition par âge</h3>
+                {demoData.insights.demographics.age.map((age, i) => (
+                  <motion.div
+                    key={age.range}
+                    className="flex items-center justify-between mb-3 p-2 rounded-lg hover:bg-white/5 transition-colors cursor-pointer"
+                    whileHover={{ x: 5 }}
+                  >
+                    <span className="text-gray-300">{age.range} ans</span>
+                    <div className="flex items-center gap-3">
+                      <div className="w-32 bg-gray-800 rounded-full h-3 overflow-hidden">
+                        <motion.div
+                          className="h-full bg-gradient-to-r from-purple-600 to-pink-600"
+                          initial={{ width: 0 }}
+                          animate={{ width: `${age.percentage}%` }}
+                          transition={{ duration: 0.8, delay: i * 0.1 }}
+                        />
+                      </div>
+                      <span className="text-sm font-medium text-white w-12 text-right">{age.percentage}%</span>
+                    </div>
+                  </motion.div>
+                ))}
+              </motion.div>
+
+              <motion.div
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                className="bg-black/40 backdrop-blur-xl rounded-2xl p-6 border border-white/10"
+              >
+                <h3 className="text-xl font-bold text-white mb-4">Top Localisations</h3>
+                {demoData.insights.demographics.locations.map((loc, i) => (
+                  <motion.div
+                    key={loc.city}
+                    className="flex items-center justify-between mb-3 p-2 rounded-lg hover:bg-white/5 transition-colors cursor-pointer"
+                    whileHover={{ x: 5 }}
+                  >
+                    <span className="text-gray-300">{loc.city}</span>
+                    <div className="flex items-center gap-3">
+                      <div className="w-32 bg-gray-800 rounded-full h-3 overflow-hidden">
+                        <motion.div
+                          className="h-full bg-gradient-to-r from-blue-600 to-cyan-600"
+                          initial={{ width: 0 }}
+                          animate={{ width: `${loc.percentage}%` }}
+                          transition={{ duration: 0.8, delay: i * 0.1 }}
+                        />
+                      </div>
+                      <span className="text-sm font-medium text-white w-12 text-right">{loc.percentage}%</span>
+                    </div>
+                  </motion.div>
+                ))}
+              </motion.div>
+            </div>
+
+            {/* Heatmap des heures */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-black/40 backdrop-blur-xl rounded-2xl p-6 border border-white/10"
+            >
+              <h3 className="text-xl font-bold text-white mb-4">Performance par heure</h3>
+              <div className="grid grid-cols-12 gap-2">
+                {demoData.insights.timeAnalysis.bestHours.map((hour, i) => (
+                  <motion.div
+                    key={hour.hour}
+                    className="text-center"
+                    initial={{ opacity: 0, scale: 0 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: i * 0.05 }}
+                  >
+                    <div
+                      className={`h-16 rounded-lg flex items-center justify-center text-xs font-medium cursor-pointer transition-all hover:scale-110 ${
+                        hour.performance > 90 ? 'bg-green-600/40 text-green-400' :
+                        hour.performance > 80 ? 'bg-yellow-600/40 text-yellow-400' :
+                        'bg-red-600/40 text-red-400'
+                      }`}
+                    >
+                      {hour.performance}%
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">{hour.hour}</p>
+                  </motion.div>
+                ))}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+
         {/* Section IA Octavia améliorée */}
         {activeSection === 'ai' && (
           <motion.div

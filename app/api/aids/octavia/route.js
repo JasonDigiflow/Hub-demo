@@ -44,10 +44,10 @@ Question utilisateur: ${message}
 
 Réponds de manière concise et actionnable en te basant sur les données.`;
 
-    // Appel à Claude 3.5 Sonnet (le plus récent et performant)
+    // Appel à Claude 3.5 Sonnet (dernière version octobre 2024)
     const completion = await anthropic.messages.create({
-      model: 'claude-3-5-sonnet-20241022', // Dernière version de Sonnet
-      max_tokens: 1000,
+      model: 'claude-3-5-sonnet-20241022', // Version la plus récente (Oct 2024)
+      max_tokens: 1500,
       temperature: 0.7,
       system: systemPrompt,
       messages: [
