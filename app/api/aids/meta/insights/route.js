@@ -1,370 +1,137 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
+import aidsLogger, { LogCategories } from '@/lib/aids-logger';
 
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
-    const range = searchParams.get('range') || 'daily';
-    const startDate = searchParams.get('start_date');
-    const endDate = searchParams.get('end_date');
+    const timeRange = searchParams.get('time_range') || 'last_7d';
     
-    // Get session and selected account
+    aidsLogger.info(LogCategories.ANALYTICS, `Récupération insights Meta: ${timeRange}`);
+    
     const cookieStore = cookies();
     const sessionCookie = cookieStore.get('meta_session');
     const selectedAccountCookie = cookieStore.get('selected_ad_account');
     
-    if (!sessionCookie) {
+    if (!sessionCookie || !selectedAccountCookie) {
+      aidsLogger.error(LogCategories.AUTH, 'Session Meta ou compte manquant pour insights');
       return NextResponse.json({ 
-        error: 'Not authenticated',
-        fallback: true 
+        error: 'Not authenticated or no account selected',
+        insights: null
       }, { status: 401 });
-    }
-    
-    if (!selectedAccountCookie) {
-      return NextResponse.json({ 
-        error: 'No account selected',
-        fallback: true 
-      }, { status: 400 });
     }
     
     const session = JSON.parse(sessionCookie.value);
     const accountId = selectedAccountCookie.value;
+    const accessToken = session.accessToken;
     
-    // Map our range to Facebook date preset or use custom dates
-    let dateParams = '';
-    let trendIncrement = '1'; // daily by default
-    let trendDays = 7;
-    
-    if (range === 'custom' && startDate && endDate) {
-      dateParams = `&since=${startDate}&until=${endDate}`;
-      // Calculate days between dates
-      const start = new Date(startDate);
-      const end = new Date(endDate);
-      trendDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
-      trendIncrement = trendDays > 31 ? '7' : '1'; // Weekly if > 31 days
-    } else {
-      // Use correct Facebook date_preset values
-      // Valid values: today, yesterday, this_month, last_month, this_quarter, 
-      // maximum, last_3d, last_7d, last_14d, last_28d, last_30d, last_90d, 
-      // last_week_mon_sun, last_week_sun_sat, last_quarter, last_year,
-      // this_week_mon_today, this_week_sun_today, this_year
-      const datePreset = {
-        'daily': 'yesterday',
-        'weekly': 'last_7d',  // Changed from last_7_days
-        'monthly': 'last_30d', // Changed from last_30_days
-        'quarterly': 'last_90d' // Changed from last_90_days
-      }[range] || 'last_7d';
-      dateParams = `&date_preset=${datePreset}`;
-      
-      // Set trend parameters based on range
-      if (range === 'monthly') {
-        trendDays = 30;
-        trendIncrement = '1';
-      } else if (range === 'quarterly') {
-        trendDays = 90;
-        trendIncrement = '7'; // Weekly increments for quarterly
-      } else if (range === 'weekly') {
-        trendDays = 7;
-        trendIncrement = '1';
-      } else {
-        trendDays = 1;
-        trendIncrement = '1';
-      }
-    }
-    
-    // Fetch account insights from Facebook
-    const fields = [
-      'account_name',
-      'account_id',
-      'spend',
-      'impressions',
-      'clicks',
-      'ctr',
-      'cpc',
-      'cpm',
-      'reach',
-      'frequency',
-      'actions',
-      'action_values',
-      'cost_per_action_type',
-      'purchase_roas'
-    ].join(',');
-    
-    const insightsUrl = `https://graph.facebook.com/v18.0/${accountId}/insights?` +
-      `fields=${fields}` +
-      `${dateParams}&` +
-      `level=account&` +
-      `access_token=${session.accessToken}`;
-    
-    console.log('Fetching insights from:', insightsUrl.replace(session.accessToken, 'TOKEN'));
-    console.log('Date params:', dateParams);
-    console.log('Range:', range);
-    
-    const insightsResponse = await fetch(insightsUrl);
-    const insightsData = await insightsResponse.json();
-    
-    console.log('Insights data received:', JSON.stringify(insightsData).substring(0, 200));
-    
-    if (insightsData.error) {
-      console.error('Facebook API error:', insightsData.error);
-      return NextResponse.json({ 
-        error: insightsData.error.message,
-        fallback: true,
-        details: insightsData.error
-      }, { status: 400 });
-    }
-    
-    // Process the data
-    const data = insightsData.data?.[0] || {};
-    
-    console.log('Processing data:', Object.keys(data));
-    
-    // Extract conversions from actions
-    let conversions = 0;
-    let revenue = 0;
-    
-    if (data.actions) {
-      const purchaseAction = data.actions.find(a => 
-        a.action_type === 'purchase' || 
-        a.action_type === 'omni_purchase' ||
-        a.action_type === 'offsite_conversion.fb_pixel_purchase'
-      );
-      if (purchaseAction) {
-        conversions = parseInt(purchaseAction.value) || 0;
-      }
-    }
-    
-    if (data.action_values) {
-      const purchaseValue = data.action_values.find(a => 
-        a.action_type === 'purchase' || 
-        a.action_type === 'omni_purchase' ||
-        a.action_type === 'offsite_conversion.fb_pixel_purchase'
-      );
-      if (purchaseValue) {
-        revenue = parseFloat(purchaseValue.value) || 0;
-      }
-    }
-    
-    // Calculate ROAS
-    const spend = parseFloat(data.spend) || 0;
-    const roas = spend > 0 ? (revenue / spend) : 0;
-    
-    console.log('Metrics extracted - Spend:', spend, 'Revenue:', revenue, 'ROAS:', roas);
-    
-    // Get campaigns data
-    const campaignsUrl = `https://graph.facebook.com/v18.0/${accountId}/campaigns?` +
-      `fields=id,name,status,daily_budget,lifetime_budget,insights{spend,impressions,clicks,ctr,actions}&` +
-      `limit=50&` +
-      `access_token=${session.accessToken}`;
-    
-    const campaignsResponse = await fetch(campaignsUrl);
-    const campaignsData = await campaignsResponse.json();
-    
-    const activeCampaigns = campaignsData.data?.filter(c => c.status === 'ACTIVE').length || 0;
-    const totalCampaigns = campaignsData.data?.length || 0;
-    
-    // Get ad sets count
-    const adsetsUrl = `https://graph.facebook.com/v18.0/${accountId}/adsets?` +
-      `fields=id,status&` +
-      `limit=100&` +
-      `access_token=${session.accessToken}`;
-    
-    const adsetsResponse = await fetch(adsetsUrl);
-    const adsetsData = await adsetsResponse.json();
-    
-    const activeAdSets = adsetsData.data?.filter(a => a.status === 'ACTIVE').length || 0;
-    
-    // Get ads count  
-    const adsUrl = `https://graph.facebook.com/v18.0/${accountId}/ads?` +
-      `fields=id,status&` +
-      `limit=100&` +
-      `access_token=${session.accessToken}`;
-    
-    const adsResponse = await fetch(adsUrl);
-    const adsData = await adsResponse.json();
-    
-    const activeAds = adsData.data?.filter(a => a.status === 'ACTIVE').length || 0;
-    
-    // Build response with default values
-    const metrics = {
-      overview: {
-        totalSpend: spend,
-        totalRevenue: revenue,
-        roas: roas,
-        campaigns: totalCampaigns,
-        activeCampaigns: activeCampaigns,
-        activeAdSets: activeAdSets,
-        activeAds: activeAds,
-        impressions: parseInt(data.impressions) || 0,
-        clicks: parseInt(data.clicks) || 0,
-        ctr: parseFloat(data.ctr) || 0,
-        cpc: parseFloat(data.cpc) || 0,
-        cpm: parseFloat(data.cpm) || 0,
-        reach: parseInt(data.reach) || 0,
-        frequency: parseFloat(data.frequency) || 0,
-        conversions: conversions,
-        conversionRate: data.clicks > 0 ? ((conversions / data.clicks) * 100) : 0,
-        costPerConversion: conversions > 0 ? (spend / conversions) : 0
-      },
-      accountInfo: {
-        id: accountId,
-        name: data.account_name || 'Unknown Account',
-        currency: data.currency || 'EUR'
-      },
-      dateRange: range === 'custom' ? `${startDate} - ${endDate}` : range,
-      hasRealData: true
+    // Mapper les time ranges
+    const datePresetMap = {
+      'today': 'today',
+      'yesterday': 'yesterday',
+      'last_7d': 'last_7d',
+      'last_30d': 'last_30d',
+      'lifetime': 'lifetime'
     };
     
-    // Get trend data based on selected period
-    let trendUrl = '';
-    if (range === 'custom' && startDate && endDate) {
-      trendUrl = `https://graph.facebook.com/v18.0/${accountId}/insights?` +
-        `fields=spend,impressions,clicks,ctr,actions,action_values&` +
-        `since=${startDate}&until=${endDate}&` +
-        `time_increment=${trendIncrement}&` +
-        `level=account&` +
-        `access_token=${session.accessToken}`;
-    } else if (range === 'daily') {
-      // For daily, get hourly breakdown of yesterday
-      trendUrl = `https://graph.facebook.com/v18.0/${accountId}/insights?` +
-        `fields=spend,impressions,clicks,ctr,actions,action_values&` +
-        `date_preset=yesterday&` +
-        `breakdowns=hourly_stats_aggregated_by_advertiser_time_zone&` +
-        `level=account&` +
-        `access_token=${session.accessToken}`;
-    } else {
-      // For weekly/monthly, get daily breakdown with correct presets
-      const preset = range === 'monthly' ? 'last_30d' : range === 'quarterly' ? 'last_90d' : 'last_7d';
-      trendUrl = `https://graph.facebook.com/v18.0/${accountId}/insights?` +
-        `fields=spend,impressions,clicks,ctr,actions,action_values&` +
-        `date_preset=${preset}&` +
-        `time_increment=${trendIncrement}&` +
-        `level=account&` +
-        `access_token=${session.accessToken}`;
-    }
+    const datePreset = datePresetMap[timeRange] || 'last_7d';
     
-    console.log('Fetching trend from:', trendUrl.replace(session.accessToken, 'TOKEN'));
+    // Récupérer les insights du compte publicitaire
+    const insightsUrl = `https://graph.facebook.com/v18.0/${accountId}/insights?` +
+      `fields=spend,impressions,clicks,ctr,cpc,cpm,cpp,reach,frequency,conversions,conversion_values,cost_per_conversion,actions,action_values&` +
+      `date_preset=${datePreset}&` +
+      `access_token=${accessToken}`;
     
-    const trendResponse = await fetch(trendUrl);
-    const trendData = await trendResponse.json();
+    const response = await fetch(insightsUrl);
+    const data = await response.json();
     
-    console.log('Trend data points:', trendData.data?.length || 0);
-    
-    if (trendData.data && trendData.data.length > 0) {
-      const trend = {
-        labels: [],
-        spend: [],
-        revenue: [],
-        ctr: [],
-        clicks: [],
-        impressions: []
-      };
-      
-      trendData.data.forEach(day => {
-        let label = '';
-        
-        if (range === 'daily' && day.hourly_stats_aggregated_by_advertiser_time_zone) {
-          // For hourly data
-          label = day.hourly_stats_aggregated_by_advertiser_time_zone;
-        } else if (day.date_start) {
-          const date = new Date(day.date_start);
-          
-          if (range === 'monthly' || (range === 'custom' && trendDays > 14)) {
-            // Show date for monthly view
-            label = date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
-          } else if (range === 'quarterly') {
-            // Show week number for quarterly
-            label = `Sem ${Math.ceil(date.getDate() / 7)}`;
-          } else {
-            // Show day name for weekly
-            label = date.toLocaleDateString('fr-FR', { weekday: 'short' });
-          }
-        }
-        
-        trend.labels.push(label);
-        trend.spend.push(parseFloat(day.spend) || 0);
-        trend.ctr.push(parseFloat(day.ctr) || 0);
-        trend.clicks.push(parseInt(day.clicks) || 0);
-        trend.impressions.push(parseInt(day.impressions) || 0);
-        
-        // Extract revenue for this day
-        let dayRevenue = 0;
-        if (day.action_values) {
-          const purchaseValue = day.action_values.find(a => 
-            a.action_type === 'purchase' || 
-            a.action_type === 'omni_purchase'
-          );
-          if (purchaseValue) {
-            dayRevenue = parseFloat(purchaseValue.value) || 0;
-          }
-        }
-        trend.revenue.push(dayRevenue);
+    if (data.error) {
+      aidsLogger.error(LogCategories.META_API, 'Erreur API Meta insights', {
+        error: data.error,
+        accountId,
+        timeRange
       });
       
-      metrics.trend = trend;
-    } else {
-      // Provide default trend data if API call fails
-      metrics.trend = {
-        labels: ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'],
-        spend: Array(7).fill(0),
-        revenue: Array(7).fill(0),
-        ctr: Array(7).fill(0),
-        clicks: Array(7).fill(0),
-        impressions: Array(7).fill(0)
-      };
+      return NextResponse.json({
+        error: data.error.message,
+        insights: null
+      });
     }
     
-    // Get top campaigns performance
-    if (campaignsData.data && campaignsData.data.length > 0) {
-      const topCampaigns = campaignsData.data
-        .filter(c => c.insights && c.insights.data && c.insights.data[0])
-        .map(c => ({
-          id: c.id,
-          name: c.name,
-          status: c.status,
-          spend: parseFloat(c.insights.data[0].spend) || 0,
-          clicks: parseInt(c.insights.data[0].clicks) || 0,
-          impressions: parseInt(c.insights.data[0].impressions) || 0,
-          ctr: parseFloat(c.insights.data[0].ctr) || 0
-        }))
-        .sort((a, b) => b.spend - a.spend)
-        .slice(0, 5);
-      
-      metrics.topCampaigns = topCampaigns;
-    } else {
-      metrics.topCampaigns = [];
+    // Récupérer les données par jour si disponible
+    let dailyData = [];
+    if (timeRange !== 'lifetime' && timeRange !== 'today') {
+      try {
+        const dailyUrl = `https://graph.facebook.com/v18.0/${accountId}/insights?` +
+          `fields=spend,impressions,clicks,ctr&` +
+          `date_preset=${datePreset}&` +
+          `time_increment=1&` + // Données quotidiennes
+          `access_token=${accessToken}`;
+        
+        const dailyResponse = await fetch(dailyUrl);
+        const dailyDataResponse = await dailyResponse.json();
+        
+        if (dailyDataResponse.data) {
+          dailyData = dailyDataResponse.data.map(day => ({
+            date: day.date_start,
+            spend: parseFloat(day.spend || 0),
+            impressions: parseInt(day.impressions || 0),
+            clicks: parseInt(day.clicks || 0),
+            ctr: parseFloat(day.ctr || 0)
+          }));
+        }
+      } catch (error) {
+        aidsLogger.warning(LogCategories.ANALYTICS, 'Erreur récupération données quotidiennes', error);
+      }
     }
     
-    // Ensure trend always exists
-    if (!metrics.trend) {
-      metrics.trend = {
-        labels: ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'],
-        spend: Array(7).fill(0),
-        revenue: Array(7).fill(0),
-        ctr: Array(7).fill(0),
-        clicks: Array(7).fill(0),
-        impressions: Array(7).fill(0)
-      };
+    const insights = data.data?.[0] || {};
+    
+    // Extraire les conversions depuis actions
+    let conversions = 0;
+    if (insights.actions) {
+      const conversionActions = ['purchase', 'lead', 'complete_registration', 'add_to_cart'];
+      conversions = insights.actions
+        .filter(action => conversionActions.includes(action.action_type))
+        .reduce((sum, action) => sum + parseInt(action.value || 0), 0);
     }
     
-    const response = {
-      success: true,
-      metrics: metrics,
-      timestamp: new Date().toISOString()
+    const formattedInsights = {
+      spend: parseFloat(insights.spend || 0).toFixed(2),
+      impressions: parseInt(insights.impressions || 0),
+      clicks: parseInt(insights.clicks || 0),
+      ctr: parseFloat(insights.ctr || 0).toFixed(2),
+      cpc: parseFloat(insights.cpc || 0).toFixed(2),
+      cpm: parseFloat(insights.cpm || 0).toFixed(2),
+      cpp: parseFloat(insights.cpp || 0).toFixed(2),
+      reach: parseInt(insights.reach || 0),
+      frequency: parseFloat(insights.frequency || 0).toFixed(2),
+      conversions: conversions,
+      conversion_value: parseFloat(insights.conversion_values?.value || 0).toFixed(2),
+      cost_per_conversion: conversions > 0 
+        ? (parseFloat(insights.spend || 0) / conversions).toFixed(2)
+        : '0',
+      daily_data: dailyData,
+      time_range: timeRange
     };
     
-    console.log('Returning success with hasRealData:', metrics.hasRealData);
+    aidsLogger.success(LogCategories.ANALYTICS, 'Insights récupérés avec succès', {
+      timeRange,
+      hasData: !!insights.spend
+    });
     
-    return NextResponse.json(response);
+    return NextResponse.json({
+      success: true,
+      insights: formattedInsights
+    });
     
   } catch (error) {
-    console.error('Insights API error:', error);
-    console.error('Stack:', error.stack);
+    aidsLogger.critical(LogCategories.META_API, 'Erreur critique API insights', error);
+    
     return NextResponse.json({ 
       error: 'Failed to fetch insights',
       details: error.message,
-      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined,
-      fallback: true
+      insights: null
     }, { status: 500 });
   }
 }

@@ -45,38 +45,33 @@ export default function AIDsLayout({ children }) {
     { 
       id: 'campaigns', 
       name: '📊 Campagnes', 
-      path: '/app/aids/app-review-complete',
-      hash: '#campaigns',
+      path: '/app/aids/campaigns',
       gradient: 'from-orange-600 to-red-600'
     },
     { 
       id: 'insights', 
       name: '📈 Insights', 
-      path: '/app/aids/app-review-complete',
-      hash: '#insights',
+      path: '/app/aids/insights',
       gradient: 'from-indigo-600 to-purple-600'
     },
     { 
       id: 'business', 
       name: '💼 Business Manager', 
-      path: '/app/aids/app-review-complete',
-      hash: '#business',
+      path: '/app/aids/business',
       gradient: 'from-teal-600 to-cyan-600',
       premium: true
     },
     { 
       id: 'pages', 
       name: '📄 Pages & Assets', 
-      path: '/app/aids/app-review-complete',
-      hash: '#pages',
+      path: '/app/aids/pages',
       gradient: 'from-pink-600 to-rose-600',
       premium: true
     },
     { 
       id: 'octavia', 
       name: '🤖 Octavia AI', 
-      path: '/app/aids/app-review-complete',
-      hash: '#ai',
+      path: '/app/aids/octavia',
       gradient: 'from-violet-600 to-purple-600',
       badge: 'BETA'
     },
@@ -90,17 +85,7 @@ export default function AIDsLayout({ children }) {
   ];
 
   const handleNavigation = (item) => {
-    if (item.hash) {
-      router.push(item.path);
-      setTimeout(() => {
-        const element = document.querySelector(item.hash);
-        if (element) {
-          element.scrollIntoView({ behavior: 'smooth' });
-        }
-      }, 100);
-    } else {
-      router.push(item.path);
-    }
+    router.push(item.path);
     if (isMobile) {
       setIsMenuOpen(false);
     }

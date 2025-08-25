@@ -41,7 +41,11 @@ export async function GET(request) {
       `access_token=${accessToken}`;
     
     console.log('Fetching lead forms...');
-    aidsLogger.info(LogCategories.META_API, 'Lead Center: Récupération des formulaires', { accountId });
+    console.log('URL:', leadFormsUrl);
+    aidsLogger.info(LogCategories.META_API, 'Lead Center: Récupération des formulaires', { 
+      accountId,
+      url: leadFormsUrl.replace(accessToken, 'TOKEN_HIDDEN')
+    });
     
     const formsResponse = await fetch(leadFormsUrl);
     const formsData = await formsResponse.json();
@@ -58,6 +62,9 @@ export async function GET(request) {
     }
     
     console.log(`Found ${formsData.data?.length || 0} lead forms`);
+    aidsLogger.info(LogCategories.META_API, `Lead Center: ${formsData.data?.length || 0} formulaires trouvés`, {
+      forms: formsData.data?.map(f => ({ id: f.id, name: f.name, leads_count: f.leads_count }))
+    });
     
     // For each form, get ALL leads
     if (formsData.data && formsData.data.length > 0) {
@@ -65,21 +72,22 @@ export async function GET(request) {
         console.log(`\nProcessing form: ${form.name} (${form.leads_count} leads)`);
         
         // Use page token if available
-        const accessToken = form.page?.access_token || accessToken;
+        const formAccessToken = form.page?.access_token || accessToken;
         
         // Get ALL leads from this form
         let nextUrl = `https://graph.facebook.com/v18.0/${form.id}/leads?` +
           `fields=id,created_time,field_data,form_id,campaign_name,campaign_id,ad_id,ad_name,adset_id,adset_name&` +
           `limit=200&` + // Maximum limit
-          `access_token=${accessToken}`;
+          `access_token=${formAccessToken}`;
         
         let formLeads = [];
         let pageCount = 0;
         
         // Paginate through ALL leads
-        while (nextUrl && pageCount < 10) { // Limit to 10 pages for safety
+        while (nextUrl && pageCount < 50) { // Increased limit to capture more leads
           pageCount++;
           console.log(`Fetching page ${pageCount} of leads for form ${form.name}...`);
+          aidsLogger.debug(LogCategories.META_API, `Lead Center: Page ${pageCount} pour formulaire ${form.name}`);
           
           const leadsResponse = await fetch(nextUrl);
           const leadsData = await leadsResponse.json();
