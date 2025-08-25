@@ -79,6 +79,13 @@ export default function AIDsLayout({ children }) {
       hash: '#ai',
       gradient: 'from-violet-600 to-purple-600',
       badge: 'BETA'
+    },
+    { 
+      id: 'logs', 
+      name: '🔍 Logs & Diagnostics', 
+      path: '/app/aids/logs',
+      gradient: 'from-orange-600 to-red-600',
+      badge: 'DEV'
     }
   ];
 

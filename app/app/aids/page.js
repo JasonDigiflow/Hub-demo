@@ -422,6 +422,16 @@ export default function AIDsDashboard() {
         </div>
         
         <div className="flex items-center gap-3">
+          {/* Logs Button */}
+          <button
+            onClick={() => router.push('/app/aids/logs')}
+            className="px-4 py-2 bg-gradient-to-r from-orange-600 to-red-600 text-white rounded-lg font-medium hover:from-orange-700 hover:to-red-700 flex items-center gap-2 shadow-lg shadow-orange-600/20"
+            title="Consulter les logs et diagnostics"
+          >
+            <span>🔍</span>
+            <span>Logs & Diagnostics</span>
+          </button>
+
           {/* App Review Mode Button */}
           <button
             onClick={() => router.push('/app/aids/app-review-complete')}
