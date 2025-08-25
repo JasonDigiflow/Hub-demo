@@ -359,12 +359,12 @@ export default function AIDsDashboard() {
         <div className="flex items-center gap-3">
           {/* App Review Mode Button */}
           <button
-            onClick={() => router.push('/app/aids/app-review-interactive')}
-            className="px-4 py-2 bg-yellow-600 text-white rounded-lg font-medium hover:bg-yellow-700 flex items-center gap-2"
-            title="Mode démonstration interactif pour Facebook App Review"
+            onClick={() => router.push('/app/aids/app-review-beautiful')}
+            className="px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg font-medium hover:from-purple-700 hover:to-pink-700 flex items-center gap-2 shadow-lg shadow-purple-600/20"
+            title="Mode démonstration premium pour Facebook App Review"
           >
             <span>🎬</span>
-            <span>App Review</span>
+            <span>App Review Premium</span>
           </button>
 
           {/* Revenue Button */}
