@@ -325,7 +325,7 @@ export default function AppReviewComplete() {
   };
 
   // Calculer les métriques dérivées
-  const conversionRate = ((metrics.conversions / metrics.clicks) * 100).toFixed(2);
+  const calculatedCvr = ((metrics.conversions / metrics.clicks) * 100).toFixed(2);
   const avgOrderValue = (metrics.conversions * 125).toFixed(0);
   const revenue = (metrics.conversions * 125).toFixed(0);
   const profit = (revenue - metrics.spent).toFixed(0);
