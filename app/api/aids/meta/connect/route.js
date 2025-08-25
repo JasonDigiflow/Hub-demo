@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
+import aidsLogger, { LogCategories } from '@/lib/aids-logger';
 
 // Helper to validate token with app secret if available
 async function validateToken(accessToken) {
@@ -38,9 +39,12 @@ async function validateToken(accessToken) {
 
 export async function POST(request) {
   try {
+    aidsLogger.info(LogCategories.AUTH, 'Connexion Meta: Début du processus');
+    
     const { accessToken, userID } = await request.json();
 
     if (!accessToken) {
+      aidsLogger.error(LogCategories.AUTH, 'Connexion Meta: Token manquant');
       return NextResponse.json({ 
         error: 'Access token requis',
         success: false
@@ -50,6 +54,9 @@ export async function POST(request) {
     // Validate token if app secret is available
     const validation = await validateToken(accessToken);
     if (!validation.valid) {
+      aidsLogger.error(LogCategories.AUTH, 'Connexion Meta: Token invalide', {
+        error: validation.error
+      });
       return NextResponse.json({ 
         error: 'Token invalide',
         success: false,
@@ -65,6 +72,12 @@ export async function POST(request) {
     const userData = await userResponse.json();
 
     if (userData.error) {
+      aidsLogger.error(LogCategories.META_API, 'Connexion Meta: Erreur récupération utilisateur', {
+        error: userData.error,
+        errorMessage: userData.error.message,
+        errorCode: userData.error.code,
+        errorType: userData.error.type
+      });
       console.error('Facebook user error:', userData.error);
       return NextResponse.json({ 
         error: 'Impossible de récupérer les informations utilisateur',
@@ -83,10 +96,18 @@ export async function POST(request) {
     console.log('Ad accounts response:', accountsData);
 
     if (accountsData.error) {
+      aidsLogger.error(LogCategories.META_API, 'Connexion Meta: Erreur récupération comptes publicitaires', {
+        error: accountsData.error,
+        errorMessage: accountsData.error.message,
+        errorCode: accountsData.error.code,
+        errorType: accountsData.error.type,
+        errorSubcode: accountsData.error.error_subcode
+      });
       console.error('Facebook ad accounts error:', accountsData.error);
       
       // Provide helpful error messages
       if (accountsData.error.code === 190) {
+        aidsLogger.warning(LogCategories.AUTH, 'Token Meta expiré');
         return NextResponse.json({ 
           error: 'Token expiré. Veuillez vous reconnecter.',
           success: false
@@ -94,6 +115,7 @@ export async function POST(request) {
       }
       
       if (accountsData.error.code === 10) {
+        aidsLogger.warning(LogCategories.META_API, 'Pas d\'accès aux comptes publicitaires');
         return NextResponse.json({ 
           error: 'Pas d\'accès aux comptes publicitaires. Vérifiez que vous avez un Business Manager configuré.',
           success: false,
@@ -110,6 +132,7 @@ export async function POST(request) {
 
     // Check if user has any ad accounts
     if (!accountsData.data || accountsData.data.length === 0) {
+      aidsLogger.warning(LogCategories.META_API, 'Connexion Meta: Aucun compte publicitaire trouvé');
       return NextResponse.json({ 
         error: 'Aucun compte publicitaire trouvé',
         success: false,
@@ -163,6 +186,13 @@ export async function POST(request) {
     });
 
     console.log('Connection successful for user:', userData.name);
+    
+    aidsLogger.success(LogCategories.AUTH, 'Connexion Meta réussie', {
+      userId: userData.id,
+      userName: userData.name,
+      accountsCount: accounts.length,
+      accounts: accounts.map(a => ({ id: a.id, name: a.name, status: a.statusText }))
+    });
 
     return NextResponse.json({
       success: true,
@@ -177,6 +207,11 @@ export async function POST(request) {
     });
 
   } catch (error) {
+    aidsLogger.critical(LogCategories.AUTH, 'Connexion Meta: Erreur critique', {
+      errorMessage: error.message,
+      errorStack: error.stack,
+      errorName: error.name
+    }, error);
     console.error('Meta connection error:', error);
     return NextResponse.json({ 
       error: 'Erreur de connexion à Meta',

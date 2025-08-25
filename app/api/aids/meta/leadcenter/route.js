@@ -2,16 +2,24 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import jwt from 'jsonwebtoken';
 import { db } from '@/lib/firebase-admin';
+import aidsLogger, { LogCategories } from '@/lib/aids-logger';
 
 export async function GET(request) {
   try {
+    aidsLogger.info(LogCategories.META_API, 'Lead Center: Début récupération des prospects');
+    
     const cookieStore = cookies();
     const sessionCookie = cookieStore.get('meta_session');
     const selectedAccountCookie = cookieStore.get('selected_ad_account');
     
     if (!sessionCookie || !selectedAccountCookie) {
+      const error = 'Not authenticated or no account selected';
+      aidsLogger.error(LogCategories.AUTH, 'Lead Center: Erreur authentification', {
+        hasSession: !!sessionCookie,
+        hasAccount: !!selectedAccountCookie
+      });
       return NextResponse.json({ 
-        error: 'Not authenticated or no account selected'
+        error
       }, { status: 401 });
     }
     
@@ -33,10 +41,19 @@ export async function GET(request) {
       `access_token=${accessToken}`;
     
     console.log('Fetching lead forms...');
+    aidsLogger.info(LogCategories.META_API, 'Lead Center: Récupération des formulaires', { accountId });
+    
     const formsResponse = await fetch(leadFormsUrl);
     const formsData = await formsResponse.json();
     
     if (formsData.error) {
+      aidsLogger.error(LogCategories.META_API, 'Lead Center: Erreur récupération formulaires', {
+        error: formsData.error,
+        accountId,
+        errorMessage: formsData.error.message,
+        errorType: formsData.error.type,
+        errorCode: formsData.error.code
+      });
       console.error('Error fetching forms:', formsData.error);
     }
     
@@ -68,6 +85,13 @@ export async function GET(request) {
           const leadsData = await leadsResponse.json();
           
           if (leadsData.error) {
+            aidsLogger.error(LogCategories.META_API, `Lead Center: Erreur récupération leads formulaire ${form.name}`, {
+              formId: form.id,
+              formName: form.name,
+              error: leadsData.error,
+              errorMessage: leadsData.error.message,
+              errorType: leadsData.error.type
+            });
             console.error(`Error fetching leads for form ${form.name}:`, leadsData.error);
             break;
           }
@@ -153,6 +177,13 @@ export async function GET(request) {
         }
         
         console.log(`Total leads from form ${form.name}: ${formLeads.length}`);
+        if (formLeads.length > 0) {
+          aidsLogger.success(LogCategories.PROSPECT, `Lead Center: ${formLeads.length} prospects récupérés du formulaire ${form.name}`, {
+            formId: form.id,
+            formName: form.name,
+            leadsCount: formLeads.length
+          });
+        }
         allLeads.push(...formLeads);
       }
     }
@@ -237,6 +268,11 @@ export async function GET(request) {
     }
     
     console.log(`\n=== TOTAL LEADS FOUND: ${allLeads.length} ===`);
+    
+    aidsLogger.info(LogCategories.PROSPECT, `Lead Center: Total prospects trouvés: ${allLeads.length}`, {
+      totalLeads: allLeads.length,
+      forms: formsData.data?.length || 0
+    });
     
     // Save to Firebase if authenticated
     let savedCount = 0;
@@ -365,9 +401,19 @@ export async function GET(request) {
         if (savedCount > 0) {
           await batch.commit();
           console.log(`✅ Saved ${savedCount} new prospects to Firebase (org: ${orgId})`);
+          aidsLogger.success(LogCategories.PROSPECT, `Lead Center: ${savedCount} nouveaux prospects sauvegardés`, {
+            orgId,
+            adAccountId,
+            savedCount,
+            skippedCount
+          });
         }
       }
     } catch (error) {
+      aidsLogger.error(LogCategories.PROSPECT, 'Lead Center: Erreur sauvegarde Firebase', {
+        errorMessage: error.message,
+        errorStack: error.stack
+      }, error);
       console.error('Error saving to Firebase:', error);
     }
     
@@ -384,6 +430,11 @@ export async function GET(request) {
     });
     
   } catch (error) {
+    aidsLogger.critical(LogCategories.META_API, 'Lead Center: Erreur critique API', {
+      errorMessage: error.message,
+      errorStack: error.stack,
+      url: request.url
+    }, error);
     console.error('Lead Center API error:', error);
     return NextResponse.json({ 
       error: 'Failed to fetch leads from Lead Center',

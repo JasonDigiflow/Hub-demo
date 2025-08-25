@@ -1,12 +1,16 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
+import aidsLogger, { LogCategories } from '@/lib/aids-logger';
 
 export async function GET() {
   try {
+    aidsLogger.debug(LogCategories.AUTH, 'Vérification statut connexion Meta');
+    
     const cookieStore = cookies();
     const sessionCookie = cookieStore.get('meta_session');
     
     if (!sessionCookie) {
+      aidsLogger.info(LogCategories.AUTH, 'Pas de session Meta active');
       return NextResponse.json({
         connected: false,
         message: 'Pas de session Meta active'
@@ -22,6 +26,10 @@ export async function GET() {
       
       if (sessionAge > maxAge) {
         // Clear expired session
+        aidsLogger.warning(LogCategories.AUTH, 'Session Meta expirée', {
+          sessionAge: Math.floor(sessionAge / 1000 / 60 / 60) + ' heures',
+          maxAge: '30 jours'
+        });
         cookieStore.delete('meta_session');
         cookieStore.delete('selected_ad_account');
         return NextResponse.json({
@@ -37,6 +45,10 @@ export async function GET() {
       
       if (!response.ok) {
         // Token is invalid, clear session
+        aidsLogger.error(LogCategories.AUTH, 'Token Meta invalide', {
+          status: response.status,
+          statusText: response.statusText
+        });
         cookieStore.delete('meta_session');
         cookieStore.delete('selected_ad_account');
         return NextResponse.json({
