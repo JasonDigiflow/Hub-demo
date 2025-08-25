@@ -10,6 +10,10 @@ export default function AppLayout({ children }) {
   const [user, setUser] = useState(null);
   const pathname = usePathname();
   const router = useRouter();
+  
+  // Apps qui ont leur propre navbar
+  const appsWithCustomNavbar = ['/app/aids', '/app/fidalyz'];
+  const hasCustomNavbar = appsWithCustomNavbar.some(app => pathname.startsWith(app));
 
   useEffect(() => {
     checkAuth();
@@ -72,6 +76,16 @@ export default function AppLayout({ children }) {
     return pathname.startsWith(path);
   };
 
+  // Si l'app a sa propre navbar, on retourne juste les children
+  if (hasCustomNavbar) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900/10 to-gray-900">
+        {children}
+      </div>
+    );
+  }
+
+  // Sinon, on affiche la navbar principale
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900/10 to-gray-900">
       {/* Sidebar */}
