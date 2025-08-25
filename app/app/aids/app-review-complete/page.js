@@ -38,11 +38,31 @@ export default function AppReviewComplete() {
   // États pour les formulaires
   const [newCampaign, setNewCampaign] = useState({
     name: '',
+    productDescription: '',
     objective: 'CONVERSIONS',
-    budget: 1000,
-    audience: 'broad',
-    placement: 'automatic'
+    budgetType: 'daily', // 'daily' ou 'weekly'
+    dailyBudget: 100,
+    weeklyBudget: 700,
+    audienceType: 'ai', // 'ai' ou 'manual'
+    audience: {
+      ageMin: 18,
+      ageMax: 65,
+      gender: 'all',
+      interests: [],
+      locations: ['France'],
+      languages: ['Français'],
+      behaviors: [],
+      customAudiences: [],
+      lookalike: false
+    },
+    placement: 'automatic',
+    startDate: new Date().toISOString().split('T')[0],
+    endDate: '',
+    bidStrategy: 'lowest_cost',
+    optimizationGoal: 'conversions'
   });
+  const [selectedInterests, setSelectedInterests] = useState([]);
+  const [audienceSize, setAudienceSize] = useState({ min: 500000, max: 2000000 });
   const [editingCampaign, setEditingCampaign] = useState(null);
   const [newBudget, setNewBudget] = useState(0);
   const [selectedLead, setSelectedLead] = useState(null);
@@ -58,6 +78,56 @@ export default function AppReviewComplete() {
   // États pour les métriques avancées
   const [selectedTimeRange, setSelectedTimeRange] = useState('7d');
   const [hoveredMetric, setHoveredMetric] = useState(null);
+  
+  // États pour Business Manager
+  const [ltv, setLtv] = useState(285.50);
+  const [cac, setCac] = useState(42.30);
+  const [ltvcac, setLtvCac] = useState(6.75);
+  const [monthlyRecurringRevenue, setMrr] = useState(48500);
+  const [churnRate, setChurnRate] = useState(2.3);
+  const [customerLifetime, setCustomerLifetime] = useState(18.5);
+  
+  // États pour Pages & Assets
+  const [managedPages] = useState([
+    { 
+      id: 'page_1', 
+      name: 'TechCorp Solutions', 
+      followers: 45673, 
+      engagement: 4.8, 
+      reach: 125400,
+      adSpend: 8900,
+      conversions: 156,
+      pageViews: 23400,
+      ctr: 3.4,
+      status: 'active'
+    },
+    { 
+      id: 'page_2', 
+      name: 'E-commerce Store', 
+      followers: 23891, 
+      engagement: 6.2, 
+      reach: 87300,
+      adSpend: 5600,
+      conversions: 89,
+      pageViews: 18900,
+      ctr: 4.1,
+      status: 'active'
+    },
+    { 
+      id: 'page_3', 
+      name: 'Brand Awareness', 
+      followers: 12456, 
+      engagement: 3.7, 
+      reach: 45600,
+      adSpend: 3200,
+      conversions: 34,
+      pageViews: 9800,
+      ctr: 2.8,
+      status: 'paused'
+    }
+  ]);
+  const [selectedPages, setSelectedPages] = useState([]);
+  const [showBulkActions, setShowBulkActions] = useState(false);
   const [roas, setRoas] = useState(3.2);
   const [cpm, setCpm] = useState(12.45);
   const [qualityScore, setQualityScore] = useState(8.7);
@@ -90,6 +160,14 @@ export default function AppReviewComplete() {
       setCostPerResult(18.50 + (Math.random() - 0.5) * 2);
       setReachGrowth(23.5 + (Math.random() - 0.5) * 3);
       setAudienceOverlap(12.3 + (Math.random() - 0.5) * 1.5);
+      
+      // Mettre à jour les métriques business
+      setLtv(285.50 + (Math.random() - 0.5) * 10);
+      setCac(42.30 + (Math.random() - 0.5) * 3);
+      setLtvCac(ltv / cac);
+      setMrr(48500 + (Math.random() - 0.5) * 1000);
+      setChurnRate(2.3 + (Math.random() - 0.5) * 0.3);
+      setCustomerLifetime(18.5 + (Math.random() - 0.5) * 1);
     }, 3000);
     
     return () => clearInterval(interval);
@@ -324,6 +402,81 @@ export default function AppReviewComplete() {
     showNotificationFunc(`✅ Campagne "${campaign.name}" dupliquée`);
   };
 
+  // Nouvelles fonctions pour Business Management
+  const generateBusinessReport = (type) => {
+    const reports = {
+      'P&L': {
+        revenue: monthlyRecurringRevenue,
+        costs: monthlyRecurringRevenue * 0.65,
+        profit: monthlyRecurringRevenue * 0.35,
+        margin: '35%'
+      },
+      'ROI': {
+        totalInvestment: cac * metrics.conversions,
+        totalRevenue: ltv * metrics.conversions,
+        roi: ((ltv/cac - 1) * 100).toFixed(0) + '%',
+        paybackPeriod: (cac / (monthlyRecurringRevenue / 1000)).toFixed(1) + ' mois'
+      }
+    };
+    
+    const report = reports[type] || reports['P&L'];
+    console.log(`Business Report (${type}):`, report);
+    return report;
+  };
+
+  const optimizeBudgetAllocation = () => {
+    const channels = [
+      { name: 'Facebook Ads', currentBudget: 22500, recommendedBudget: 27000, reason: 'High ROAS performance' },
+      { name: 'Google Ads', currentBudget: 15000, recommendedBudget: 12000, reason: 'Diminishing returns' },
+      { name: 'LinkedIn Ads', currentBudget: 7500, recommendedBudget: 9000, reason: 'Growing B2B segment' },
+      { name: 'Autres canaux', currentBudget: 5000, recommendedBudget: 2000, reason: 'Poor performance' }
+    ];
+    
+    showNotificationFunc('🎯 Optimisation budget calculée - voir console pour détails');
+    console.log('Budget Optimization Recommendations:', channels);
+    return channels;
+  };
+
+  // Nouvelles fonctions pour Pages Management
+  const bulkUpdatePages = (action, pageIds) => {
+    const selectedPageDetails = managedPages.filter(page => pageIds.includes(page.id));
+    
+    switch(action) {
+      case 'budget':
+        showNotificationFunc(`💰 Budget mis à jour pour ${pageIds.length} pages`);
+        break;
+      case 'audience':
+        showNotificationFunc(`🎯 Audiences synchronisées pour ${pageIds.length} pages`);
+        break;
+      case 'duplicate':
+        showNotificationFunc(`📋 Campagnes dupliquées pour ${pageIds.length} pages`);
+        break;
+      case 'export':
+        const exportData = selectedPageDetails.map(page => ({
+          name: page.name,
+          followers: page.followers,
+          engagement: page.engagement,
+          adSpend: page.adSpend,
+          conversions: page.conversions,
+          roi: ((page.conversions * 125) / page.adSpend).toFixed(2)
+        }));
+        console.log('Pages Export Data:', exportData);
+        showNotificationFunc(`📊 Données exportées pour ${pageIds.length} pages`);
+        break;
+      case 'schedule':
+        showNotificationFunc(`📅 Publications planifiées pour ${pageIds.length} pages`);
+        break;
+      default:
+        showNotificationFunc(`✅ Action "${action}" appliquée sur ${pageIds.length} pages`);
+    }
+  };
+
+  const calculatePageROI = (page) => {
+    const revenue = page.conversions * 125; // AOV moyen
+    const roi = ((revenue - page.adSpend) / page.adSpend * 100).toFixed(1);
+    return { revenue, roi };
+  };
+
   // Calculer les métriques dérivées
   const calculatedCvr = ((metrics.conversions / metrics.clicks) * 100).toFixed(2);
   const avgOrderValue = (metrics.conversions * 125).toFixed(0);
@@ -333,6 +486,8 @@ export default function AppReviewComplete() {
 
   const sections = [
     { id: 'dashboard', name: 'Vue d\'ensemble', icon: '🎯', color: 'from-purple-600 to-pink-600' },
+    { id: 'business', name: 'Business Manager', icon: '💼', color: 'from-emerald-600 to-teal-600', highlight: true },
+    { id: 'pages', name: 'Pages & Assets', icon: '📄', color: 'from-indigo-600 to-blue-600', highlight: true },
     { id: 'campaigns', name: 'Campagnes', icon: '📊', color: 'from-blue-600 to-cyan-600' },
     { id: 'leads', name: 'Prospects', icon: '👥', color: 'from-green-600 to-emerald-600' },
     { id: 'insights', name: 'Insights', icon: '📈', color: 'from-orange-600 to-red-600' },
@@ -341,6 +496,24 @@ export default function AppReviewComplete() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900/10 to-gray-900">
+      {/* Facebook App Review Compliance Banner */}
+      <div className="bg-gradient-to-r from-blue-600 to-indigo-600 border-b border-blue-500">
+        <div className="max-w-7xl mx-auto px-6 py-3">
+          <div className="flex items-center justify-center gap-3 text-center">
+            <span className="text-2xl">🔒</span>
+            <div>
+              <p className="text-white font-bold text-lg">
+                Facebook App Review Compliance Dashboard
+              </p>
+              <p className="text-blue-100 text-sm">
+                Démonstration des permissions: <span className="font-semibold">business_management</span> • <span className="font-semibold">page_manage_ads</span> • <span className="font-semibold">ads_management</span>
+              </p>
+            </div>
+            <span className="text-2xl">✅</span>
+          </div>
+        </div>
+      </div>
+
       {/* Header Premium */}
       <div className="bg-black/40 backdrop-blur-xl border-b border-white/10">
         <div className="max-w-7xl mx-auto px-6 py-4">
@@ -402,6 +575,7 @@ export default function AppReviewComplete() {
                     ? 'text-white' 
                     : 'text-gray-400 hover:text-white'
                   }
+                  ${section.highlight ? 'ring-2 ring-yellow-500/50 shadow-lg shadow-yellow-500/20' : ''}
                 `}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
@@ -1371,6 +1545,502 @@ export default function AppReviewComplete() {
           </motion.div>
         )}
 
+        {/* Business Manager Section - Facebook business_management Permission */}
+        {activeSection === 'business' && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="space-y-8"
+          >
+            <div className="text-center mb-8">
+              <div className="flex items-center justify-center gap-4 mb-4">
+                <div className="w-16 h-16 bg-gradient-to-br from-emerald-600 to-teal-600 rounded-2xl flex items-center justify-center shadow-lg shadow-emerald-500/30">
+                  <span className="text-3xl">💼</span>
+                </div>
+                <div>
+                  <h2 className="text-4xl font-bold text-white mb-2">
+                    Business Manager Hub
+                  </h2>
+                  <p className="text-emerald-400 font-semibold text-lg">
+                    🔒 Utilise la permission business_management de Facebook
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* KPIs Principaux Business */}
+            <div className="bg-gradient-to-r from-emerald-600/20 to-teal-600/20 backdrop-blur-xl rounded-3xl p-8 border-2 border-emerald-500/30 shadow-2xl">
+              <h3 className="text-2xl font-bold text-white mb-6 flex items-center gap-3">
+                <span className="text-3xl">📈</span>
+                KPIs Business Essentiels
+                <span className="bg-emerald-500 text-emerald-900 px-3 py-1 rounded-full text-sm font-bold">
+                  BUSINESS MANAGEMENT
+                </span>
+              </h3>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+                {[
+                  { 
+                    title: 'Revenue (MRR)', 
+                    value: `€${monthlyRecurringRevenue.toLocaleString()}`, 
+                    change: '+18%', 
+                    trend: 'up',
+                    color: 'from-green-600 to-emerald-600',
+                    detail: 'Monthly Recurring Revenue',
+                    size: 'large'
+                  },
+                  { 
+                    title: 'Profit', 
+                    value: `€${(monthlyRecurringRevenue * 0.35).toLocaleString()}`, 
+                    change: '+25%', 
+                    trend: 'up',
+                    color: 'from-blue-600 to-cyan-600',
+                    detail: `${(35).toFixed(1)}% marge`,
+                    size: 'large'
+                  },
+                  { 
+                    title: 'LTV', 
+                    value: `€${ltv.toFixed(2)}`, 
+                    change: '+12%', 
+                    trend: 'up',
+                    color: 'from-purple-600 to-pink-600',
+                    detail: 'Lifetime Value',
+                    size: 'large'
+                  },
+                  { 
+                    title: 'CAC', 
+                    value: `€${cac.toFixed(2)}`, 
+                    change: '-8%', 
+                    trend: 'down',
+                    color: 'from-orange-600 to-red-600',
+                    detail: 'Cost per Acquisition',
+                    size: 'large'
+                  },
+                  { 
+                    title: 'LTV/CAC Ratio', 
+                    value: `${(ltv/cac).toFixed(2)}x`, 
+                    change: '+22%', 
+                    trend: 'up',
+                    color: 'from-indigo-600 to-purple-600',
+                    detail: 'Target: >3.0x',
+                    size: 'large'
+                  }
+                ].map((metric, index) => (
+                  <motion.div
+                    key={metric.title}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.1 }}
+                    whileHover={{ scale: 1.05, y: -10 }}
+                    className="relative overflow-hidden cursor-pointer"
+                  >
+                    <div className={`
+                      bg-gradient-to-br ${metric.color} p-[2px] rounded-2xl shadow-2xl
+                    `}>
+                      <div className="bg-gray-900/95 backdrop-blur-xl rounded-2xl p-6 h-full">
+                        <div className="flex items-start justify-between mb-3">
+                          <p className="text-gray-300 text-sm font-semibold">{metric.title}</p>
+                          <div className={`
+                            flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold
+                            ${metric.trend === 'up' 
+                              ? 'bg-green-500/30 text-green-300' 
+                              : 'bg-red-500/30 text-red-300'
+                            }
+                          `}>
+                            {metric.trend === 'up' ? <TrendUpIcon /> : <TrendDownIcon />}
+                            {metric.change}
+                          </div>
+                        </div>
+                        <p className="text-3xl font-black text-white mb-2">
+                          {metric.value}
+                        </p>
+                        <p className="text-xs text-gray-400 font-medium">{metric.detail}</p>
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+
+            {/* Projections Financières */}
+            <div className="bg-black/40 backdrop-blur-xl rounded-2xl p-8 border border-white/10">
+              <h3 className="text-2xl font-bold text-white mb-6 flex items-center gap-3">
+                <span className="text-2xl">📉</span>
+                Projections & Budget Allocation
+                <span className="bg-blue-500 text-blue-900 px-3 py-1 rounded-full text-sm font-bold">
+                  BUSINESS TOOLS
+                </span>
+              </h3>
+              
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                {/* Projections */}
+                <div className="space-y-4">
+                  <h4 className="text-lg font-bold text-white mb-4">Projections 90 jours</h4>
+                  {[
+                    { period: 'Mois 1', revenue: monthlyRecurringRevenue * 1.05, growth: '+5%' },
+                    { period: 'Mois 2', revenue: monthlyRecurringRevenue * 1.12, growth: '+12%' },
+                    { period: 'Mois 3', revenue: monthlyRecurringRevenue * 1.25, growth: '+25%' }
+                  ].map((proj) => (
+                    <div key={proj.period} className="bg-white/5 rounded-lg p-4 flex items-center justify-between">
+                      <div>
+                        <span className="text-white font-medium">{proj.period}</span>
+                        <p className="text-gray-400 text-sm">Revenue prévue</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xl font-bold text-white">€{proj.revenue.toLocaleString()}</p>
+                        <p className="text-green-400 text-sm font-medium">{proj.growth}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                
+                {/* Budget Allocation */}
+                <div className="space-y-4">
+                  <h4 className="text-lg font-bold text-white mb-4">Répartition Budget</h4>
+                  {[
+                    { channel: 'Facebook Ads', allocation: 45, budget: 22500, performance: 'excellent' },
+                    { channel: 'Google Ads', allocation: 30, budget: 15000, performance: 'good' },
+                    { channel: 'LinkedIn Ads', allocation: 15, budget: 7500, performance: 'average' },
+                    { channel: 'Autres canaux', allocation: 10, budget: 5000, performance: 'testing' }
+                  ].map((channel) => (
+                    <div key={channel.channel} className="bg-white/5 rounded-lg p-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-white font-medium">{channel.channel}</span>
+                        <span className="text-emerald-400 font-bold">{channel.allocation}%</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <div className="w-full bg-gray-800 rounded-full h-3 mr-3">
+                          <motion.div 
+                            className="bg-gradient-to-r from-emerald-600 to-teal-600 h-3 rounded-full"
+                            initial={{ width: 0 }}
+                            animate={{ width: `${channel.allocation}%` }}
+                            transition={{ duration: 1, delay: 0.5 }}
+                          />
+                        </div>
+                        <span className="text-white text-sm">€{channel.budget.toLocaleString()}</span>
+                      </div>
+                      <p className={`text-xs mt-1 ${
+                        channel.performance === 'excellent' ? 'text-green-400' :
+                        channel.performance === 'good' ? 'text-blue-400' :
+                        channel.performance === 'average' ? 'text-yellow-400' :
+                        'text-gray-400'
+                      }`}>
+                        Performance: {channel.performance}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* ROI Analysis & Business Impact */}
+            <div className="bg-gradient-to-r from-purple-600/20 to-indigo-600/20 backdrop-blur-xl rounded-2xl p-8 border border-purple-500/30">
+              <h3 className="text-2xl font-bold text-white mb-6 flex items-center gap-3">
+                <span className="text-2xl">🏆</span>
+                ROI Analysis & Business Impact
+                <span className="bg-purple-500 text-purple-900 px-3 py-1 rounded-full text-sm font-bold">
+                  IMPACT MEASUREMENT
+                </span>
+              </h3>
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {[
+                  {
+                    title: 'ROI Global',
+                    value: `${((ltv/cac - 1) * 100).toFixed(0)}%`,
+                    description: 'Retour sur investissement total',
+                    impact: '+€425k revenue générée',
+                    color: 'from-green-600 to-emerald-600'
+                  },
+                  {
+                    title: 'Payback Period',
+                    value: `${(cac / (monthlyRecurringRevenue / 1000)).toFixed(1)} mois`,
+                    description: 'Temps de retour sur CAC',
+                    impact: 'Amélioration de 2.3 mois',
+                    color: 'from-blue-600 to-cyan-600'
+                  },
+                  {
+                    title: 'Customer Lifetime',
+                    value: `${customerLifetime.toFixed(1)} mois`,
+                    description: 'Durée vie client moyenne',
+                    impact: `Churn rate: ${churnRate.toFixed(1)}%`,
+                    color: 'from-purple-600 to-pink-600'
+                  }
+                ].map((metric, i) => (
+                  <motion.div
+                    key={i}
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: i * 0.2 }}
+                    className="bg-black/40 rounded-xl p-6 border border-white/10"
+                  >
+                    <div className={`w-12 h-12 bg-gradient-to-br ${metric.color} rounded-lg flex items-center justify-center mb-4`}>
+                      <span className="text-2xl">📈</span>
+                    </div>
+                    <h4 className="text-lg font-bold text-white mb-2">{metric.title}</h4>
+                    <p className="text-3xl font-black text-white mb-2">{metric.value}</p>
+                    <p className="text-gray-400 text-sm mb-2">{metric.description}</p>
+                    <p className="text-emerald-400 text-sm font-medium">{metric.impact}</p>
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+
+            {/* Export Reports Functionality */}
+            <div className="bg-black/40 backdrop-blur-xl rounded-2xl p-6 border border-white/10">
+              <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-3">
+                <span className="text-xl">📄</span>
+                Export Business Reports
+                <span className="bg-gray-500 text-gray-900 px-3 py-1 rounded-full text-sm font-bold">
+                  REPORTING TOOLS
+                </span>
+              </h3>
+              
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                {[
+                  { name: 'P&L Statement', format: 'PDF', icon: '📊', color: 'bg-red-600' },
+                  { name: 'ROI Analysis', format: 'Excel', icon: '📈', color: 'bg-green-600' },
+                  { name: 'Budget Allocation', format: 'CSV', icon: '💰', color: 'bg-blue-600' },
+                  { name: 'KPIs Dashboard', format: 'PDF', icon: '🏆', color: 'bg-purple-600' }
+                ].map((report) => (
+                  <motion.button
+                    key={report.name}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => {
+                      const businessData = generateBusinessReport(report.name.includes('P&L') ? 'P&L' : 'ROI');
+                      showNotificationFunc(`✅ Export ${report.name} (${report.format}) téléchargé !`);
+                    }}
+                    className={`${report.color} rounded-lg p-4 text-white hover:opacity-90 transition-all`}
+                  >
+                    <div className="text-2xl mb-2">{report.icon}</div>
+                    <div className="text-sm font-bold">{report.name}</div>
+                    <div className="text-xs opacity-80">{report.format}</div>
+                  </motion.button>
+                ))}
+              </div>
+            </div>
+          </motion.div>
+        )}
+
+        {/* Pages & Assets Section - Facebook page_manage_ads Permission */}
+        {activeSection === 'pages' && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="space-y-8"
+          >
+            <div className="text-center mb-8">
+              <div className="flex items-center justify-center gap-4 mb-4">
+                <div className="w-16 h-16 bg-gradient-to-br from-indigo-600 to-blue-600 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-500/30">
+                  <span className="text-3xl">📄</span>
+                </div>
+                <div>
+                  <h2 className="text-4xl font-bold text-white mb-2">
+                    Pages & Assets Manager
+                  </h2>
+                  <p className="text-indigo-400 font-semibold text-lg">
+                    🔒 Utilise la permission page_manage_ads de Facebook
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Bulk Actions Bar */}
+            <div className="bg-gradient-to-r from-indigo-600/20 to-blue-600/20 backdrop-blur-xl rounded-2xl p-6 border border-indigo-500/30">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-xl font-bold text-white flex items-center gap-3">
+                  <span className="text-xl">⚙️</span>
+                  Bulk Operations
+                  <span className="bg-indigo-500 text-indigo-900 px-3 py-1 rounded-full text-sm font-bold">
+                    PAGE MANAGEMENT
+                  </span>
+                </h3>
+                <div className="text-sm text-gray-400">
+                  {selectedPages.length} page(s) sélectionnée(s)
+                </div>
+              </div>
+              
+              <div className="flex flex-wrap gap-3">
+                {[
+                  { action: 'Mettre à jour budget', icon: '💰', color: 'bg-green-600' },
+                  { action: 'Synchroniser audiences', icon: '🎯', color: 'bg-blue-600' },
+                  { action: 'Dupliquer campagnes', icon: '📋', color: 'bg-purple-600' },
+                  { action: 'Exporter rapports', icon: '📄', color: 'bg-orange-600' },
+                  { action: 'Planifier publications', icon: '📅', color: 'bg-pink-600' }
+                ].map((bulk) => (
+                  <motion.button
+                    key={bulk.action}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    disabled={selectedPages.length === 0}
+                    onClick={() => {
+                      if (selectedPages.length > 0) {
+                        const actionMap = {
+                          'Mettre à jour budget': 'budget',
+                          'Synchroniser audiences': 'audience',
+                          'Dupliquer campagnes': 'duplicate',
+                          'Exporter rapports': 'export',
+                          'Planifier publications': 'schedule'
+                        };
+                        bulkUpdatePages(actionMap[bulk.action], selectedPages);
+                        setSelectedPages([]);
+                      }
+                    }}
+                    className={`${bulk.color} disabled:bg-gray-600 disabled:opacity-50 px-4 py-2 rounded-lg text-white text-sm font-medium hover:opacity-90 transition-all flex items-center gap-2`}
+                  >
+                    <span>{bulk.icon}</span>
+                    {bulk.action}
+                  </motion.button>
+                ))}
+              </div>
+            </div>
+
+            {/* Pages List with Performance */}
+            <div className="bg-black/40 backdrop-blur-xl rounded-2xl border border-white/10 overflow-hidden">
+              <div className="p-6 bg-white/5">
+                <h3 className="text-xl font-bold text-white flex items-center gap-3 mb-4">
+                  <span className="text-xl">📈</span>
+                  Pages Managées - Performance Publicitaire
+                  <span className="bg-blue-500 text-blue-900 px-3 py-1 rounded-full text-sm font-bold">
+                    AD PERFORMANCE
+                  </span>
+                </h3>
+                
+                {/* Select All */}
+                <div className="flex items-center gap-3 mb-4">
+                  <input
+                    type="checkbox"
+                    checked={selectedPages.length === managedPages.length}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setSelectedPages(managedPages.map(p => p.id));
+                      } else {
+                        setSelectedPages([]);
+                      }
+                    }}
+                    className="w-4 h-4 text-blue-600"
+                  />
+                  <label className="text-gray-300 text-sm font-medium">
+                    Sélectionner toutes les pages
+                  </label>
+                </div>
+              </div>
+              
+              <div className="divide-y divide-white/5">
+                {managedPages.map((page, i) => (
+                  <motion.div
+                    key={page.id}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: i * 0.1 }}
+                    className="p-6 hover:bg-white/5 transition-all"
+                  >
+                    <div className="flex items-start gap-4">
+                      <input
+                        type="checkbox"
+                        checked={selectedPages.includes(page.id)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedPages([...selectedPages, page.id]);
+                          } else {
+                            setSelectedPages(selectedPages.filter(id => id !== page.id));
+                          }
+                        }}
+                        className="mt-2 w-4 h-4 text-blue-600"
+                      />
+                      
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between mb-4">
+                          <div className="flex items-center gap-3">
+                            <h4 className="text-xl font-bold text-white">{page.name}</h4>
+                            <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+                              page.status === 'active' ? 'bg-green-500/20 text-green-400' : 'bg-yellow-500/20 text-yellow-400'
+                            }`}>
+                              {page.status.toUpperCase()}
+                            </span>
+                          </div>
+                          <div className="flex gap-2">
+                            <button 
+                              onClick={() => showNotificationFunc(`📊 Rapport détaillé pour ${page.name} généré`)}
+                              className="px-3 py-1 bg-blue-600/20 text-blue-400 rounded-lg text-sm hover:bg-blue-600/30 transition-all"
+                            >
+                              Rapport détaillé
+                            </button>
+                            <button 
+                              onClick={() => showNotificationFunc(`⚙️ Paramètres de ${page.name} ouverts`)}
+                              className="px-3 py-1 bg-purple-600/20 text-purple-400 rounded-lg text-sm hover:bg-purple-600/30 transition-all"
+                            >
+                              Gérer
+                            </button>
+                          </div>
+                        </div>
+                        
+                        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4 mb-4">
+                          <div className="bg-white/5 rounded-lg p-3 text-center">
+                            <p className="text-xs text-gray-400 mb-1">Followers</p>
+                            <p className="text-lg font-bold text-white">{page.followers.toLocaleString()}</p>
+                          </div>
+                          <div className="bg-white/5 rounded-lg p-3 text-center">
+                            <p className="text-xs text-gray-400 mb-1">Engagement</p>
+                            <p className="text-lg font-bold text-blue-400">{page.engagement}%</p>
+                          </div>
+                          <div className="bg-white/5 rounded-lg p-3 text-center">
+                            <p className="text-xs text-gray-400 mb-1">Reach</p>
+                            <p className="text-lg font-bold text-green-400">{(page.reach/1000).toFixed(0)}k</p>
+                          </div>
+                          <div className="bg-white/5 rounded-lg p-3 text-center">
+                            <p className="text-xs text-gray-400 mb-1">Ad Spend</p>
+                            <p className="text-lg font-bold text-purple-400">€{page.adSpend.toLocaleString()}</p>
+                          </div>
+                          <div className="bg-white/5 rounded-lg p-3 text-center">
+                            <p className="text-xs text-gray-400 mb-1">Conversions</p>
+                            <p className="text-lg font-bold text-pink-400">{page.conversions}</p>
+                          </div>
+                          <div className="bg-white/5 rounded-lg p-3 text-center">
+                            <p className="text-xs text-gray-400 mb-1">Page Views</p>
+                            <p className="text-lg font-bold text-orange-400">{(page.pageViews/1000).toFixed(1)}k</p>
+                          </div>
+                          <div className="bg-white/5 rounded-lg p-3 text-center">
+                            <p className="text-xs text-gray-400 mb-1">CTR</p>
+                            <p className="text-lg font-bold text-cyan-400">{page.ctr}%</p>
+                          </div>
+                        </div>
+                        
+                        {/* Page Engagement Metrics tied to Ads */}
+                        <div className="bg-gradient-to-r from-indigo-600/10 to-blue-600/10 rounded-lg p-4">
+                          <h5 className="text-sm font-bold text-white mb-3 flex items-center gap-2">
+                            <span>📈</span>
+                            Métriques d'engagement liées aux publicités
+                          </h5>
+                          <div className="grid grid-cols-1 md:grid-cols-4 gap-3 text-xs">
+                            <div className="flex justify-between">
+                              <span className="text-gray-400">Likes depuis ads:</span>
+                              <span className="text-green-400 font-medium">+{Math.floor(page.conversions * 2.3)}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-400">Partages depuis ads:</span>
+                              <span className="text-blue-400 font-medium">+{Math.floor(page.conversions * 0.8)}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-400">Commentaires ads:</span>
+                              <span className="text-purple-400 font-medium">+{Math.floor(page.conversions * 0.4)}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-400">Messages depuis ads:</span>
+                              <span className="text-pink-400 font-medium">+{Math.floor(page.conversions * 0.15)}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+          </motion.div>
+        )}
+
         {/* AI Section - Octavia */}
         {activeSection === 'ai' && (
           <motion.div
@@ -1519,57 +2189,332 @@ export default function AppReviewComplete() {
               initial={{ scale: 0.9 }}
               animate={{ scale: 1 }}
               exit={{ scale: 0.9 }}
-              className="bg-gray-900 rounded-2xl p-6 max-w-md w-full mx-4 border border-white/10"
+              className="bg-gray-900 rounded-2xl p-6 max-w-3xl w-full mx-4 border border-white/10"
               onClick={(e) => e.stopPropagation()}
             >
-              <h3 className="text-2xl font-bold text-white mb-4">Créer une nouvelle campagne</h3>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm text-gray-400 mb-1">Nom de la campagne</label>
-                  <input
-                    type="text"
-                    value={newCampaign.name}
-                    onChange={(e) => setNewCampaign({...newCampaign, name: e.target.value})}
-                    className="w-full px-4 py-2 bg-gray-800 rounded-lg text-white"
-                    placeholder="Ex: Black Friday 2024"
-                  />
+              <h3 className="text-2xl font-bold text-white mb-4">🚀 Créer une nouvelle campagne publicitaire</h3>
+              
+              <div className="max-h-[70vh] overflow-y-auto space-y-4 pr-2">
+                {/* Étape 1: Informations de base */}
+                <div className="bg-gradient-to-r from-purple-600/10 to-pink-600/10 rounded-lg p-4 border border-purple-500/20">
+                  <h4 className="text-lg font-semibold text-white mb-3">📝 Informations de base</h4>
+                  
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-sm text-gray-400 mb-1">Nom de la campagne *</label>
+                      <input
+                        type="text"
+                        value={newCampaign.name}
+                        onChange={(e) => setNewCampaign({...newCampaign, name: e.target.value})}
+                        className="w-full px-4 py-2 bg-gray-800 rounded-lg text-white border border-gray-700 focus:border-purple-500 transition-colors"
+                        placeholder="Ex: Black Friday 2024 - Sneakers"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm text-gray-400 mb-1">Description du produit/service *</label>
+                      <textarea
+                        value={newCampaign.productDescription}
+                        onChange={(e) => setNewCampaign({...newCampaign, productDescription: e.target.value})}
+                        className="w-full px-4 py-2 bg-gray-800 rounded-lg text-white border border-gray-700 focus:border-purple-500 transition-colors h-20 resize-none"
+                        placeholder="Ex: Sneakers de running haute performance avec technologie d'amorti avancée. Prix spécial Black Friday -40%"
+                      />
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-sm text-gray-400 mb-1">Objectif</label>
-                  <select 
-                    value={newCampaign.objective}
-                    onChange={(e) => setNewCampaign({...newCampaign, objective: e.target.value})}
-                    className="w-full px-4 py-2 bg-gray-800 rounded-lg text-white"
+
+                {/* Étape 2: Objectif */}
+                <div className="bg-gradient-to-r from-blue-600/10 to-cyan-600/10 rounded-lg p-4 border border-blue-500/20">
+                  <h4 className="text-lg font-semibold text-white mb-3">🎯 Objectif de campagne</h4>
+                  
+                  <div className="space-y-3">
+                    <select 
+                      value={newCampaign.objective}
+                      onChange={(e) => setNewCampaign({...newCampaign, objective: e.target.value})}
+                      className="w-full px-4 py-2 bg-gray-800 rounded-lg text-white border border-gray-700 focus:border-blue-500 transition-colors"
+                    >
+                      <option value="CONVERSIONS">💰 Conversions - Ventes directes</option>
+                      <option value="LEAD_GENERATION">📧 Génération de leads - Formulaires</option>
+                      <option value="TRAFFIC">🚗 Trafic - Visites sur site</option>
+                      <option value="BRAND_AWARENESS">👁️ Notoriété - Faire connaître</option>
+                      <option value="REACH">📣 Portée - Toucher un maximum</option>
+                      <option value="APP_INSTALLS">📱 Installations d'app</option>
+                      <option value="VIDEO_VIEWS">🎬 Vues vidéo</option>
+                      <option value="ENGAGEMENT">💬 Engagement - Likes & partages</option>
+                      <option value="CATALOG_SALES">🛍️ Ventes catalogue</option>
+                      <option value="STORE_TRAFFIC">🏪 Visites en magasin</option>
+                    </select>
+                    
+                    <div className="bg-gray-800 rounded-lg p-3">
+                      <p className="text-xs text-gray-400">
+                        {newCampaign.objective === 'CONVERSIONS' && '💡 Optimisé pour générer des achats sur votre site'}
+                        {newCampaign.objective === 'LEAD_GENERATION' && '💡 Collectez des contacts qualifiés via formulaires'}
+                        {newCampaign.objective === 'TRAFFIC' && '💡 Maximisez les visites sur votre site web'}
+                        {newCampaign.objective === 'BRAND_AWARENESS' && '💡 Faites connaître votre marque au plus grand nombre'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Étape 3: Budget */}
+                <div className="bg-gradient-to-r from-green-600/10 to-emerald-600/10 rounded-lg p-4 border border-green-500/20">
+                  <h4 className="text-lg font-semibold text-white mb-3">💶 Budget et planning</h4>
+                  
+                  <div className="space-y-3">
+                    {/* Type de budget */}
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => setNewCampaign({...newCampaign, budgetType: 'daily'})}
+                        className={`flex-1 px-4 py-2 rounded-lg transition-all ${
+                          newCampaign.budgetType === 'daily' 
+                            ? 'bg-green-600 text-white' 
+                            : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                        }`}
+                      >
+                        Budget quotidien
+                      </button>
+                      <button
+                        onClick={() => setNewCampaign({...newCampaign, budgetType: 'weekly'})}
+                        className={`flex-1 px-4 py-2 rounded-lg transition-all ${
+                          newCampaign.budgetType === 'weekly' 
+                            ? 'bg-green-600 text-white' 
+                            : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                        }`}
+                      >
+                        Budget hebdomadaire
+                      </button>
+                    </div>
+                    
+                    {/* Montant du budget */}
+                    <div>
+                      <label className="block text-sm text-gray-400 mb-1">
+                        {newCampaign.budgetType === 'daily' ? 'Budget quotidien (€)' : 'Budget hebdomadaire (€)'}
+                      </label>
+                      <input
+                        type="number"
+                        value={newCampaign.budgetType === 'daily' ? newCampaign.dailyBudget : newCampaign.weeklyBudget}
+                        onChange={(e) => setNewCampaign({...newCampaign, 
+                          [newCampaign.budgetType === 'daily' ? 'dailyBudget' : 'weeklyBudget']: parseInt(e.target.value)
+                        })}
+                        className="w-full px-4 py-2 bg-gray-800 rounded-lg text-white border border-gray-700 focus:border-green-500 transition-colors"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        Estimation: {newCampaign.budgetType === 'daily' 
+                          ? `€${(newCampaign.dailyBudget * 30).toLocaleString()} par mois`
+                          : `€${((newCampaign.weeklyBudget * 52) / 12).toFixed(0)} par mois`
+                        }
+                      </p>
+                    </div>
+                    
+                    {/* Dates */}
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-sm text-gray-400 mb-1">Date de début</label>
+                        <input
+                          type="date"
+                          value={newCampaign.startDate}
+                          onChange={(e) => setNewCampaign({...newCampaign, startDate: e.target.value})}
+                          className="w-full px-3 py-2 bg-gray-800 rounded-lg text-white text-sm border border-gray-700"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm text-gray-400 mb-1">Date de fin (optionnel)</label>
+                        <input
+                          type="date"
+                          value={newCampaign.endDate}
+                          onChange={(e) => setNewCampaign({...newCampaign, endDate: e.target.value})}
+                          className="w-full px-3 py-2 bg-gray-800 rounded-lg text-white text-sm border border-gray-700"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Étape 4: Audience */}
+                <div className="bg-gradient-to-r from-orange-600/10 to-red-600/10 rounded-lg p-4 border border-orange-500/20">
+                  <h4 className="text-lg font-semibold text-white mb-3">👥 Configuration de l'audience</h4>
+                  
+                  <div className="space-y-3">
+                    {/* Type d'audience */}
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => setNewCampaign({...newCampaign, audienceType: 'ai'})}
+                        className={`flex-1 px-4 py-2 rounded-lg transition-all flex items-center justify-center gap-2 ${
+                          newCampaign.audienceType === 'ai' 
+                            ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white' 
+                            : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                        }`}
+                      >
+                        <span>🤖</span>
+                        <span>IA Octavia (Recommandé)</span>
+                      </button>
+                      <button
+                        onClick={() => setNewCampaign({...newCampaign, audienceType: 'manual'})}
+                        className={`flex-1 px-4 py-2 rounded-lg transition-all flex items-center justify-center gap-2 ${
+                          newCampaign.audienceType === 'manual' 
+                            ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white' 
+                            : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                        }`}
+                      >
+                        <span>⚙️</span>
+                        <span>Configuration manuelle</span>
+                      </button>
+                    </div>
+                    
+                    {newCampaign.audienceType === 'ai' ? (
+                      <div className="bg-gradient-to-r from-purple-900/20 to-pink-900/20 rounded-lg p-4 border border-purple-500/30">
+                        <div className="flex items-start gap-3">
+                          <div className="w-10 h-10 bg-gradient-to-br from-purple-600 to-pink-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                            <span className="text-xl">🤖</span>
+                          </div>
+                          <div>
+                            <h5 className="text-white font-medium mb-1">Octavia optimisera votre audience</h5>
+                            <p className="text-sm text-gray-400 mb-3">
+                              L'IA analysera vos performances et ajustera automatiquement le ciblage pour maximiser vos résultats.
+                            </p>
+                            <div className="space-y-2">
+                              <div className="flex items-center gap-2 text-xs text-green-400">
+                                <span>✓</span>
+                                <span>Analyse comportementale en temps réel</span>
+                              </div>
+                              <div className="flex items-center gap-2 text-xs text-green-400">
+                                <span>✓</span>
+                                <span>Optimisation automatique du ciblage</span>
+                              </div>
+                              <div className="flex items-center gap-2 text-xs text-green-400">
+                                <span>✓</span>
+                                <span>Audiences lookalike intelligentes</span>
+                              </div>
+                              <div className="flex items-center gap-2 text-xs text-green-400">
+                                <span>✓</span>
+                                <span>A/B testing automatisé</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {/* Âge et genre */}
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-sm text-gray-400 mb-1">Tranche d'âge</label>
+                            <div className="flex gap-2">
+                              <input
+                                type="number"
+                                value={newCampaign.audience.ageMin}
+                                onChange={(e) => setNewCampaign({...newCampaign, audience: {...newCampaign.audience, ageMin: parseInt(e.target.value)}})}
+                                className="w-20 px-2 py-1 bg-gray-800 rounded text-white text-sm"
+                                min="13"
+                                max="65"
+                              />
+                              <span className="text-gray-400">à</span>
+                              <input
+                                type="number"
+                                value={newCampaign.audience.ageMax}
+                                onChange={(e) => setNewCampaign({...newCampaign, audience: {...newCampaign.audience, ageMax: parseInt(e.target.value)}})}
+                                className="w-20 px-2 py-1 bg-gray-800 rounded text-white text-sm"
+                                min="13"
+                                max="65"
+                              />
+                            </div>
+                          </div>
+                          <div>
+                            <label className="block text-sm text-gray-400 mb-1">Genre</label>
+                            <select
+                              value={newCampaign.audience.gender}
+                              onChange={(e) => setNewCampaign({...newCampaign, audience: {...newCampaign.audience, gender: e.target.value}})}
+                              className="w-full px-3 py-1.5 bg-gray-800 rounded text-white text-sm"
+                            >
+                              <option value="all">Tous</option>
+                              <option value="male">Hommes</option>
+                              <option value="female">Femmes</option>
+                            </select>
+                          </div>
+                        </div>
+                        
+                        {/* Centres d'intérêt */}
+                        <div>
+                          <label className="block text-sm text-gray-400 mb-1">Centres d'intérêt</label>
+                          <div className="flex flex-wrap gap-2">
+                            {['Sport', 'Mode', 'Tech', 'Voyage', 'Food', 'Gaming', 'Musique', 'Cinéma'].map((interest) => (
+                              <button
+                                key={interest}
+                                onClick={() => {
+                                  const interests = selectedInterests.includes(interest)
+                                    ? selectedInterests.filter(i => i !== interest)
+                                    : [...selectedInterests, interest];
+                                  setSelectedInterests(interests);
+                                  setNewCampaign({...newCampaign, audience: {...newCampaign.audience, interests}});
+                                }}
+                                className={`px-3 py-1 rounded-full text-xs transition-all ${
+                                  selectedInterests.includes(interest)
+                                    ? 'bg-orange-600 text-white'
+                                    : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                                }`}
+                              >
+                                {interest}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                        
+                        {/* Estimation de l'audience */}
+                        <div className="bg-gray-800 rounded-lg p-3">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-sm text-gray-400">Taille estimée de l'audience</span>
+                            <span className="text-sm font-medium text-white">
+                              {audienceSize.min.toLocaleString()} - {audienceSize.max.toLocaleString()}
+                            </span>
+                          </div>
+                          <div className="w-full bg-gray-700 rounded-full h-2">
+                            <div className="bg-gradient-to-r from-green-600 to-emerald-600 h-2 rounded-full" style={{width: '60%'}}></div>
+                          </div>
+                          <p className="text-xs text-gray-500 mt-1">Audience optimale pour votre budget</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Stratégie d'enchères */}
+                <div className="bg-gradient-to-r from-violet-600/10 to-purple-600/10 rounded-lg p-4 border border-violet-500/20">
+                  <h4 className="text-lg font-semibold text-white mb-3">⚡ Stratégie d'enchères</h4>
+                  
+                  <select
+                    value={newCampaign.bidStrategy}
+                    onChange={(e) => setNewCampaign({...newCampaign, bidStrategy: e.target.value})}
+                    className="w-full px-4 py-2 bg-gray-800 rounded-lg text-white border border-gray-700"
                   >
-                    <option value="CONVERSIONS">Conversions</option>
-                    <option value="LEAD_GENERATION">Génération de leads</option>
-                    <option value="TRAFFIC">Trafic</option>
-                    <option value="BRAND_AWARENESS">Notoriété</option>
+                    <option value="lowest_cost">Coût le plus bas (Recommandé)</option>
+                    <option value="cost_cap">Plafond de coût</option>
+                    <option value="bid_cap">Plafond d'enchère</option>
+                    <option value="target_cost">Coût cible</option>
                   </select>
                 </div>
-                <div>
-                  <label className="block text-sm text-gray-400 mb-1">Budget quotidien (€)</label>
-                  <input
-                    type="number"
-                    value={newCampaign.budget}
-                    onChange={(e) => setNewCampaign({...newCampaign, budget: parseInt(e.target.value)})}
-                    className="w-full px-4 py-2 bg-gray-800 rounded-lg text-white"
-                  />
-                </div>
-                <div className="flex gap-3 pt-4">
-                  <button
-                    onClick={createCampaign}
-                    className="flex-1 px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg hover:from-purple-700 hover:to-pink-700"
-                  >
-                    Créer la campagne
-                  </button>
-                  <button
-                    onClick={() => setShowCreateCampaignModal(false)}
-                    className="flex-1 px-4 py-2 bg-gray-700 rounded-lg hover:bg-gray-600"
-                  >
-                    Annuler
-                  </button>
-                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="flex gap-3 pt-6 border-t border-gray-800">
+                <button
+                  onClick={() => {
+                    if (!newCampaign.name || !newCampaign.productDescription) {
+                      showNotificationFunc('⚠️ Veuillez remplir tous les champs obligatoires');
+                      return;
+                    }
+                    createCampaign();
+                  }}
+                  className="flex-1 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all font-medium flex items-center justify-center gap-2"
+                >
+                  <span>🚀</span>
+                  <span>Créer la campagne</span>
+                </button>
+                <button
+                  onClick={() => setShowCreateCampaignModal(false)}
+                  className="flex-1 px-6 py-3 bg-gray-700 rounded-lg hover:bg-gray-600 transition-all font-medium"
+                >
+                  Annuler
+                </button>
               </div>
             </motion.div>
           </motion.div>
