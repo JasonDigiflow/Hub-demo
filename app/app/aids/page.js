@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { Line, Bar } from 'react-chartjs-2';
+import aidsLogger, { LogCategories } from '@/lib/aids-logger';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -61,9 +62,16 @@ export default function AIDsDashboard() {
   const [avgCostPerLead, setAvgCostPerLead] = useState(18.50);
   const [bestPerformingAd, setBestPerformingAd] = useState('Black Friday Special');
   const [worstPerformingAd, setWorstPerformingAd] = useState('Generic Sale');
+  
+  // Métriques ROI
+  const [totalRevenue, setTotalRevenue] = useState(48567.89);
+  const [totalSpend, setTotalSpend] = useState(12456.78);
+  const [roi, setRoi] = useState(0);
+  const [roiTrend, setRoiTrend] = useState([]);
 
   useEffect(() => {
     checkMetaConnection();
+    aidsLogger.info(LogCategories.UI, 'Dashboard AIDs initialisé');
   }, []);
   
   useEffect(() => {
@@ -73,22 +81,42 @@ export default function AIDsDashboard() {
       }
     }
   }, [timeRange, selectedAccount, metaConnected]);
+  
+  // Calcul du ROI
+  useEffect(() => {
+    if (totalRevenue && totalSpend) {
+      const calculatedRoi = ((totalRevenue - totalSpend) / totalSpend * 100).toFixed(2);
+      setRoi(calculatedRoi);
+      aidsLogger.info(LogCategories.ANALYTICS, 'ROI calculé', { 
+        revenue: totalRevenue, 
+        spend: totalSpend, 
+        roi: calculatedRoi 
+      });
+    }
+  }, [totalRevenue, totalSpend]);
 
   const checkMetaConnection = async () => {
     try {
+      aidsLogger.info(LogCategories.META_API, 'Vérification connexion Meta');
       const response = await fetch('/api/aids/meta/status');
       const data = await response.json();
       setMetaConnected(data.connected);
       setUserInfo(data.user);
       setAccounts(data.accounts || []);
       setSelectedAccount(data.selectedAccount);
+      aidsLogger.success(LogCategories.META_API, 'Connexion Meta vérifiée', { 
+        connected: data.connected, 
+        accountsCount: data.accounts?.length 
+      });
     } catch (error) {
+      aidsLogger.error(LogCategories.META_API, 'Erreur vérification connexion Meta', {}, error);
       console.error('Error checking Meta connection:', error);
     }
   };
 
   const loadDashboardData = async () => {
     setLoading(true);
+    aidsLogger.info(LogCategories.UI, 'Chargement des données du dashboard', { timeRange, selectedAccount });
     try {
       // Try to load real Meta Ads data first if connected
       if (metaConnected && selectedAccount) {
@@ -111,12 +139,27 @@ export default function AIDsDashboard() {
             setMetrics(metricsWithTrend);
             setRecentActions(generateRecentActions(metricsWithTrend));
             analyzeWithAI(metricsWithTrend);
+            
+            // Update revenue and spend for ROI calculation
+            if (insightsData.metrics.overview) {
+              setTotalRevenue(insightsData.metrics.overview.totalRevenue || 48567.89);
+              setTotalSpend(insightsData.metrics.overview.totalSpend || 12456.78);
+            }
+            
+            aidsLogger.success(LogCategories.META_API, 'Données Meta chargées avec succès', { 
+              hasData: true,
+              metricsCount: Object.keys(insightsData.metrics).length 
+            });
             setLoading(false);
             return;
           } else {
+            aidsLogger.warning(LogCategories.META_API, 'Échec chargement données Meta', { 
+              error: insightsData.error || 'Unknown error' 
+            });
             console.error('Failed to get real data:', insightsData.error || 'Unknown error');
           }
         } catch (metaError) {
+          aidsLogger.error(LogCategories.META_API, 'Erreur lors de la récupération des insights Meta', {}, metaError);
           console.error('Could not fetch Meta insights, falling back to demo:', metaError);
         }
       }
@@ -130,6 +173,7 @@ export default function AIDsDashboard() {
       // Analyze with AI
       analyzeWithAI(metricsData.metrics || getDemoMetrics());
     } catch (error) {
+      aidsLogger.error(LogCategories.UI, 'Erreur chargement dashboard', {}, error);
       console.error('Error loading dashboard:', error);
       // Load demo data as fallback
       const demoMetrics = getDemoMetrics();
@@ -142,6 +186,7 @@ export default function AIDsDashboard() {
 
   const analyzeWithAI = async (metricsData) => {
     setAnalyzingAI(true);
+    aidsLogger.info(LogCategories.OCTAVIA_AI, 'Analyse IA des métriques en cours');
     try {
       const response = await fetch('/api/aids/analyze', {
         method: 'POST',
@@ -152,7 +197,12 @@ export default function AIDsDashboard() {
       
       setInsights(analysis.insights || []);
       setRecommendations(analysis.recommendations || []);
+      aidsLogger.success(LogCategories.OCTAVIA_AI, 'Analyse IA terminée', {
+        insightsCount: analysis.insights?.length || 0,
+        recommendationsCount: analysis.recommendations?.length || 0
+      });
     } catch (error) {
+      aidsLogger.error(LogCategories.OCTAVIA_AI, 'Erreur analyse IA', {}, error);
       console.error('Error analyzing with AI:', error);
       // Fallback to demo insights
       setInsights(getDemoInsights());
@@ -291,13 +341,16 @@ export default function AIDsDashboard() {
 
   const handleAutopilotToggle = () => {
     if (!autopilotEnabled) {
+      aidsLogger.info(LogCategories.UI, 'Ouverture modal Autopilot');
       setShowAutopilotModal(true);
     } else {
+      aidsLogger.info(LogCategories.UI, 'Désactivation Autopilot');
       setAutopilotEnabled(false);
     }
   };
 
   const confirmAutopilot = () => {
+    aidsLogger.success(LogCategories.OCTAVIA_AI, 'Autopilot activé avec succès');
     setAutopilotEnabled(true);
     setShowAutopilotModal(false);
   };
@@ -315,10 +368,12 @@ export default function AIDsDashboard() {
       if (data.success) {
         setSelectedAccount(accountId);
         setShowAccountSelector(false);
+        aidsLogger.success(LogCategories.META_API, 'Compte publicitaire changé', { accountId });
         // Reload dashboard data with new account
         loadDashboardData();
       }
     } catch (error) {
+      aidsLogger.error(LogCategories.META_API, 'Erreur changement de compte', { accountId }, error);
       console.error('Error switching account:', error);
     }
   };
@@ -377,22 +432,6 @@ export default function AIDsDashboard() {
             <span>App Review Premium</span>
           </button>
 
-          {/* Revenue Button */}
-          <a
-            href="/app/aids/revenues"
-            className="px-5 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl font-medium transition-all hover:from-green-700 hover:to-emerald-700 shadow-lg shadow-green-600/20 flex items-center gap-2"
-          >
-            <span className="text-xl">💰</span>
-            <span>Gérer les revenus</span>
-          </a>
-
-          <a
-            href="/app/aids/prospects"
-            className="px-5 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl font-medium transition-all hover:from-purple-700 hover:to-pink-700 shadow-lg shadow-purple-600/20 flex items-center gap-2"
-          >
-            <span className="text-xl">👥</span>
-            <span>Centre de Prospects</span>
-          </a>
 
           {/* Autopilot Toggle */}
           <button
@@ -676,6 +715,52 @@ export default function AIDsDashboard() {
           </div>
         </motion.div>
       )}
+
+      {/* ROI Section */}
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="bg-gradient-to-r from-emerald-600/20 to-green-600/20 rounded-xl p-6 border border-green-500/30"
+      >
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-xl font-bold text-white mb-2">Retour sur Investissement (ROI)</h3>
+            <div className="flex items-center gap-6">
+              <div>
+                <p className="text-sm text-gray-400">Revenus</p>
+                <p className="text-2xl font-bold text-green-400">
+                  €{totalRevenue.toLocaleString('fr-FR', { minimumFractionDigits: 2 })}
+                </p>
+              </div>
+              <div className="text-3xl text-gray-600">-</div>
+              <div>
+                <p className="text-sm text-gray-400">Dépenses</p>
+                <p className="text-2xl font-bold text-red-400">
+                  €{totalSpend.toLocaleString('fr-FR', { minimumFractionDigits: 2 })}
+                </p>
+              </div>
+              <div className="text-3xl text-gray-600">=</div>
+              <div>
+                <p className="text-sm text-gray-400">Profit</p>
+                <p className="text-2xl font-bold text-white">
+                  €{(totalRevenue - totalSpend).toLocaleString('fr-FR', { minimumFractionDigits: 2 })}
+                </p>
+              </div>
+            </div>
+          </div>
+          <div className="text-center">
+            <p className="text-sm text-gray-400 mb-1">ROI</p>
+            <p className={`text-4xl font-bold ${
+              roi > 0 ? 'text-green-400' : 'text-red-400'
+            }`}>
+              {roi}%
+            </p>
+            <p className="text-xs text-gray-500 mt-1">
+              {roi > 0 ? '↑ Profitable' : '↓ Non profitable'}
+            </p>
+          </div>
+        </div>
+      </motion.div>
 
       {/* Real Data Indicator */}
       {metrics?.hasRealData && (
