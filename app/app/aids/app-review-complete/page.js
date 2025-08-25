@@ -62,6 +62,14 @@ export default function AppReviewComplete() {
   const [cpm, setCpm] = useState(12.45);
   const [qualityScore, setQualityScore] = useState(8.7);
   const [adSpend, setAdSpend] = useState(12456.78);
+  const [conversionRate, setConversionRate] = useState(2.45);
+  const [frequencyCap, setFrequencyCap] = useState(1.8);
+  const [engagementRate, setEngagementRate] = useState(4.2);
+  const [videoViews, setVideoViews] = useState(234567);
+  const [linkClicks, setLinkClicks] = useState(8934);
+  const [costPerResult, setCostPerResult] = useState(18.50);
+  const [reachGrowth, setReachGrowth] = useState(23.5);
+  const [audienceOverlap, setAudienceOverlap] = useState(12.3);
 
   // Métriques en temps réel
   useEffect(() => {
@@ -74,6 +82,14 @@ export default function AppReviewComplete() {
       setCpm(12.45 + (Math.random() - 0.5) * 2);
       setQualityScore(8.7 + (Math.random() - 0.5) * 0.5);
       setAdSpend(prev => prev + Math.random() * 10);
+      setConversionRate(2.45 + (Math.random() - 0.5) * 0.3);
+      setFrequencyCap(1.8 + (Math.random() - 0.5) * 0.2);
+      setEngagementRate(4.2 + (Math.random() - 0.5) * 0.5);
+      setVideoViews(prev => prev + Math.floor(Math.random() * 100));
+      setLinkClicks(prev => prev + Math.floor(Math.random() * 20));
+      setCostPerResult(18.50 + (Math.random() - 0.5) * 2);
+      setReachGrowth(23.5 + (Math.random() - 0.5) * 3);
+      setAudienceOverlap(12.3 + (Math.random() - 0.5) * 1.5);
     }, 3000);
     
     return () => clearInterval(interval);
@@ -480,7 +496,7 @@ export default function AppReviewComplete() {
               </div>
             </motion.div>
 
-            {/* Métriques principales */}
+            {/* Métriques principales - Ligne 1 */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               {[
                 { 
@@ -492,12 +508,12 @@ export default function AppReviewComplete() {
                   detail: `€${avgOrderValue} AOV`
                 },
                 { 
-                  title: 'Dépenses Pub', 
-                  value: `€${metrics.spent.toFixed(0)}`, 
-                  change: '+12%', 
+                  title: 'ROAS', 
+                  value: `${roas.toFixed(2)}x`, 
+                  change: '+15%', 
                   trend: 'up',
                   color: 'from-blue-600 to-cyan-600',
-                  detail: `€${cpm.toFixed(2)} CPM`
+                  detail: `Target: 4.0x`
                 },
                 { 
                   title: 'Conversions', 
@@ -505,15 +521,15 @@ export default function AppReviewComplete() {
                   change: '+18%', 
                   trend: 'up',
                   color: 'from-purple-600 to-pink-600',
-                  detail: `${conversionRate}% CVR`
+                  detail: `${conversionRate.toFixed(2)}% CVR`
                 },
                 { 
-                  title: 'Profit', 
-                  value: `€${profit}`, 
-                  change: `${profitMargin}%`, 
+                  title: 'CTR', 
+                  value: `${metrics.ctr.toFixed(2)}%`, 
+                  change: '+0.5%', 
                   trend: 'up',
                   color: 'from-orange-600 to-red-600',
-                  detail: `${profitMargin}% marge`
+                  detail: `${linkClicks.toLocaleString()} clics`
                 }
               ].map((metric, index) => (
                 <motion.div
@@ -577,6 +593,272 @@ export default function AppReviewComplete() {
                 </motion.div>
               ))}
             </div>
+
+            {/* Métriques secondaires - Ligne 2 */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-4">
+              {[
+                { 
+                  title: 'CPM', 
+                  value: `€${cpm.toFixed(2)}`, 
+                  change: '-8%', 
+                  trend: 'down',
+                  color: 'from-indigo-600 to-blue-600',
+                  detail: `${metrics.impressions.toLocaleString()} imp.`
+                },
+                { 
+                  title: 'Fréquence', 
+                  value: frequencyCap.toFixed(2), 
+                  change: '+0.2', 
+                  trend: 'up',
+                  color: 'from-teal-600 to-cyan-600',
+                  detail: 'Optimal: 1.5-2.0'
+                },
+                { 
+                  title: 'Engagement', 
+                  value: `${engagementRate.toFixed(1)}%`, 
+                  change: '+1.2%', 
+                  trend: 'up',
+                  color: 'from-pink-600 to-rose-600',
+                  detail: `${videoViews.toLocaleString()} vues`
+                },
+                { 
+                  title: 'CPA', 
+                  value: `€${costPerResult.toFixed(2)}`, 
+                  change: '-12%', 
+                  trend: 'down',
+                  color: 'from-amber-600 to-orange-600',
+                  detail: 'Target: €15'
+                }
+              ].map((metric, index) => (
+                <motion.div
+                  key={metric.title}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.4 + index * 0.1 }}
+                  whileHover={{ scale: 1.02, y: -5 }}
+                  className="relative overflow-hidden cursor-pointer"
+                  onClick={() => showNotificationFunc(`${metric.title}: ${metric.value} (${metric.change})`)}
+                >
+                  <div className={`
+                    bg-gradient-to-br ${metric.color} p-[1px] rounded-2xl
+                  `}>
+                    <div className="bg-gray-900/90 backdrop-blur-xl rounded-2xl p-4">
+                      <div className="flex items-start justify-between mb-2">
+                        <p className="text-gray-400 text-sm font-medium">{metric.title}</p>
+                        <div className={`
+                          flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium
+                          ${metric.trend === 'up' 
+                            ? 'bg-green-500/20 text-green-400' 
+                            : 'bg-red-500/20 text-red-400'
+                          }
+                        `}>
+                          {metric.trend === 'up' ? <TrendUpIcon /> : <TrendDownIcon />}
+                          {metric.change}
+                        </div>
+                      </div>
+                      <p className="text-2xl font-bold text-white mb-1">
+                        {metric.value}
+                      </p>
+                      <p className="text-xs text-gray-500">{metric.detail}</p>
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+
+            {/* Insights avancés */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
+              {/* Performance par heure */}
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.8 }}
+                className="bg-black/40 backdrop-blur-xl rounded-2xl p-6 border border-white/10"
+              >
+                <h3 className="text-lg font-bold text-white mb-4">🕐 Heures de pointe</h3>
+                <div className="space-y-3">
+                  {[
+                    { hour: '20h-22h', performance: 92, conversions: 156 },
+                    { hour: '12h-14h', performance: 78, conversions: 98 },
+                    { hour: '18h-20h', performance: 85, conversions: 124 }
+                  ].map((time) => (
+                    <div key={time.hour} className="flex items-center justify-between">
+                      <span className="text-gray-400 text-sm">{time.hour}</span>
+                      <div className="flex items-center gap-2">
+                        <div className="w-24 bg-gray-800 rounded-full h-2">
+                          <motion.div 
+                            className="bg-gradient-to-r from-purple-600 to-pink-600 h-2 rounded-full"
+                            initial={{ width: 0 }}
+                            animate={{ width: `${time.performance}%` }}
+                            transition={{ duration: 1, delay: 0.5 }}
+                          />
+                        </div>
+                        <span className="text-white text-sm font-medium">{time.conversions}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-xs text-gray-500 mt-3">
+                  💡 Augmentez les enchères de 25% sur 20h-22h
+                </p>
+              </motion.div>
+
+              {/* Top audiences */}
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.9 }}
+                className="bg-black/40 backdrop-blur-xl rounded-2xl p-6 border border-white/10"
+              >
+                <h3 className="text-lg font-bold text-white mb-4">👥 Top Audiences</h3>
+                <div className="space-y-3">
+                  {[
+                    { name: 'Femmes 25-34', roas: 4.2, spend: 3456 },
+                    { name: 'Lookalike 1%', roas: 3.8, spend: 2890 },
+                    { name: 'Remarketing', roas: 5.1, spend: 1234 }
+                  ].map((audience) => (
+                    <div key={audience.name} className="bg-white/5 rounded-lg p-3">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-white text-sm font-medium">{audience.name}</span>
+                        <span className="text-green-400 text-sm font-bold">{audience.roas}x</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-gray-500 text-xs">Dépenses</span>
+                        <span className="text-gray-400 text-xs">€{audience.spend}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-xs text-gray-500 mt-3">
+                  💡 Dupliquez la campagne Remarketing
+                </p>
+              </motion.div>
+
+              {/* Créatives performantes */}
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 1.0 }}
+                className="bg-black/40 backdrop-blur-xl rounded-2xl p-6 border border-white/10"
+              >
+                <h3 className="text-lg font-bold text-white mb-4">🎨 Top Créatives</h3>
+                <div className="space-y-3">
+                  {[
+                    { type: 'Vidéo 15s', ctr: 3.8, fatigue: 'Faible' },
+                    { type: 'Carrousel', ctr: 2.9, fatigue: 'Moyenne' },
+                    { type: 'Image statique', ctr: 1.8, fatigue: 'Élevée' }
+                  ].map((creative) => (
+                    <div key={creative.type} className="bg-white/5 rounded-lg p-3">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-white text-sm font-medium">{creative.type}</span>
+                        <span className="text-blue-400 text-sm font-bold">{creative.ctr}%</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-gray-500 text-xs">Fatigue</span>
+                        <span className={`text-xs font-medium ${
+                          creative.fatigue === 'Faible' ? 'text-green-400' :
+                          creative.fatigue === 'Moyenne' ? 'text-yellow-400' :
+                          'text-red-400'
+                        }`}>{creative.fatigue}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-xs text-gray-500 mt-3">
+                  💡 Remplacez les images statiques
+                </p>
+              </motion.div>
+            </div>
+
+            {/* Recommandations AI */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 1.1 }}
+              className="bg-gradient-to-r from-purple-600/10 to-pink-600/10 backdrop-blur-xl rounded-2xl p-6 border border-purple-500/20 mt-6"
+            >
+              <h3 className="text-lg font-bold text-white mb-4">🎯 Opportunités d'optimisation</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {[
+                  {
+                    title: "Audience Overlap",
+                    description: `${audienceOverlap.toFixed(1)}% de chevauchement détecté`,
+                    action: "Consolider les audiences",
+                    impact: "+15% reach",
+                    priority: "high"
+                  },
+                  {
+                    title: "Budget Distribution",
+                    description: "80% du budget sur 20% des campagnes",
+                    action: "Redistribuer le budget",
+                    impact: "+€2.3k profit",
+                    priority: "medium"
+                  },
+                  {
+                    title: "Creative Refresh",
+                    description: "3 créatives en fatigue avancée",
+                    action: "Nouvelles variantes",
+                    impact: "+0.8% CTR",
+                    priority: "high"
+                  },
+                  {
+                    title: "Placement Optimization",
+                    description: "Stories 40% moins cher que Feed",
+                    action: "Shift vers Stories",
+                    impact: "-25% CPA",
+                    priority: "medium"
+                  },
+                  {
+                    title: "Dayparting",
+                    description: "Nuit = 60% moins de conversions",
+                    action: "Pauser 00h-06h",
+                    impact: "+18% ROAS",
+                    priority: "low"
+                  },
+                  {
+                    title: "Reach Growth",
+                    description: `+${reachGrowth.toFixed(1)}% cette semaine`,
+                    action: "Augmenter fréquence",
+                    impact: "+12% conversions",
+                    priority: "medium"
+                  }
+                ].map((rec, i) => (
+                  <motion.div
+                    key={i}
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: 1.2 + i * 0.1 }}
+                    className="bg-white/5 rounded-xl p-4 hover:bg-white/10 transition-all cursor-pointer"
+                    onClick={() => {
+                      setApplyingRecommendation(rec);
+                      setTimeout(() => {
+                        showNotificationFunc(`✅ ${rec.action} appliqué ! Impact attendu: ${rec.impact}`);
+                        setApplyingRecommendation(null);
+                      }, 1500);
+                    }}
+                  >
+                    <div className="flex items-start justify-between mb-2">
+                      <h4 className="text-white font-medium text-sm">{rec.title}</h4>
+                      <span className={`text-xs px-2 py-1 rounded-full ${
+                        rec.priority === 'high' ? 'bg-red-500/20 text-red-400' :
+                        rec.priority === 'medium' ? 'bg-yellow-500/20 text-yellow-400' :
+                        'bg-blue-500/20 text-blue-400'
+                      }`}>
+                        {rec.priority === 'high' ? 'Urgent' :
+                         rec.priority === 'medium' ? 'Important' : 'Info'}
+                      </span>
+                    </div>
+                    <p className="text-gray-400 text-xs mb-2">{rec.description}</p>
+                    <div className="flex items-center justify-between">
+                      <span className="text-purple-400 text-xs font-medium">
+                        {applyingRecommendation?.title === rec.title ? 'Application...' : rec.action}
+                      </span>
+                      <span className="text-green-400 text-xs font-bold">{rec.impact}</span>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            </motion.div>
           </motion.div>
         )}
 
@@ -784,6 +1066,61 @@ export default function AppReviewComplete() {
           >
             <h2 className="text-3xl font-bold text-white mb-6">Insights Avancés</h2>
 
+            {/* Métriques détaillées des insights */}
+            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
+              {[
+                { label: 'Reach Total', value: '1.2M', change: '+23%', icon: '👥' },
+                { label: 'Frequency Cap', value: frequencyCap.toFixed(2), change: '+0.2', icon: '📊' },
+                { label: 'Video Views', value: `${(videoViews/1000).toFixed(1)}k`, change: '+18%', icon: '🎬' },
+                { label: 'Link Clicks', value: `${(linkClicks/1000).toFixed(1)}k`, change: '+15%', icon: '🔗' },
+                { label: 'Engagement', value: `${engagementRate.toFixed(1)}%`, change: '+1.2%', icon: '💬' },
+                { label: 'Quality Score', value: qualityScore.toFixed(1), change: '+0.5', icon: '⭐' }
+              ].map((metric, i) => (
+                <motion.div
+                  key={metric.label}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.05 }}
+                  className="bg-black/40 backdrop-blur-xl rounded-xl p-4 border border-white/10 hover:border-purple-500/30 transition-all cursor-pointer"
+                  onClick={() => showNotificationFunc(`${metric.label}: ${metric.value} (${metric.change})`)}
+                  whileHover={{ scale: 1.05 }}
+                >
+                  <div className="text-2xl mb-2">{metric.icon}</div>
+                  <p className="text-xs text-gray-400 mb-1">{metric.label}</p>
+                  <p className="text-lg font-bold text-white">{metric.value}</p>
+                  <p className={`text-xs mt-1 ${metric.change.startsWith('+') ? 'text-green-400' : 'text-red-400'}`}>
+                    {metric.change}
+                  </p>
+                </motion.div>
+              ))}
+            </div>
+
+            {/* Analyse comparative des périodes */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-gradient-to-r from-blue-600/10 to-purple-600/10 backdrop-blur-xl rounded-2xl p-6 border border-blue-500/20 mb-6"
+            >
+              <h3 className="text-xl font-bold text-white mb-4">📈 Comparaison vs période précédente</h3>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {[
+                  { metric: 'Impressions', current: '2.3M', previous: '1.8M', growth: '+27.8%' },
+                  { metric: 'Clicks', current: '45.6k', previous: '38.2k', growth: '+19.4%' },
+                  { metric: 'Conversions', current: '892', previous: '712', growth: '+25.3%' },
+                  { metric: 'Revenue', current: '€48.5k', previous: '€37.2k', growth: '+30.4%' }
+                ].map((data) => (
+                  <div key={data.metric} className="bg-white/5 rounded-lg p-3">
+                    <p className="text-xs text-gray-400 mb-1">{data.metric}</p>
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-lg font-bold text-white">{data.current}</span>
+                      <span className="text-xs text-gray-500">vs {data.previous}</span>
+                    </div>
+                    <p className="text-sm font-medium text-green-400 mt-1">{data.growth}</p>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+
             {/* Démographie interactive */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <motion.div
@@ -844,6 +1181,193 @@ export default function AppReviewComplete() {
                 </div>
               </motion.div>
             </div>
+
+            {/* Insights supplémentaires */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
+              {/* Devices Performance */}
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="bg-black/40 backdrop-blur-xl rounded-2xl p-6 border border-white/10"
+              >
+                <h3 className="text-lg font-bold text-white mb-4">📱 Performance par appareil</h3>
+                <div className="space-y-3">
+                  {[
+                    { device: 'Mobile', percentage: 72, ctr: 4.2, conversions: 678 },
+                    { device: 'Desktop', percentage: 23, ctr: 2.8, conversions: 187 },
+                    { device: 'Tablet', percentage: 5, ctr: 3.1, conversions: 27 }
+                  ].map((item) => (
+                    <div key={item.device} className="bg-white/5 rounded-lg p-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-white font-medium">{item.device}</span>
+                        <span className="text-blue-400 font-bold">{item.percentage}%</span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        <div>
+                          <span className="text-gray-500">CTR: </span>
+                          <span className="text-gray-300">{item.ctr}%</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-500">Conv: </span>
+                          <span className="text-gray-300">{item.conversions}</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </motion.div>
+
+              {/* Placements Analysis */}
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="bg-black/40 backdrop-blur-xl rounded-2xl p-6 border border-white/10"
+              >
+                <h3 className="text-lg font-bold text-white mb-4">📍 Analyse des placements</h3>
+                <div className="space-y-3">
+                  {[
+                    { placement: 'Feed', spend: 5678, roas: 3.4, cpm: 15.20 },
+                    { placement: 'Stories', spend: 3456, roas: 4.1, cpm: 8.90 },
+                    { placement: 'Reels', spend: 2345, roas: 3.8, cpm: 10.50 },
+                    { placement: 'Messenger', spend: 890, roas: 2.9, cpm: 12.30 }
+                  ].map((item) => (
+                    <div key={item.placement} className="bg-white/5 rounded-lg p-3">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-white font-medium text-sm">{item.placement}</span>
+                        <span className="text-green-400 font-bold text-sm">{item.roas}x</span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        <div>
+                          <span className="text-gray-500">Spend: </span>
+                          <span className="text-gray-300">€{item.spend}</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-500">CPM: </span>
+                          <span className="text-gray-300">€{item.cpm}</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </motion.div>
+
+              {/* Geographic Performance */}
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="bg-black/40 backdrop-blur-xl rounded-2xl p-6 border border-white/10"
+              >
+                <h3 className="text-lg font-bold text-white mb-4">🗺️ Top régions</h3>
+                <div className="space-y-3">
+                  {[
+                    { region: 'Île-de-France', revenue: 18900, cpa: 22.50, share: 38 },
+                    { region: 'PACA', revenue: 12340, cpa: 19.80, share: 25 },
+                    { region: 'Rhône-Alpes', revenue: 8760, cpa: 21.20, share: 18 },
+                    { region: 'Occitanie', revenue: 5430, cpa: 24.90, share: 11 },
+                    { region: 'Autres', revenue: 3070, cpa: 28.50, share: 8 }
+                  ].map((item) => (
+                    <div key={item.region} className="bg-white/5 rounded-lg p-2.5">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-white font-medium text-sm">{item.region}</span>
+                        <span className="text-purple-400 font-bold text-sm">{item.share}%</span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        <div>
+                          <span className="text-gray-500">Rev: </span>
+                          <span className="text-gray-300">€{(item.revenue/1000).toFixed(1)}k</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-500">CPA: </span>
+                          <span className="text-gray-300">€{item.cpa}</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </motion.div>
+            </div>
+
+            {/* Alertes et anomalies */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-gradient-to-r from-red-600/10 to-orange-600/10 backdrop-blur-xl rounded-2xl p-6 border border-red-500/20 mt-6"
+            >
+              <h3 className="text-xl font-bold text-white mb-4">⚠️ Alertes et anomalies détectées</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {[
+                  {
+                    type: 'Fatigue créative',
+                    severity: 'high',
+                    message: '3 ads avec CTR en baisse de 35% sur 7 jours',
+                    action: 'Rafraîchir créatives'
+                  },
+                  {
+                    type: 'Budget inefficace',
+                    severity: 'medium',
+                    message: 'Campaign "Summer Sale" dépense 40% sans conversions',
+                    action: 'Pauser campagne'
+                  },
+                  {
+                    type: 'Audience saturée',
+                    severity: 'high',
+                    message: 'Fréquence > 3.5 sur audience "Remarketing 30j"',
+                    action: 'Élargir audience'
+                  },
+                  {
+                    type: 'Pic de CPA',
+                    severity: 'medium',
+                    message: 'CPA +45% sur placement Instagram Explore',
+                    action: 'Exclure placement'
+                  },
+                  {
+                    type: 'Opportunité manquée',
+                    severity: 'low',
+                    message: 'Budget non dépensé: €890 hier',
+                    action: 'Augmenter enchères'
+                  },
+                  {
+                    type: 'Performance exceptionnelle',
+                    severity: 'success',
+                    message: 'ROAS 6.2x sur Lookalike 1% Femmes 25-34',
+                    action: 'Augmenter budget'
+                  }
+                ].map((alert, i) => (
+                  <motion.div
+                    key={i}
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: i * 0.1 }}
+                    className={`bg-white/5 rounded-xl p-4 border cursor-pointer hover:bg-white/10 transition-all ${
+                      alert.severity === 'high' ? 'border-red-500/50' :
+                      alert.severity === 'medium' ? 'border-yellow-500/50' :
+                      alert.severity === 'success' ? 'border-green-500/50' :
+                      'border-blue-500/50'
+                    }`}
+                    onClick={() => showNotificationFunc(`Action appliquée: ${alert.action}`)}
+                  >
+                    <div className="flex items-start justify-between mb-2">
+                      <span className="text-white font-medium text-sm">{alert.type}</span>
+                      <span className={`text-xs px-2 py-1 rounded-full ${
+                        alert.severity === 'high' ? 'bg-red-500/20 text-red-400' :
+                        alert.severity === 'medium' ? 'bg-yellow-500/20 text-yellow-400' :
+                        alert.severity === 'success' ? 'bg-green-500/20 text-green-400' :
+                        'bg-blue-500/20 text-blue-400'
+                      }`}>
+                        {alert.severity === 'high' ? '🔴 Urgent' :
+                         alert.severity === 'medium' ? '🟡 Important' :
+                         alert.severity === 'success' ? '🟢 Opportunité' :
+                         '🔵 Info'}
+                      </span>
+                    </div>
+                    <p className="text-gray-400 text-xs mb-2">{alert.message}</p>
+                    <button className="text-purple-400 text-xs font-medium hover:text-purple-300 transition-colors">
+                      → {alert.action}
+                    </button>
+                  </motion.div>
+                ))}
+              </div>
+            </motion.div>
           </motion.div>
         )}
 
