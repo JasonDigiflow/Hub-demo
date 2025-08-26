@@ -86,19 +86,19 @@ export default function RevenuesPage() {
       const data = await response.json();
       
       if (data.success && data.prospects && data.prospects.length > 0) {
-        // Filtrer seulement les prospects qualifiés ou nouveaux pour la conversion
+        // Inclure tous les prospects SAUF ceux déjà convertis (ils ont déjà un revenu)
         const eligibleProspects = data.prospects.filter(p => 
-          p.status === 'qualified' || p.status === 'new' || p.status === 'contacted'
+          p.status !== 'converted'
         );
         setProspects(eligibleProspects);
-        console.log(`Loaded ${eligibleProspects.length} eligible prospects from Firebase`);
+        console.log(`Loaded ${eligibleProspects.length} eligible prospects from Firebase (excluding converted)`);
       } else {
         // Fallback: charger depuis localStorage si Firebase échoue
         const savedProspects = localStorage.getItem('aids_prospects');
         if (savedProspects) {
           const allProspects = JSON.parse(savedProspects);
           const eligibleProspects = allProspects.filter(p => 
-            p.status === 'qualified' || p.status === 'new' || p.status === 'contacted'
+            p.status !== 'converted'
           );
           setProspects(eligibleProspects);
           console.log(`Loaded ${eligibleProspects.length} eligible prospects from localStorage (fallback)`);
@@ -113,7 +113,7 @@ export default function RevenuesPage() {
       if (savedProspects) {
         const allProspects = JSON.parse(savedProspects);
         const eligibleProspects = allProspects.filter(p => 
-          p.status === 'qualified' || p.status === 'new' || p.status === 'contacted'
+          p.status !== 'converted'
         );
         setProspects(eligibleProspects);
       } else {
