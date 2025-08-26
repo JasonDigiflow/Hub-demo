@@ -16,56 +16,88 @@ export async function GET(request) {
     const decoded = jwt.verify(token.value, process.env.JWT_SECRET);
     const userId = decoded.uid;
 
-    // Get user's prospects from Firebase
-    const prospectsRef = db.collection('aids_prospects');
-    let snapshot;
-    
-    try {
-      snapshot = await prospectsRef
-        .where('userId', '==', userId)
-        .orderBy('createdAt', 'desc')
-        .get();
-    } catch (queryError) {
-      console.log('Query error (normal if no index):', queryError.message);
-      // Fallback: get without orderBy if index doesn't exist
-      try {
-        snapshot = await prospectsRef
-          .where('userId', '==', userId)
-          .get();
-      } catch (fallbackError) {
-        console.log('Fallback query also failed:', fallbackError.message);
-        // Return empty array if queries fail
-        return NextResponse.json({
-          success: true,
-          prospects: [],
-          count: 0,
-          message: 'No prospects found or query failed'
-        });
-      }
-    }
+    console.log('=== GET PROSPECTS ===');
+    console.log('UserId:', userId);
 
     const allProspects = [];
-    let totalDocs = 0;
-    let filteredOut = 0;
     
-    snapshot.forEach(doc => {
-      totalDocs++;
-      const data = doc.data();
-      // Filtrer les données agrégées
-      if (!data.isAggregated && 
-          !data.name?.includes('[Données agrégées') &&
-          !data.name?.includes('[Données campagne')) {
-        allProspects.push({
-          id: doc.id,
-          ...data
-        });
-      } else {
-        filteredOut++;
-        console.log(`Filtered out prospect: ${data.name} (isAggregated: ${data.isAggregated})`);
+    // Method 1: Try to get prospects from the new structure (organizations/adAccounts/prospects)
+    try {
+      // Get user's organization
+      const userDoc = await db.collection('users').doc(userId).get();
+      const userData = userDoc.data();
+      
+      if (userData && userData.primaryOrgId) {
+        const orgId = userData.primaryOrgId;
+        console.log('Found organization:', orgId);
+        
+        // Get all ad accounts for this org
+        const adAccountsSnapshot = await db
+          .collection('organizations').doc(orgId)
+          .collection('adAccounts')
+          .get();
+        
+        console.log(`Found ${adAccountsSnapshot.size} ad accounts`);
+        
+        // Get prospects from each ad account
+        for (const adAccountDoc of adAccountsSnapshot.docs) {
+          const prospectsSnapshot = await db
+            .collection('organizations').doc(orgId)
+            .collection('adAccounts').doc(adAccountDoc.id)
+            .collection('prospects')
+            .get();
+          
+          console.log(`Ad account ${adAccountDoc.id}: ${prospectsSnapshot.size} prospects`);
+          
+          prospectsSnapshot.forEach(doc => {
+            const data = doc.data();
+            allProspects.push({
+              id: doc.id,
+              ...data
+            });
+          });
+        }
       }
-    });
+    } catch (error) {
+      console.log('Error getting prospects from new structure:', error.message);
+    }
     
-    console.log(`GET /api/aids/prospects - Total docs: ${totalDocs}, Filtered out: ${filteredOut}, Returning: ${allProspects.length}`);
+    // Method 2: Also try the old structure (aids_prospects)
+    try {
+      const oldProspectsRef = db.collection('aids_prospects');
+      const oldSnapshot = await oldProspectsRef
+        .where('userId', '==', userId)
+        .get();
+      
+      console.log(`Found ${oldSnapshot.size} prospects in old structure`);
+      
+      oldSnapshot.forEach(doc => {
+        const data = doc.data();
+        // Avoid duplicates
+        if (!allProspects.find(p => p.id === doc.id)) {
+          allProspects.push({
+            id: doc.id,
+            ...data
+          });
+        }
+      });
+    } catch (error) {
+      console.log('Error getting prospects from old structure:', error.message);
+    }
+    
+    console.log(`Total prospects found: ${allProspects.length}`);
+    
+    // Log first prospect for debugging
+    if (allProspects.length > 0) {
+      console.log('First prospect data:', JSON.stringify(allProspects[0], null, 2));
+    }
+    
+    // Sort by date (newest first)
+    allProspects.sort((a, b) => {
+      const dateA = new Date(a.createdAt || a.date || 0);
+      const dateB = new Date(b.createdAt || b.date || 0);
+      return dateB - dateA;
+    });
     
     const prospects = allProspects;
 

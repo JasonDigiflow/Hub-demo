@@ -73,14 +73,27 @@ export default function ProspectsPage() {
       if (data.success) {
         // Toujours définir les prospects même si vide
         const prospects = data.prospects || [];
-        // Filtrer les données agrégées (ne pas les afficher)
-        const realProspects = prospects.filter(p => 
-          !p.isAggregated && 
-          !p.name?.includes('[Données agrégées') &&
-          !p.name?.includes('[Données campagne')
-        );
+        console.log(`Raw prospects from Firebase: ${prospects.length}`);
+        
+        // Ne filtrer que les données vraiment inutiles
+        // GARDER tous les prospects Meta (syncedFromMeta = true)
+        const realProspects = prospects.filter(p => {
+          // Toujours garder les prospects Meta
+          if (p.syncedFromMeta) return true;
+          
+          // Filtrer seulement les fausses données
+          if (p.isAggregated) return false;
+          if (p.name?.includes('[Données agrégées')) return false;
+          if (p.name?.includes('[Données campagne')) return false;
+          
+          // Garder tout le reste
+          return true;
+        });
+        
         setProspects(realProspects);
-        console.log(`Loaded ${realProspects.length} real prospects from Firebase (filtered from ${prospects.length} total)`);
+        console.log(`Loaded ${realProspects.length} real prospects from Firebase`);
+        console.log(`- Prospects Meta: ${realProspects.filter(p => p.syncedFromMeta).length}`);
+        console.log(`- Autres prospects: ${realProspects.filter(p => !p.syncedFromMeta).length}`);
       } else {
         // Fallback to localStorage if Firebase fails
         const savedProspects = localStorage.getItem('aids_prospects');
@@ -164,9 +177,12 @@ export default function ProspectsPage() {
         
         if (savedCount > 0) {
           console.log(`✅ ${savedCount} prospects automatiquement sauvegardés dans Firebase`);
+          // Attendre un peu pour que Firebase se synchronise
+          await new Promise(resolve => setTimeout(resolve, 1500));
         }
         
-        // Recharger les prospects depuis Firebase
+        // Forcer le rechargement des prospects depuis Firebase
+        console.log('Reloading prospects after Meta sync...');
         await loadProspects();
         
         if (showLoading) {
