@@ -622,6 +622,74 @@ export default function ProspectsPage() {
                       <span>🧹</span>
                       Nettoyer les doublons
                     </button>
+                    <div className="border-t border-gray-700 my-2"></div>
+                    <button
+                      onClick={async () => {
+                        setShowAdvancedOptions(false);
+                        if (confirm('🔴 ATTENTION: Voulez-vous VRAIMENT supprimer TOUS les prospects ET revenus?\n\nCette action est IRRÉVERSIBLE et supprimera:\n- Tous les prospects\n- Tous les revenus\n- Toutes les données associées\n\nÊtes-vous SÛR?')) {
+                          if (confirm('⏹ DERNIÈRE CONFIRMATION\n\nVoulez-vous vraiment tout effacer?')) {
+                            try {
+                              const response = await fetch('/api/aids/reset-all', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' }
+                              });
+                              const result = await response.json();
+                              
+                              // Afficher les logs dans la console
+                              if (result.logs) {
+                                console.log('=== LOGS DU RESET ===');
+                                result.logs.forEach(log => {
+                                  console.log(`[${log.timestamp}] ${log.message}`, log.data || '');
+                                });
+                              }
+                              
+                              if (result.success) {
+                                alert(`✅ Reset complet terminé:\n- ${result.summary.prospectsDeleted} prospects supprimés\n- ${result.summary.revenuesDeleted} revenus supprimés\n\nVous pouvez maintenant resynchroniser depuis Meta.`);
+                                loadProspects(); // Recharger la liste (vide)
+                              } else {
+                                alert('❌ Erreur lors du reset: ' + result.error);
+                              }
+                            } catch (error) {
+                              console.error('Error during reset:', error);
+                              alert('❌ Erreur lors du reset');
+                            }
+                          }
+                        }
+                      }}
+                      className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-900/20 rounded flex items-center gap-2 font-bold"
+                    >
+                      <span>🗑️</span>
+                      RESET COMPLET (Tout supprimer)
+                    </button>
+                    <button
+                      onClick={async () => {
+                        setShowAdvancedOptions(false);
+                        try {
+                          const response = await fetch('/api/aids/logs');
+                          const result = await response.json();
+                          if (result.success) {
+                            console.log('=== LOGS RECENTS ===');
+                            result.logs.forEach(log => {
+                              const style = log.level === 'error' ? 'color: red' : log.level === 'warn' ? 'color: orange' : 'color: white';
+                              console.log(`%c[${log.context}] ${log.message}`, style, log.data || '');
+                            });
+                            if (result.errors.length > 0) {
+                              console.log('=== ERREURS RECENTES ===');
+                              result.errors.forEach(err => {
+                                console.error(`[${err.context}] ${err.message}`, err.data || '');
+                              });
+                            }
+                            alert(`📄 Logs affichés dans la console (${result.totalLogs} logs, ${result.totalErrors} erreurs)`);
+                          }
+                        } catch (error) {
+                          console.error('Error fetching logs:', error);
+                        }
+                      }}
+                      className="w-full text-left px-3 py-2 text-sm text-gray-400 hover:bg-gray-800 rounded flex items-center gap-2"
+                    >
+                      <span>📄</span>
+                      Voir les logs
+                    </button>
                     <div className="px-3 py-2 text-xs text-gray-500 mt-2">
                       {prospects.length} prospects affichés
                     </div>

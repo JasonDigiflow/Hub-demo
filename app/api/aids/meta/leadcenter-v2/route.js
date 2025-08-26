@@ -3,8 +3,12 @@ import { cookies } from 'next/headers';
 import jwt from 'jsonwebtoken';
 import { db } from '@/lib/firebase-admin';
 import aidsLogger, { LogCategories } from '@/lib/aids-logger';
+import logger from '@/lib/aids/logger';
 
 export async function GET(request) {
+  const session = logger.startSession('LEAD_IMPORT');
+  session.log('=== DÉBUT IMPORT LEADS META ===');
+  
   try {
     aidsLogger.info(LogCategories.META_API, 'Lead Center V2: Début récupération des prospects');
     
@@ -395,69 +399,109 @@ export async function GET(request) {
         console.log(`Saving to org: ${orgId}, adAccount: ${adAccountId}`);
         
         // Get existing leads
+        session.log('Vérification des prospects existants...');
         const prospectsRef = db
           .collection('organizations').doc(orgId)
           .collection('adAccounts').doc(adAccountId)
           .collection('prospects');
         
-        const existingSnapshot = await prospectsRef
-          .where('syncedFromMeta', '==', true)
-          .get();
+        // Récupérer TOUS les prospects existants pour détecter les doublons
+        const existingSnapshot = await prospectsRef.get();
         
         const existingMetaIds = new Set();
+        const existingDocIds = new Set();
+        
         existingSnapshot.forEach(doc => {
           const data = doc.data();
+          // Ajouter le doc ID
+          existingDocIds.add(doc.id);
+          
+          // Ajouter tous les IDs Meta possibles
           if (data.metaId) {
             existingMetaIds.add(data.metaId);
           }
+          if (data.id && data.id.startsWith('LEAD_')) {
+            existingMetaIds.add(data.id.replace('LEAD_', ''));
+          }
+          if (doc.id.startsWith('LEAD_')) {
+            existingMetaIds.add(doc.id.replace('LEAD_', ''));
+          }
         });
         
+        session.log(`${existingSnapshot.size} prospects existants, ${existingMetaIds.size} Meta IDs uniques`);
         console.log(`Existing Meta IDs count: ${existingMetaIds.size}`);
         
         // Save new leads
         const batch = db.batch();
         let batchCount = 0;
+        const duplicates = [];
+        const newProspects = [];
         
         console.log('Processing leads for save...');
+        session.log('Traitement des prospects pour sauvegarde...');
         
         for (const lead of allLeads) {
-          if (!existingMetaIds.has(lead.metaId)) {
-            const prospectData = {
-              ...lead,
-              syncedFromMeta: true,
-              createdAt: lead.date || new Date().toISOString(),
-              updatedAt: new Date().toISOString(),
-              syncedAt: new Date().toISOString()
-            };
-            
-            // Utiliser l'ID Meta comme ID du document Firebase
-            const docRef = prospectsRef.doc(lead.id); // lead.id contient déjà "LEAD_XXX"
-            batch.set(docRef, prospectData);
-            savedCount++;
-            batchCount++;
-            
-            if (savedCount <= 3) {
-              console.log(`Saving prospect ${savedCount}:`, lead.name, lead.metaId);
-            }
-            
-            // Commit batch every 400 documents (Firebase limit is 500)
-            if (batchCount >= 400) {
-              await batch.commit();
-              console.log(`Committed batch of ${batchCount} leads`);
-              batchCount = 0;
-            }
-          } else {
+          const metaIdOnly = lead.metaId || lead.id.replace('LEAD_', '');
+          
+          // Vérifier si ce prospect existe déjà (par Meta ID ou doc ID)
+          if (existingMetaIds.has(metaIdOnly) || existingDocIds.has(lead.id)) {
+            duplicates.push({ id: lead.id, name: lead.name });
             skippedCount++;
+            session.debug(`Doublon ignoré: ${lead.id} - ${lead.name}`);
+            continue;
           }
+          
+          const prospectData = {
+            ...lead,
+            syncedFromMeta: true,
+            createdAt: lead.date || new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            syncedAt: new Date().toISOString()
+          };
+          
+          // Utiliser l'ID Meta comme ID du document Firebase
+          const docRef = prospectsRef.doc(lead.id); // lead.id contient déjà "LEAD_XXX"
+          batch.set(docRef, prospectData, { merge: false }); // merge: false pour éviter l'écrasement
+          newProspects.push({ id: lead.id, name: lead.name });
+          savedCount++;
+          batchCount++;
+          
+          if (savedCount <= 3) {
+            console.log(`Saving prospect ${savedCount}:`, lead.name, lead.metaId);
+          }
+          
+          // Commit batch every 400 documents (Firebase limit is 500)
+          if (batchCount >= 400) {
+            await batch.commit();
+            session.log(`Batch de ${batchCount} prospects sauvegardé`);
+            console.log(`Committed batch of ${batchCount} leads`);
+            batchCount = 0;
+          }
+        }
+        
+        if (duplicates.length > 0) {
+          session.warn(`${duplicates.length} doublons ignorés`, { 
+            count: duplicates.length,
+            examples: duplicates.slice(0, 5) 
+          });
+        }
+        
+        if (newProspects.length > 0) {
+          session.log(`${newProspects.length} nouveaux prospects à sauvegarder`, {
+            count: newProspects.length,
+            examples: newProspects.slice(0, 5)
+          });
         }
         
         // Commit remaining documents
         if (batchCount > 0) {
           await batch.commit();
+          session.log(`Dernier batch de ${batchCount} prospects sauvegardé`);
           console.log(`Committed final batch of ${batchCount} leads`);
         }
         
         if (savedCount > 0) {
+          session.log(`✅ ${savedCount} nouveaux prospects sauvegardés avec succès`);
           console.log(`✅ Saved ${savedCount} new prospects to Firebase (org: ${orgId})`);
           aidsLogger.success(LogCategories.PROSPECT, `Lead Center V2: ${savedCount} nouveaux prospects sauvegardés`, {
             orgId,
@@ -465,6 +509,8 @@ export async function GET(request) {
             savedCount,
             skippedCount
           });
+        } else if (skippedCount > 0) {
+          session.warn(`Aucun nouveau prospect, ${skippedCount} déjà existants`);
         }
       }
     } catch (error) {
@@ -475,6 +521,12 @@ export async function GET(request) {
       console.error('Error saving to Firebase:', error);
     }
     
+    const sessionLogs = session.end({
+      totalFound: allLeads.length,
+      saved: savedCount,
+      skipped: skippedCount
+    });
+    
     return NextResponse.json({
       success: true,
       leads: allLeads,
@@ -482,9 +534,12 @@ export async function GET(request) {
       savedToFirebase: savedCount,
       skipped: skippedCount,
       source: 'lead_center_v2',
-      message: allLeads.length > 0 
-        ? `✅ ${allLeads.length} prospects trouvés via les ads Meta`
-        : '⚠️ Aucun prospect trouvé'
+      message: savedCount > 0
+        ? `✅ ${savedCount} nouveaux prospects importés (${skippedCount} doublons ignorés)`
+        : skippedCount > 0
+          ? `⚠️ Tous les ${skippedCount} prospects sont déjà importés`
+          : '⚠️ Aucun prospect trouvé',
+      logs: sessionLogs
     });
     
   } catch (error) {

@@ -3,6 +3,7 @@ import { cookies } from 'next/headers';
 import jwt from 'jsonwebtoken';
 import { db } from '@/lib/firebase-admin';
 import inMemoryStore from '@/lib/aids/inMemoryStore';
+import logger from '@/lib/aids/logger';
 
 export async function GET() {
   try {
@@ -97,8 +98,12 @@ export async function GET() {
 }
 
 export async function POST(request) {
+  const session = logger.startSession('REVENUE_CREATE');
+  session.log('=== DÉBUT CRÉATION REVENUE ===');
+  
   try {
     const data = await request.json();
+    session.log('Données reçues', data);
     
     // Validate required fields
     if (!data.clientId || !data.clientName || !data.amount) {
@@ -163,6 +168,7 @@ export async function POST(request) {
     
     // Update prospect status to 'converted' with revenue amount
     if (userId && data.prospectId) {
+      session.log('Mise à jour du prospect', { prospectId: data.prospectId });
       try {
         console.log('Updating prospect status for:', data.prospectId);
         
@@ -182,6 +188,7 @@ export async function POST(request) {
         
         // Find the prospect in the organization's ad accounts
         let prospectUpdated = false;
+        session.log('Recherche du prospect dans les ad accounts', { orgId, prospectId: data.prospectId });
         
         try {
           const adAccountsSnapshot = await db
@@ -189,10 +196,12 @@ export async function POST(request) {
             .collection('adAccounts')
             .get();
           
+          session.log(`${adAccountsSnapshot.size} comptes publicitaires trouvés`);
           console.log(`Found ${adAccountsSnapshot.size} ad accounts for org ${orgId}`);
           console.log(`Searching for prospect ID: ${data.prospectId}`);
           
           for (const adAccountDoc of adAccountsSnapshot.docs) {
+            session.debug(`Vérification du compte: ${adAccountDoc.id}`);
             console.log(`Checking ad account: ${adAccountDoc.id}`);
             
             // Essayer d'abord avec l'ID direct (pour les nouveaux prospects avec ID Meta)
@@ -252,8 +261,21 @@ export async function POST(request) {
                 convertedAt: new Date().toISOString()
               };
               
+              session.log(`✅ Prospect trouvé! Mise à jour en cours`, {
+                prospectId: data.prospectId,
+                docId: prospectDoc.id,
+                adAccountId: adAccountDoc.id,
+                updateData
+              });
+              
               console.log(`Updating prospect with data:`, updateData);
               await prospectRef.update(updateData);
+              
+              session.log(`✅ Prospect mis à jour avec succès`, {
+                prospectId: data.prospectId,
+                status: 'converted',
+                amount: data.amount
+              });
               
               console.log(`✅ Prospect ${data.prospectId} updated to converted with revenue ${data.amount} in ad account ${adAccountDoc.id}`);
               prospectUpdated = true;
@@ -266,6 +288,7 @@ export async function POST(request) {
         
         // If not found in any ad account, try creating it in default location
         if (!prospectUpdated) {
+          session.warn(`Prospect ${data.prospectId} non trouvé, création dans l'emplacement par défaut`);
           console.log(`Prospect ${data.prospectId} not found in ad accounts, creating in default location`);
           
           const defaultAdAccountId = 'default';
@@ -291,15 +314,27 @@ export async function POST(request) {
           console.log(`Created/Updated prospect ${data.prospectId} in default location`);
         }
       } catch (error) {
+        session.error('Erreur mise à jour prospect', { error: error.message });
         console.error('Error updating prospect status:', error);
         // Don't fail the revenue creation if prospect update fails
       }
+    } else {
+      session.warn('Pas de prospectId fourni ou pas d\'utilisateur', { 
+        hasUserId: !!userId, 
+        hasProspectId: !!data.prospectId 
+      });
     }
 
+    const sessionLogs = session.end({
+      revenueId,
+      prospectUpdated: !!prospectUpdated
+    });
+    
     return NextResponse.json({ 
       success: true, 
       id: revenueId,
-      prospectUpdated: !!data.prospectId
+      prospectUpdated: !!prospectUpdated,
+      logs: sessionLogs
     });
   } catch (error) {
     console.error('Error creating revenue:', error);
