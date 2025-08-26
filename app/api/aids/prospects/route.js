@@ -92,7 +92,7 @@ export async function GET(request) {
 }
 
 async function fetchProspectsForUser(userId) {
-  console.log('=== GET PROSPECTS ===');
+  console.log('=== FETCH PROSPECTS FOR USER ===');
   console.log('UserId:', userId);
   
   const allProspects = [];
@@ -100,8 +100,12 @@ async function fetchProspectsForUser(userId) {
     // Method 1: Try to get prospects from the new structure (organizations/adAccounts/prospects)
     try {
       // Get user's organization
+      console.log('Fetching user document from Firebase...');
       const userDoc = await db.collection('users').doc(userId).get();
       const userData = userDoc.data();
+      
+      console.log('User document exists:', userDoc.exists);
+      console.log('User data:', userData);
       
       if (userData && userData.primaryOrgId) {
         const orgId = userData.primaryOrgId;
@@ -117,13 +121,16 @@ async function fetchProspectsForUser(userId) {
         
         // Get prospects from each ad account
         for (const adAccountDoc of adAccountsSnapshot.docs) {
+          const adAccountData = adAccountDoc.data();
+          console.log(`Checking ad account: ${adAccountDoc.id}`, adAccountData);
+          
           const prospectsSnapshot = await db
             .collection('organizations').doc(orgId)
             .collection('adAccounts').doc(adAccountDoc.id)
             .collection('prospects')
             .get();
           
-          console.log(`Ad account ${adAccountDoc.id}: ${prospectsSnapshot.size} prospects`);
+          console.log(`Ad account ${adAccountDoc.id}: ${prospectsSnapshot.size} prospects found`);
           
           prospectsSnapshot.forEach(doc => {
             const data = doc.data();
@@ -133,9 +140,13 @@ async function fetchProspectsForUser(userId) {
             });
           });
         }
+      } else {
+        console.log('No organization found for user:', userId);
+        console.log('userData:', userData);
       }
     } catch (error) {
       console.log('Error getting prospects from new structure:', error.message);
+      console.log('Error details:', error);
     }
     
     // Method 2: Also try the old structure (aids_prospects)

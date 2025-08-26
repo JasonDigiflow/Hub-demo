@@ -275,6 +275,9 @@ export async function GET(request) {
     let savedCount = 0;
     let skippedCount = 0;
     
+    console.log('=== FIREBASE SAVE ATTEMPT ===');
+    console.log('Total leads to save:', allLeads.length);
+    
     try {
       const authCookie = cookieStore.get('auth-token');
       let userId = null;
@@ -283,6 +286,7 @@ export async function GET(request) {
         try {
           const decoded = jwt.verify(authCookie.value, process.env.JWT_SECRET || 'default-secret-key');
           userId = decoded.uid || decoded.userId || decoded.id;
+          console.log('User ID from JWT:', userId);
         } catch (e) {
           console.log('JWT decode error, trying meta session:', e.message);
         }
@@ -291,26 +295,48 @@ export async function GET(request) {
       // Fallback to meta session if no auth token
       if (!userId && session) {
         userId = session.userID || session.userId;
+        console.log('User ID from Meta session:', userId);
+      }
+      
+      if (!userId) {
+        console.log('⚠️ No userId found - cannot save to Firebase');
+        return NextResponse.json({
+          success: true,
+          leads: allLeads,
+          totalCount: allLeads.length,
+          savedToFirebase: 0,
+          skipped: 0,
+          source: 'lead_center_v2',
+          message: `⚠️ ${allLeads.length} prospects trouvés mais impossible de sauvegarder (pas d'authentification)`,
+          authIssue: true
+        });
       }
       
       if (userId && allLeads.length > 0) {
+        console.log(`Starting Firebase save for user: ${userId}`);
         
         // Get user's organization
         const userDoc = await db.collection('users').doc(userId).get();
         const userData = userDoc.data();
+        console.log('User document exists:', userDoc.exists);
+        console.log('User data:', userData);
         
         if (!userDoc.exists) {
           console.log('Creating user document...');
-          await db.collection('users').doc(userId).set({
-            email: decoded.email || `user${userId}@example.com`,
+          const newUserData = {
+            email: session?.userEmail || `user${userId}@example.com`,
             orgIds: [],
             primaryOrgId: null,
             createdAt: new Date().toISOString()
-          });
+          };
+          await db.collection('users').doc(userId).set(newUserData);
+          console.log('User document created:', newUserData);
         }
         
         let orgId = userData?.primaryOrgId;
         let adAccountId;
+        
+        console.log('Current orgId:', orgId);
         
         // Create organization if needed
         if (!orgId) {
@@ -385,9 +411,13 @@ export async function GET(request) {
           }
         });
         
+        console.log(`Existing Meta IDs count: ${existingMetaIds.size}`);
+        
         // Save new leads
         const batch = db.batch();
         let batchCount = 0;
+        
+        console.log('Processing leads for save...');
         
         for (const lead of allLeads) {
           if (!existingMetaIds.has(lead.metaId)) {
@@ -403,6 +433,10 @@ export async function GET(request) {
             batch.set(docRef, prospectData);
             savedCount++;
             batchCount++;
+            
+            if (savedCount <= 3) {
+              console.log(`Saving prospect ${savedCount}:`, lead.name, lead.metaId);
+            }
             
             // Commit batch every 400 documents (Firebase limit is 500)
             if (batchCount >= 400) {
