@@ -166,18 +166,30 @@ export async function POST(request) {
       try {
         console.log('Updating prospect status for:', data.prospectId);
         
-        // Get user's organization
-        const userDoc = await db.collection('users').doc(userId).get();
-        const userData = userDoc.data();
+        // Get user's organization - use userId as fallback
+        let orgId = userId;
         
-        if (userData && userData.primaryOrgId) {
-          const orgId = userData.primaryOrgId;
-          
-          // Find the prospect in the organization's ad accounts
+        try {
+          const userDoc = await db.collection('users').doc(userId).get();
+          if (userDoc.exists) {
+            const userData = userDoc.data();
+            orgId = userData.primaryOrgId || userId;
+            console.log(`Using orgId: ${orgId} for user: ${userId}`);
+          }
+        } catch (error) {
+          console.log('Could not fetch user data, using userId as orgId');
+        }
+        
+        // Find the prospect in the organization's ad accounts
+        let prospectUpdated = false;
+        
+        try {
           const adAccountsSnapshot = await db
             .collection('organizations').doc(orgId)
             .collection('adAccounts')
             .get();
+          
+          console.log(`Found ${adAccountsSnapshot.size} ad accounts for org ${orgId}`);
           
           for (const adAccountDoc of adAccountsSnapshot.docs) {
             const prospectRef = db
@@ -198,10 +210,38 @@ export async function POST(request) {
                 convertedAt: new Date().toISOString()
               });
               
-              console.log(`Prospect ${data.prospectId} updated to converted with revenue ${data.amount}`);
+              console.log(`Prospect ${data.prospectId} updated to converted with revenue ${data.amount} in ad account ${adAccountDoc.id}`);
+              prospectUpdated = true;
               break;
             }
           }
+        } catch (error) {
+          console.error('Error searching in ad accounts:', error);
+        }
+        
+        // If not found in any ad account, try creating it in default location
+        if (!prospectUpdated) {
+          console.log(`Prospect ${data.prospectId} not found in ad accounts, creating in default location`);
+          
+          const defaultAdAccountId = 'default';
+          const prospectRef = db
+            .collection('organizations').doc(orgId)
+            .collection('adAccounts').doc(defaultAdAccountId)
+            .collection('prospects').doc(data.prospectId);
+          
+          // Create or update the prospect
+          await prospectRef.set({
+            id: data.prospectId,
+            name: data.clientName,
+            status: 'converted',
+            revenueAmount: data.amount,
+            revenueDate: data.date || new Date().toISOString(),
+            convertedAt: new Date().toISOString(),
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          }, { merge: true });
+          
+          console.log(`Created/Updated prospect ${data.prospectId} in default location`);
         }
       } catch (error) {
         console.error('Error updating prospect status:', error);
