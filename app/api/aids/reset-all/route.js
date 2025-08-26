@@ -135,7 +135,6 @@ export async function POST(request) {
             .collection('organizations').doc(orgId)
             .collection('adAccounts').doc(adAccountId)
             .collection('prospects')
-            .limit(1)
             .get();
           
           if (!verifySnapshot.empty) {
@@ -201,7 +200,6 @@ export async function POST(request) {
       // Vérifier que la suppression a fonctionné
       const verifyRevenuesSnapshot = await db
         .collection('aids_revenues')
-        .limit(1)
         .get();
       
       if (!verifyRevenuesSnapshot.empty) {

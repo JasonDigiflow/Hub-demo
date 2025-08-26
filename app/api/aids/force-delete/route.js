@@ -118,29 +118,42 @@ export async function POST() {
     }
     
     // 3. Final verification
-    const finalCheckProspects = await db
-      .collection('organizations').doc(orgId)
-      .collection('adAccounts').doc('adacc_meta_1756199456471')
-      .collection('prospects')
-      .limit(1)
-      .get();
+    let stillHasProspects = false;
+    let stillHasRevenues = false;
     
-    const finalCheckRevenues = await db
-      .collection('aids_revenues')
-      .limit(1)
-      .get();
+    try {
+      const finalCheckProspects = await db
+        .collection('organizations').doc(orgId)
+        .collection('adAccounts').doc('adacc_meta_1756199456471')
+        .collection('prospects')
+        .get();
+      
+      stillHasProspects = finalCheckProspects.size > 0;
+    } catch (e) {
+      console.log('Could not verify prospects:', e.message);
+    }
+    
+    try {
+      const finalCheckRevenues = await db
+        .collection('aids_revenues')
+        .get();
+      
+      stillHasRevenues = finalCheckRevenues.size > 0;
+    } catch (e) {
+      console.log('Could not verify revenues:', e.message);
+    }
     
     console.log('=== FORCE DELETE COMPLETED ===');
     console.log('Deleted:', results);
-    console.log('Remaining prospects:', !finalCheckProspects.empty);
-    console.log('Remaining revenues:', !finalCheckRevenues.empty);
+    console.log('Still has prospects:', stillHasProspects);
+    console.log('Still has revenues:', stillHasRevenues);
     
     return NextResponse.json({
       success: true,
       deleted: results,
       stillHasData: {
-        prospects: !finalCheckProspects.empty,
-        revenues: !finalCheckRevenues.empty
+        prospects: stillHasProspects,
+        revenues: stillHasRevenues
       },
       message: `Force delete: ${results.prospects} prospects, ${results.revenues} revenus supprimés`
     });
