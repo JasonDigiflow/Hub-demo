@@ -6,8 +6,8 @@ import aidsLogger, { LogCategories } from '@/lib/aids-logger';
 import logger from '@/lib/aids/logger';
 
 export async function GET(request) {
-  const session = logger.startSession('LEAD_IMPORT');
-  session.log('=== DÉBUT IMPORT LEADS META ===');
+  const logSession = logger.startSession('LEAD_IMPORT');
+  logSession.log('=== DÉBUT IMPORT LEADS META ===');
   
   try {
     aidsLogger.info(LogCategories.META_API, 'Lead Center V2: Début récupération des prospects');
@@ -28,9 +28,9 @@ export async function GET(request) {
       }, { status: 401 });
     }
     
-    const session = JSON.parse(sessionCookie.value);
+    const metaSession = JSON.parse(sessionCookie.value);
     const accountId = selectedAccountCookie.value;
-    const accessToken = session.accessToken;
+    const accessToken = metaSession.accessToken;
     
     console.log('=== LEAD CENTER V2 - FETCHING LEADS ===');
     console.log('Account ID:', accountId);
@@ -297,8 +297,8 @@ export async function GET(request) {
       }
       
       // Fallback to meta session if no auth token
-      if (!userId && session) {
-        userId = session.userID || session.userId;
+      if (!userId && metaSession) {
+        userId = metaSession.userID || metaSession.userId;
         console.log('User ID from Meta session:', userId);
       }
       
@@ -332,7 +332,7 @@ export async function GET(request) {
         if (!userDoc.exists) {
           console.log('Creating user document...');
           const newUserData = {
-            email: session?.userEmail || `user${userId}@example.com`,
+            email: metaSession?.userEmail || `user${userId}@example.com`,
             orgIds: [],
             primaryOrgId: null,
             createdAt: new Date().toISOString()
@@ -351,7 +351,7 @@ export async function GET(request) {
         if (!orgId) {
           console.log('Creating organization for user...');
           orgId = `org_${userId}_${Date.now()}`;
-          const userEmail = userData?.email || session?.userEmail || `user${userId}@example.com`;
+          const userEmail = userData?.email || metaSession?.userEmail || `user${userId}@example.com`;
           const orgName = userEmail.split('@')[0] || 'Mon Organisation';
           
           await db.collection('organizations').doc(orgId).set({
@@ -404,7 +404,7 @@ export async function GET(request) {
         console.log(`Saving to org: ${orgId}, adAccount: ${adAccountId}`);
         
         // Get existing leads
-        session.log('Vérification des prospects existants...');
+        logSession.log('Vérification des prospects existants...');
         const prospectsRef = db
           .collection('organizations').doc(orgId)
           .collection('adAccounts').doc(adAccountId)
@@ -433,7 +433,7 @@ export async function GET(request) {
           }
         });
         
-        session.log(`${existingSnapshot.size} prospects existants, ${existingMetaIds.size} Meta IDs uniques`);
+        logSession.log(`${existingSnapshot.size} prospects existants, ${existingMetaIds.size} Meta IDs uniques`);
         console.log(`Existing Meta IDs count: ${existingMetaIds.size}`);
         
         // Save new leads
@@ -443,7 +443,7 @@ export async function GET(request) {
         const newProspects = [];
         
         console.log('Processing leads for save...');
-        session.log('Traitement des prospects pour sauvegarde...');
+        logSession.log('Traitement des prospects pour sauvegarde...');
         
         for (const lead of allLeads) {
           const metaIdOnly = lead.metaId || lead.id.replace('LEAD_', '');
@@ -452,7 +452,7 @@ export async function GET(request) {
           if (existingMetaIds.has(metaIdOnly) || existingDocIds.has(lead.id)) {
             duplicates.push({ id: lead.id, name: lead.name });
             skippedCount++;
-            session.debug(`Doublon ignoré: ${lead.id} - ${lead.name}`);
+            logSession.debug(`Doublon ignoré: ${lead.id} - ${lead.name}`);
             continue;
           }
           
@@ -478,21 +478,21 @@ export async function GET(request) {
           // Commit batch every 400 documents (Firebase limit is 500)
           if (batchCount >= 400) {
             await batch.commit();
-            session.log(`Batch de ${batchCount} prospects sauvegardé`);
+            logSession.log(`Batch de ${batchCount} prospects sauvegardé`);
             console.log(`Committed batch of ${batchCount} leads`);
             batchCount = 0;
           }
         }
         
         if (duplicates.length > 0) {
-          session.warn(`${duplicates.length} doublons ignorés`, { 
+          logSession.warn(`${duplicates.length} doublons ignorés`, { 
             count: duplicates.length,
             examples: duplicates.slice(0, 5) 
           });
         }
         
         if (newProspects.length > 0) {
-          session.log(`${newProspects.length} nouveaux prospects à sauvegarder`, {
+          logSession.log(`${newProspects.length} nouveaux prospects à sauvegarder`, {
             count: newProspects.length,
             examples: newProspects.slice(0, 5)
           });
@@ -501,12 +501,12 @@ export async function GET(request) {
         // Commit remaining documents
         if (batchCount > 0) {
           await batch.commit();
-          session.log(`Dernier batch de ${batchCount} prospects sauvegardé`);
+          logSession.log(`Dernier batch de ${batchCount} prospects sauvegardé`);
           console.log(`Committed final batch of ${batchCount} leads`);
         }
         
         if (savedCount > 0) {
-          session.log(`✅ ${savedCount} nouveaux prospects sauvegardés avec succès`);
+          logSession.log(`✅ ${savedCount} nouveaux prospects sauvegardés avec succès`);
           console.log(`✅ Saved ${savedCount} new prospects to Firebase (org: ${orgId})`);
           aidsLogger.success(LogCategories.PROSPECT, `Lead Center V2: ${savedCount} nouveaux prospects sauvegardés`, {
             orgId,
@@ -515,7 +515,7 @@ export async function GET(request) {
             skippedCount
           });
         } else if (skippedCount > 0) {
-          session.warn(`Aucun nouveau prospect, ${skippedCount} déjà existants`);
+          logSession.warn(`Aucun nouveau prospect, ${skippedCount} déjà existants`);
         }
       }
     } catch (error) {
@@ -526,7 +526,7 @@ export async function GET(request) {
       console.error('Error saving to Firebase:', error);
     }
     
-    const sessionLogs = session.end({
+    const sessionLogs = logSession.end({
       totalFound: allLeads.length,
       saved: savedCount,
       skipped: skippedCount
