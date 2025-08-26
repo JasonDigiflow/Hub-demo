@@ -237,61 +237,63 @@ export default function AIDsDashboard() {
       try {
         const statsResponse = await fetch(`/api/aids/dashboard-stats?range=${timeRange}`);
         const statsData = await statsResponse.json();
-          
-          console.log('Insights response for', timeRange, ':', insightsData);
-          
-          if (insightsData.success && insightsData.metrics) {
-            // Use real Meta Ads data with fallback trend if missing
-            const metricsWithTrend = {
-              ...insightsData.metrics,
-              trend: insightsData.metrics.trend || getDefaultTrend()
-            };
-            setMetrics(metricsWithTrend);
-            setRecentActions(generateRecentActions(metricsWithTrend));
-            analyzeWithAI(metricsWithTrend);
-            
-            // Update revenue and spend for ROI calculation
-            if (insightsData.metrics.overview) {
-              setTotalRevenue(insightsData.metrics.overview.totalRevenue || 0);
-              setTotalSpend(insightsData.metrics.overview.totalSpend || 0);
+        
+        if (statsData.success && statsData.stats) {
+          const stats = statsData.stats;
+          const fallbackMetrics = {
+            overview: {
+              totalSpend: 0,
+              totalRevenue: parseFloat(stats.totalRevenue || 0),
+              totalLeads: parseInt(stats.totalProspects || 0),
+              conversions: parseInt(stats.convertedProspects || 0),
+              ctr: parseFloat(stats.conversionRate || 0),
+              cpc: 0,
+              roas: 0,
+              conversionRate: parseFloat(stats.conversionRate || 0),
+              activeAds: 0
+            },
+            trend: {
+              chartData: { labels: [], datasets: [] },
+              revenueData: { labels: [], datasets: [] }
             }
-            
-            aidsLogger.success(LogCategories.META_API, 'Données Meta chargées avec succès', { 
-              hasData: true,
-              metricsCount: Object.keys(insightsData.metrics).length 
-            });
-            setLoading(false);
-            return;
-          } else {
-            aidsLogger.warning(LogCategories.META_API, 'Échec chargement données Meta', { 
-              error: insightsData.error || 'Unknown error' 
-            });
-            console.error('Failed to get real data:', insightsData.error || 'Unknown error');
-          }
-        } catch (metaError) {
-          aidsLogger.error(LogCategories.META_API, 'Erreur lors de la récupération des insights Meta', {}, metaError);
-          console.error('Could not fetch Meta insights, falling back to demo:', metaError);
+          };
+          
+          setMetrics(fallbackMetrics);
+          setTotalRevenue(stats.totalRevenue || 0);
+          setTotalSpend(0);
+          setTotalLeads(stats.totalProspects || 0);
+          setConversionRate(stats.conversionRate || 0);
+          setLoading(false);
+          return;
         }
+      } catch (error) {
+        console.error('Error loading fallback data:', error);
       }
       
-      // Fallback to demo metrics
-      const metricsResponse = await fetch(`/api/aids/metrics?range=${timeRange}`);
-      const metricsData = await metricsResponse.json();
-      setMetrics(metricsData.metrics || getDemoMetrics());
-      setRecentActions(metricsData.recentActions || getDemoActions());
-
-      // Analyze with AI
-      analyzeWithAI(metricsData.metrics || getDemoMetrics());
+      // No more fallback to demo data - only show real data or nothing
+      setMetrics({
+        overview: {
+          totalSpend: 0,
+          totalRevenue: 0,
+          totalLeads: 0,
+          conversions: 0,
+          ctr: 0,
+          cpc: 0,
+          roas: 0,
+          activeAds: 0
+        },
+        trend: {
+          chartData: { labels: [], datasets: [] },
+          revenueData: { labels: [], datasets: [] }
+        }
+      });
+      setRecentActions([]);
+      setLoading(false);
     } catch (error) {
       aidsLogger.error(LogCategories.UI, 'Erreur chargement dashboard', {}, error);
       console.error('Error loading dashboard:', error);
-      // Load demo data as fallback
-      const demoMetrics = getDemoMetrics();
-      setMetrics(demoMetrics);
-      setRecentActions(getDemoActions());
-      analyzeWithAI(demoMetrics);
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const analyzeWithAI = async (metricsData) => {
