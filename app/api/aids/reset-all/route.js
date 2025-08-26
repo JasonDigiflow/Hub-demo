@@ -105,7 +105,7 @@ export async function POST(request) {
           log(`${prospectsSnapshot.size} prospects trouvés dans ${adAccountId}`);
           
           // Delete each prospect
-          const batch = db.batch();
+          let batch = db.batch();
           let batchCount = 0;
           
           for (const doc of prospectsSnapshot.docs) {
@@ -117,6 +117,8 @@ export async function POST(request) {
               await batch.commit();
               results.prospects.deleted += batchCount;
               log(`Batch de ${batchCount} suppressions committé`);
+              // Créer un nouveau batch pour les prochaines suppressions
+              batch = db.batch();
               batchCount = 0;
             }
           }
@@ -128,7 +130,29 @@ export async function POST(request) {
             log(`Dernier batch de ${batchCount} suppressions committé`);
           }
           
-          log(`✅ ${prospectsSnapshot.size} prospects supprimés dans ${adAccountId}`);
+          // Vérifier que la suppression a fonctionné
+          const verifySnapshot = await db
+            .collection('organizations').doc(orgId)
+            .collection('adAccounts').doc(adAccountId)
+            .collection('prospects')
+            .limit(1)
+            .get();
+          
+          if (!verifySnapshot.empty) {
+            log(`⚠️ ATTENTION: ${verifySnapshot.size} prospects encore présents après suppression!`);
+            // Essayer une suppression individuelle
+            log('Tentative de suppression individuelle...');
+            for (const doc of prospectsSnapshot.docs) {
+              try {
+                await doc.ref.delete();
+                results.prospects.deleted++;
+              } catch (e) {
+                log(`Erreur suppression individuelle: ${e.message}`);
+              }
+            }
+          } else {
+            log(`✅ ${prospectsSnapshot.size} prospects supprimés avec succès dans ${adAccountId}`);
+          }
           
         } catch (error) {
           const errorMsg = `Erreur suppression prospects dans ${adAccountId}: ${error.message}`;
@@ -151,7 +175,7 @@ export async function POST(request) {
       
       log(`${revenuesSnapshot.size} revenus trouvés`);
       
-      const batch = db.batch();
+      let batch = db.batch();
       let batchCount = 0;
       
       for (const doc of revenuesSnapshot.docs) {
@@ -162,6 +186,8 @@ export async function POST(request) {
           await batch.commit();
           results.revenues.deleted += batchCount;
           log(`Batch de ${batchCount} revenus supprimés`);
+          // Créer un nouveau batch pour les prochaines suppressions
+          batch = db.batch();
           batchCount = 0;
         }
       }
@@ -172,7 +198,28 @@ export async function POST(request) {
         log(`Dernier batch de ${batchCount} revenus supprimés`);
       }
       
-      log(`✅ Total: ${results.revenues.deleted} revenus supprimés`);
+      // Vérifier que la suppression a fonctionné
+      const verifyRevenuesSnapshot = await db
+        .collection('aids_revenues')
+        .limit(1)
+        .get();
+      
+      if (!verifyRevenuesSnapshot.empty) {
+        log(`⚠️ ATTENTION: ${verifyRevenuesSnapshot.size} revenus encore présents après suppression!`);
+        // Essayer une suppression individuelle
+        log('Tentative de suppression individuelle des revenus...');
+        const allRevenues = await db.collection('aids_revenues').get();
+        for (const doc of allRevenues.docs) {
+          try {
+            await doc.ref.delete();
+            results.revenues.deleted++;
+          } catch (e) {
+            log(`Erreur suppression individuelle revenu: ${e.message}`);
+          }
+        }
+      } else {
+        log(`✅ Total: ${results.revenues.deleted} revenus supprimés avec succès`);
+      }
       
     } catch (error) {
       const errorMsg = `Erreur suppression revenus: ${error.message}`;
