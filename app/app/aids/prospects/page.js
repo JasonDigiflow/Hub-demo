@@ -817,9 +817,6 @@ export default function ProspectsPage() {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                   Statut
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-                  Actions
-                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5">
@@ -889,34 +886,6 @@ export default function ProspectsPage() {
                           💰 {prospect.revenueAmount.toLocaleString('fr-FR')}€
                         </div>
                       )}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm">
-                    <div className="flex items-center gap-2">
-                      {prospect.rawData && (
-                        <button
-                          onClick={() => {
-                            setSelectedProspect(prospect);
-                            setShowRawData(true);
-                          }}
-                          className="text-purple-400 hover:text-purple-300"
-                          title="Voir les données brutes"
-                        >
-                          🔍
-                        </button>
-                      )}
-                      <button
-                        onClick={() => handleEdit(prospect)}
-                        className="text-blue-400 hover:text-blue-300"
-                      >
-                        ✏️
-                      </button>
-                      <button
-                        onClick={() => handleDelete(prospect.id)}
-                        className="text-red-400 hover:text-red-300"
-                      >
-                        🗑️
-                      </button>
                     </div>
                   </td>
                 </motion.tr>
