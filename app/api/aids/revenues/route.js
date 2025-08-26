@@ -232,13 +232,15 @@ export async function POST(request) {
           // Create or update the prospect
           await prospectRef.set({
             id: data.prospectId,
-            name: data.clientName,
+            name: data.clientName || 'Client sans nom',
+            company: data.clientName || 'Client sans nom',
             status: 'converted',
             revenueAmount: data.amount,
             revenueDate: data.date || new Date().toISOString(),
             convertedAt: new Date().toISOString(),
             createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
+            updatedAt: new Date().toISOString(),
+            source: 'Revenue'
           }, { merge: true });
           
           console.log(`Created/Updated prospect ${data.prospectId} in default location`);
