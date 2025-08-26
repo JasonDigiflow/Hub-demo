@@ -72,13 +72,12 @@ export async function DELETE() {
     } catch (error) {
       console.error('Error deleting revenues from Firebase:', error);
       
-      // Return success anyway for testing purposes
+      // Return error if Firebase fails
       return NextResponse.json({ 
-        success: true,
-        message: 'Revenus supprimés (mode démo)',
-        deleted: 0,
-        demo: true
-      });
+        error: 'Erreur lors de la suppression',
+        details: error.message,
+        success: false
+      }, { status: 500 });
     }
     
   } catch (error) {

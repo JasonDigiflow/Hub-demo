@@ -1,24 +1,29 @@
 import { NextResponse } from 'next/server';
-import { revenueService } from '@/lib/aids/revenueService';
+import { db } from '@/lib/firebase-admin';
 
 export async function PUT(request, { params }) {
   try {
     const { id } = params;
     const data = await request.json();
     
-    // Update revenue using service
-    const success = await revenueService.update(id, data);
+    // Update revenue using Firebase Admin
+    const docRef = db.collection('aids_revenues').doc(id);
+    const doc = await docRef.get();
     
-    if (!success) {
+    if (!doc.exists) {
       return NextResponse.json(
         { error: 'Revenue not found' },
         { status: 404 }
       );
     }
+    
+    await docRef.update({
+      ...data,
+      updatedAt: new Date().toISOString()
+    });
 
     return NextResponse.json({ 
-      success: true,
-      usingFirebase: revenueService.isFirebaseAvailable()
+      success: true
     });
   } catch (error) {
     console.error('Error updating revenue:', error);
@@ -33,20 +38,22 @@ export async function DELETE(request, { params }) {
   try {
     const { id } = params;
     
-    // Delete revenue using service
-    const success = await revenueService.delete(id);
+    // Delete revenue using Firebase Admin
+    const docRef = db.collection('aids_revenues').doc(id);
+    const doc = await docRef.get();
     
-    if (!success) {
+    if (!doc.exists) {
       return NextResponse.json(
         { error: 'Revenue not found' },
         { status: 404 }
       );
     }
+    
+    await docRef.delete();
 
     return NextResponse.json({ 
       success: true,
-      message: 'Revenue deleted successfully',
-      usingFirebase: revenueService.isFirebaseAvailable()
+      message: 'Revenue deleted successfully'
     });
   } catch (error) {
     console.error('Error deleting revenue:', error);

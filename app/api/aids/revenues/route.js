@@ -2,26 +2,73 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import jwt from 'jsonwebtoken';
 import { db } from '@/lib/firebase-admin';
-import { revenueService } from '@/lib/aids/revenueService';
 
 export async function GET() {
   try {
     // Get user from cookie to scope revenues per user
     const cookieStore = cookies();
-    const authCookie = cookieStore.get('auth_token');
+    const authCookie = cookieStore.get('auth-token') || cookieStore.get('auth_token');
+    const metaSession = cookieStore.get('meta_session');
     
-    if (!authCookie) {
-      return NextResponse.json({ revenues: [], stats: {} }, { status: 200 });
+    let userId = null;
+    
+    if (authCookie) {
+      try {
+        const decoded = jwt.verify(authCookie.value, process.env.JWT_SECRET || 'default-secret-key');
+        userId = decoded.uid || decoded.userId || decoded.id;
+      } catch (e) {
+        console.error('JWT verification failed:', e.message);
+      }
+    }
+    
+    if (!userId && metaSession) {
+      try {
+        const session = JSON.parse(metaSession.value);
+        userId = session.userID || session.userId;
+      } catch (e) {
+        console.error('Meta session parse error:', e);
+      }
     }
 
-    // Get revenues and stats from service (uses Firebase if available)
-    const revenues = await revenueService.getAll();
-    const stats = await revenueService.getStats();
+    // Get revenues directly from Firebase Admin
+    const revenues = [];
+    
+    try {
+      const revenuesRef = db.collection('aids_revenues');
+      const snapshot = await revenuesRef.get();
+      
+      snapshot.forEach(doc => {
+        revenues.push({
+          id: doc.id,
+          ...doc.data()
+        });
+      });
+      
+      // Sort by date
+      revenues.sort((a, b) => new Date(b.date || b.createdAt) - new Date(a.date || a.createdAt));
+      
+    } catch (firebaseError) {
+      console.error('Firebase error:', firebaseError);
+      // Continue with empty array
+    }
+    
+    // Calculate stats
+    const totalRevenue = revenues.reduce((sum, r) => sum + (r.amount || 0), 0);
+    const uniqueClients = new Set(revenues.map(r => r.clientId)).size;
+    const averageTicket = uniqueClients > 0 ? totalRevenue / uniqueClients : 0;
+    
+    const stats = {
+      totalRevenue,
+      totalClients: uniqueClients,
+      averageTicket,
+      monthlyGrowth: 0, // Simplified for now
+      revenueCount: revenues.length
+    };
 
     return NextResponse.json({ 
       revenues,
       stats,
-      usingFirebase: revenueService.isFirebaseAvailable()
+      success: true
     });
   } catch (error) {
     console.error('Error fetching revenues:', error);
@@ -75,8 +122,13 @@ export async function POST(request) {
       }
     }
 
-    // Create revenue using service (will use Firebase if available)
-    const revenueId = await revenueService.create(data);
+    // Create revenue using Firebase Admin directly
+    const revenueRef = await db.collection('aids_revenues').add({
+      ...data,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    });
+    const revenueId = revenueRef.id;
     
     // Update prospect status to 'converted' with revenue amount
     if (userId && data.prospectId) {
@@ -129,8 +181,7 @@ export async function POST(request) {
     return NextResponse.json({ 
       success: true, 
       id: revenueId,
-      prospectUpdated: !!data.prospectId,
-      usingFirebase: revenueService.isFirebaseAvailable()
+      prospectUpdated: !!data.prospectId
     });
   } catch (error) {
     console.error('Error creating revenue:', error);
