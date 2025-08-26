@@ -123,7 +123,8 @@ export async function POST(request) {
     }
 
     // Create revenue using Firebase Admin directly
-    const revenueRef = await db.collection('aids_revenues').add({
+    const revenueRef = db.collection('aids_revenues').doc();
+    await revenueRef.set({
       ...data,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
