@@ -37,7 +37,7 @@ export async function GET(request) {
       'yesterday': 'yesterday',
       'last_7d': 'last_7d',
       'last_30d': 'last_30d',
-      'lifetime': 'lifetime'
+      'lifetime': 'last_90d'  // Use last_90d instead of lifetime
     };
     
     const datePreset = datePresetMap[timeRange] || 'last_7d';

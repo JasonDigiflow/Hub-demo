@@ -36,6 +36,7 @@ export default function AIDsInsights() {
   const [audienceBreakdown, setAudienceBreakdown] = useState(null);
   const [showBreakdownType, setShowBreakdownType] = useState('age,gender');
   const [expandedCampaign, setExpandedCampaign] = useState(null);
+  const [revenueData, setRevenueData] = useState(null);
 
   useEffect(() => {
     loadInsightsData();
@@ -44,17 +45,19 @@ export default function AIDsInsights() {
   const loadInsightsData = async () => {
     setLoading(true);
     try {
-      // Load insights with time series
-      const [insightsRes, campaignsRes, breakdownRes] = await Promise.all([
+      // Load insights with time series and revenue data
+      const [insightsRes, campaignsRes, breakdownRes, revenueRes] = await Promise.all([
         fetch(`/api/aids/meta/insights?time_range=${timeRange}&time_increment=1`),
         fetch('/api/aids/meta/campaigns?include_insights=true'),
-        fetch(`/api/aids/meta/insights?time_range=${timeRange}&breakdowns=${showBreakdownType}`)
+        fetch(`/api/aids/meta/insights?time_range=${timeRange}&breakdowns=${showBreakdownType}`),
+        fetch(`/api/aids/insights/revenues?time_range=${timeRange}`)
       ]);
 
-      const [insightsData, campaignsData, breakdownData] = await Promise.all([
+      const [insightsData, campaignsData, breakdownData, revData] = await Promise.all([
         insightsRes.json(),
         campaignsRes.json(),
-        breakdownRes.json()
+        breakdownRes.json(),
+        revenueRes.json()
       ]);
 
       if (insightsData.success) {
@@ -67,6 +70,10 @@ export default function AIDsInsights() {
 
       if (breakdownData.success && breakdownData.insights?.breakdown_data) {
         setAudienceBreakdown(breakdownData.insights.breakdown_data);
+      }
+
+      if (revData.success) {
+        setRevenueData(revData.revenues);
       }
 
       setLoading(false);
@@ -110,7 +117,7 @@ export default function AIDsInsights() {
     );
   }
 
-  // Prepare chart data
+  // Prepare chart data with real revenue data
   const spendRevenueChart = insights?.daily_data ? {
     labels: insights.daily_data.map(d => new Date(d.date).toLocaleDateString('fr-FR', { 
       day: 'numeric', 
@@ -124,19 +131,20 @@ export default function AIDsInsights() {
         backgroundColor: 'rgba(147, 51, 234, 0.2)',
         tension: 0.4
       },
-      ...(insights.has_revenue_data ? [{
-        label: 'Revenus',
+      {
+        label: 'Revenus (Réels)',
         data: insights.daily_data.map(d => {
-          if (d.action_values) {
-            const purchase = d.action_values.find(a => a.action_type === 'purchase');
-            return purchase ? parseFloat(purchase.value) : 0;
+          // Use real revenue data from our database
+          if (revenueData?.daily_data) {
+            const dayRevenue = revenueData.daily_data.find(r => r.date === d.date);
+            return dayRevenue ? dayRevenue.amount : 0;
           }
           return 0;
         }),
         borderColor: '#10b981',
         backgroundColor: 'rgba(16, 185, 129, 0.2)',
         tension: 0.4
-      }] : [])
+      }
     ]
   } : { labels: [], datasets: [] };
 
@@ -302,47 +310,39 @@ export default function AIDsInsights() {
           </div>
         </motion.div>
 
-        {insights?.has_revenue_data && (
-          <>
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.45 }}
-              className="bg-white/5 backdrop-blur-sm rounded-lg p-4 border border-white/10"
-            >
-              <div className="text-xs text-gray-400 mb-1">Revenus</div>
-              <div className="text-xl font-bold text-green-400">
-                {formatCurrency(insights?.conversion_value || 0)}
-              </div>
-            </motion.div>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.45 }}
+          className="bg-gradient-to-br from-green-500/10 to-emerald-500/10 rounded-lg p-4 border border-green-500/20"
+        >
+          <div className="text-xs text-green-400 mb-1">Revenus Réels</div>
+          <div className="text-xl font-bold text-green-400">
+            {formatCurrency(revenueData?.total || 0)}
+          </div>
+          <div className="text-xs text-gray-400 mt-1">
+            {revenueData?.count || 0} ventes
+          </div>
+        </motion.div>
 
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.5 }}
-              className="bg-white/5 backdrop-blur-sm rounded-lg p-4 border border-white/10"
-            >
-              <div className="text-xs text-gray-400 mb-1">ROAS</div>
-              <div className="text-xl font-bold text-green-400">
-                {insights?.roas || '0'}x
-              </div>
-            </motion.div>
-          </>
-        )}
-
-        {!insights?.has_revenue_data && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.45 }}
-            className="col-span-2 bg-white/5 backdrop-blur-sm rounded-lg p-4 border border-white/10"
-          >
-            <div className="text-xs text-gray-400 mb-1">Revenus</div>
-            <div className="text-sm text-gray-500">
-              Données de revenu non disponibles
-            </div>
-          </motion.div>
-        )}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5 }}
+          className="bg-gradient-to-br from-purple-500/10 to-pink-500/10 rounded-lg p-4 border border-purple-500/20"
+        >
+          <div className="text-xs text-purple-400 mb-1">ROAS Réel</div>
+          <div className="text-xl font-bold text-purple-400">
+            {insights?.spend && revenueData?.total 
+              ? (parseFloat(revenueData.total) / parseFloat(insights.spend)).toFixed(2) 
+              : '0.00'}x
+          </div>
+          <div className="text-xs text-gray-400 mt-1">
+            {insights?.spend && revenueData?.total 
+              ? `${((parseFloat(revenueData.total) / parseFloat(insights.spend) - 1) * 100).toFixed(0)}% ROI`
+              : 'N/A'}
+          </div>
+        </motion.div>
       </div>
 
       {/* Charts */}
@@ -394,6 +394,7 @@ export default function AIDsInsights() {
                 <th className="text-right py-3 px-4 text-xs font-medium text-gray-400 uppercase">CTR</th>
                 <th className="text-right py-3 px-4 text-xs font-medium text-gray-400 uppercase">Conversions</th>
                 <th className="text-right py-3 px-4 text-xs font-medium text-gray-400 uppercase">CPC</th>
+                <th className="text-right py-3 px-4 text-xs font-medium text-gray-400 uppercase">Revenu</th>
               </tr>
             </thead>
             <tbody>
@@ -435,6 +436,18 @@ export default function AIDsInsights() {
                   </td>
                   <td className="py-3 px-4 text-right text-sm text-white">
                     {formatCurrency(campaign.insights?.cpc || 0)}
+                  </td>
+                  <td className="py-3 px-4 text-right text-sm">
+                    <span className="text-green-400 font-medium">
+                      {formatCurrency(
+                        revenueData?.by_campaign?.[campaign.id]?.amount || 0
+                      )}
+                    </span>
+                    {revenueData?.by_campaign?.[campaign.id]?.count > 0 && (
+                      <div className="text-xs text-gray-400">
+                        {revenueData.by_campaign[campaign.id].count} vente{revenueData.by_campaign[campaign.id].count > 1 ? 's' : ''}
+                      </div>
+                    )}
                   </td>
                 </tr>
               ))}
