@@ -85,8 +85,9 @@ export default function AIDsDashboard() {
   // Calcul du ROI
   useEffect(() => {
     if (totalRevenue && totalSpend) {
-      const calculatedRoi = ((totalRevenue - totalSpend) / totalSpend * 100).toFixed(2);
-      setRoi(calculatedRoi);
+      const calculatedRoi = (parseFloat(totalRevenue || 0) - parseFloat(totalSpend || 0)) / parseFloat(totalSpend || 1) * 100;
+      const formattedRoi = isNaN(calculatedRoi) ? '0.00' : calculatedRoi.toFixed(2);
+      setRoi(formattedRoi);
       aidsLogger.info(LogCategories.ANALYTICS, 'ROI calculé', { 
         revenue: totalRevenue, 
         spend: totalSpend, 
@@ -133,9 +134,10 @@ export default function AIDsDashboard() {
               totalRevenue: parseFloat(stats.totalRevenue || 0),
               totalLeads: parseInt(stats.totalProspects || 0),
               conversions: parseInt(stats.convertedProspects || 0),
-              ctr: parseFloat(stats.conversionRate || 0).toFixed(2),
-              cpc: stats.totalProspects > 0 ? parseFloat((stats.totalRevenue * 0.25 / stats.totalProspects) || 0).toFixed(2) : '0.00',
-              roas: stats.totalRevenue > 0 ? parseFloat((stats.totalRevenue / (stats.totalRevenue * 0.25)) || 4).toFixed(2) : '4.00',
+              ctr: parseFloat(stats.conversionRate || 0),
+              cpc: stats.totalProspects > 0 ? parseFloat((stats.totalRevenue * 0.25 / stats.totalProspects) || 0) : 0,
+              roas: stats.totalRevenue > 0 ? parseFloat((stats.totalRevenue / (stats.totalRevenue * 0.25)) || 4) : 4,
+              conversionRate: parseFloat(stats.conversionRate || 0),
               activeAds: 0
             },
             trend: {
@@ -316,7 +318,7 @@ export default function AIDsDashboard() {
           id: Date.now() + 1,
           type: 'PERFORMANCE_EXCELLENTE',
           status: 'success',
-          message: `ROAS exceptionnel: ${metrics.overview.roas.toFixed(1)}x`,
+          message: `ROAS exceptionnel: ${parseFloat(metrics.overview.roas || 0).toFixed(1)}x`,
           time: '5 min'
         });
       }
@@ -869,7 +871,7 @@ export default function AIDsDashboard() {
           </div>
           <div className="text-right">
             <p className="text-sm text-gray-400 mb-1">Temps réel</p>
-            <p className="text-2xl font-bold text-white">€{adSpendToday.toFixed(2)}</p>
+            <p className="text-2xl font-bold text-white">€{parseFloat(adSpendToday || 0).toFixed(2)}</p>
             <p className="text-xs text-gray-500">dépensé aujourd'hui</p>
           </div>
         </div>
@@ -937,7 +939,7 @@ export default function AIDsDashboard() {
             <span className="text-2xl">📈</span>
           </div>
           <div className="text-2xl font-bold text-white">
-            {metrics?.overview.roas?.toFixed(1)}x
+            {parseFloat(metrics?.overview?.roas || 0).toFixed(1)}x
           </div>
           <div className="text-xs text-green-400 mt-1">↑ 0.5x amélioration</div>
         </motion.div>
@@ -953,7 +955,7 @@ export default function AIDsDashboard() {
             <span className="text-2xl">🎯</span>
           </div>
           <div className="text-2xl font-bold text-white">
-            {metrics?.overview.ctr?.toFixed(2)}%
+            {parseFloat(metrics?.overview?.ctr || 0).toFixed(2)}%
           </div>
           <div className="text-xs text-green-400 mt-1">↑ 0.3% augmentation</div>
         </motion.div>
@@ -972,7 +974,7 @@ export default function AIDsDashboard() {
             {metrics?.overview.conversions || 0}
           </div>
           <div className="text-xs text-blue-400 mt-1">
-            {metrics?.overview.conversionRate?.toFixed(2) || 0}% taux
+            {parseFloat(metrics?.overview?.conversionRate || 0).toFixed(2)}% taux
           </div>
         </motion.div>
       </div>
