@@ -542,6 +542,32 @@ export default function ProspectsPage() {
                       <span>🗑️</span>
                       Supprimer tous les prospects
                     </button>
+                    <div className="border-t border-gray-700 my-2"></div>
+                    <button
+                      onClick={async () => {
+                        setShowAdvancedOptions(false);
+                        try {
+                          const response = await fetch('/api/aids/fix-prospects-names', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' }
+                          });
+                          const result = await response.json();
+                          if (result.success) {
+                            alert(`✅ ${result.results.fixed.length} prospects corrigés avec succès`);
+                            loadProspects(); // Recharger la liste
+                          } else {
+                            alert('❌ Erreur lors de la correction');
+                          }
+                        } catch (error) {
+                          console.error('Error fixing prospects:', error);
+                          alert('❌ Erreur lors de la correction');
+                        }
+                      }}
+                      className="w-full text-left px-3 py-2 text-sm text-blue-400 hover:bg-gray-800 rounded flex items-center gap-2"
+                    >
+                      <span>🔧</span>
+                      Corriger les noms manquants
+                    </button>
                     <div className="px-3 py-2 text-xs text-gray-500 mt-2">
                       {prospects.length} prospects affichés
                     </div>
