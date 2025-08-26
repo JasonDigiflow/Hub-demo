@@ -190,27 +190,34 @@ export async function POST(request) {
             .get();
           
           console.log(`Found ${adAccountsSnapshot.size} ad accounts for org ${orgId}`);
+          console.log(`Searching for prospect ID: ${data.prospectId}`);
           
           for (const adAccountDoc of adAccountsSnapshot.docs) {
+            console.log(`Checking ad account: ${adAccountDoc.id}`);
+            
             const prospectRef = db
               .collection('organizations').doc(orgId)
               .collection('adAccounts').doc(adAccountDoc.id)
               .collection('prospects').doc(data.prospectId);
             
             const prospectDoc = await prospectRef.get();
+            console.log(`Prospect exists in ${adAccountDoc.id}: ${prospectDoc.exists}`);
             
             if (prospectDoc.exists) {
               // Update prospect status and add revenue info
-              await prospectRef.update({
+              const updateData = {
                 status: 'converted',
                 revenueAmount: data.amount,
                 revenueDate: data.date || new Date().toISOString(),
                 revenueService: data.service || '',
                 updatedAt: new Date().toISOString(),
                 convertedAt: new Date().toISOString()
-              });
+              };
               
-              console.log(`Prospect ${data.prospectId} updated to converted with revenue ${data.amount} in ad account ${adAccountDoc.id}`);
+              console.log(`Updating prospect with data:`, updateData);
+              await prospectRef.update(updateData);
+              
+              console.log(`✅ Prospect ${data.prospectId} updated to converted with revenue ${data.amount} in ad account ${adAccountDoc.id}`);
               prospectUpdated = true;
               break;
             }

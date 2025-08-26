@@ -232,6 +232,9 @@ export default function RevenuesPage() {
       id: editingRevenue?.id || Date.now()
     };
 
+    console.log('📊 Saving revenue with data:', revenueData);
+    console.log('🎯 Prospect ID to update:', formData.prospectId);
+
     try {
       const url = editingRevenue 
         ? `/api/aids/revenues/${editingRevenue.id}`
@@ -246,7 +249,7 @@ export default function RevenuesPage() {
       });
 
       const result = await response.json();
-      console.log('Revenue save response:', { status: response.status, ok: response.ok, result });
+      console.log('✅ Revenue save response:', { status: response.status, ok: response.ok, result, prospectId: formData.prospectId });
 
       if (response.ok && result.success) {
         // Si un prospect est sélectionné, mettre à jour son statut en "converted" avec le montant
