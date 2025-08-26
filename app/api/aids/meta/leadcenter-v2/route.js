@@ -342,7 +342,8 @@ export async function GET(request) {
         if (!orgId) {
           console.log('Creating organization for user...');
           orgId = `org_${userId}_${Date.now()}`;
-          const orgName = userData?.email?.split('@')[0] || 'Mon Organisation';
+          const userEmail = userData?.email || session?.userEmail || `user${userId}@example.com`;
+          const orgName = userEmail.split('@')[0] || 'Mon Organisation';
           
           await db.collection('organizations').doc(orgId).set({
             name: orgName,
