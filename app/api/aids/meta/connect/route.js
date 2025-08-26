@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
+import jwt from 'jsonwebtoken';
 import aidsLogger, { LogCategories } from '@/lib/aids-logger';
 
 // Helper to validate token with app secret if available
@@ -171,6 +172,7 @@ export async function POST(request) {
     const sessionData = {
       accessToken: accessToken, // In production, encrypt this!
       userID: userData.id,
+      userId: userData.id, // Add both for compatibility
       userName: userData.name,
       userEmail: userData.email,
       timestamp: Date.now(),
@@ -182,6 +184,28 @@ export async function POST(request) {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax', // Changed from 'strict' to allow OAuth redirects
+      maxAge: 60 * 60 * 24 * 30 // 30 days
+    });
+    
+    // Also create a JWT auth token for API compatibility
+    const jwtSecret = process.env.JWT_SECRET || 'default-secret-key';
+    const authToken = jwt.sign(
+      { 
+        uid: userData.id,
+        userId: userData.id,
+        email: userData.email,
+        name: userData.name,
+        authMethod: 'meta'
+      },
+      jwtSecret,
+      { expiresIn: '30d' }
+    );
+    
+    // Set auth token cookie for API authentication
+    cookieStore.set('auth-token', authToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
       maxAge: 60 * 60 * 24 * 30 // 30 days
     });
 

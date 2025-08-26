@@ -277,9 +277,23 @@ export async function GET(request) {
     
     try {
       const authCookie = cookieStore.get('auth-token');
-      if (authCookie && allLeads.length > 0) {
-        const decoded = jwt.verify(authCookie.value, process.env.JWT_SECRET);
-        const userId = decoded.uid;
+      let userId = null;
+      
+      if (authCookie) {
+        try {
+          const decoded = jwt.verify(authCookie.value, process.env.JWT_SECRET || 'default-secret-key');
+          userId = decoded.uid || decoded.userId || decoded.id;
+        } catch (e) {
+          console.log('JWT decode error, trying meta session:', e.message);
+        }
+      }
+      
+      // Fallback to meta session if no auth token
+      if (!userId && session) {
+        userId = session.userID || session.userId;
+      }
+      
+      if (userId && allLeads.length > 0) {
         
         // Get user's organization
         const userDoc = await db.collection('users').doc(userId).get();
