@@ -321,9 +321,13 @@ export async function GET(request) {
         
         // Get user's organization
         const userDoc = await db.collection('users').doc(userId).get();
-        const userData = userDoc.data();
         console.log('User document exists:', userDoc.exists);
-        console.log('User data:', userData);
+        
+        let userData = null;
+        if (userDoc.exists) {
+          userData = userDoc.data();
+          console.log('User data:', userData);
+        }
         
         if (!userDoc.exists) {
           console.log('Creating user document...');
@@ -334,6 +338,7 @@ export async function GET(request) {
             createdAt: new Date().toISOString()
           };
           await db.collection('users').doc(userId).set(newUserData);
+          userData = newUserData;
           console.log('User document created:', newUserData);
         }
         
