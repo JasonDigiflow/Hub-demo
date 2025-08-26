@@ -195,12 +195,50 @@ export async function POST(request) {
           for (const adAccountDoc of adAccountsSnapshot.docs) {
             console.log(`Checking ad account: ${adAccountDoc.id}`);
             
-            const prospectRef = db
+            // Essayer d'abord avec l'ID direct (pour les nouveaux prospects avec ID Meta)
+            let prospectRef = db
               .collection('organizations').doc(orgId)
               .collection('adAccounts').doc(adAccountDoc.id)
               .collection('prospects').doc(data.prospectId);
             
-            const prospectDoc = await prospectRef.get();
+            let prospectDoc = await prospectRef.get();
+            
+            // Si pas trouvé et que l'ID commence par LEAD_, chercher par metaId dans les données
+            if (!prospectDoc.exists && data.prospectId.startsWith('LEAD_')) {
+              console.log(`Searching for prospect with metaId: ${data.prospectId} in ${adAccountDoc.id}`);
+              const prospectsSnapshot = await db
+                .collection('organizations').doc(orgId)
+                .collection('adAccounts').doc(adAccountDoc.id)
+                .collection('prospects')
+                .where('metaId', '==', data.prospectId)
+                .limit(1)
+                .get();
+              
+              if (!prospectsSnapshot.empty) {
+                prospectDoc = prospectsSnapshot.docs[0];
+                prospectRef = prospectDoc.ref;
+                console.log(`Found prospect with Firebase ID: ${prospectDoc.id} and metaId: ${data.prospectId}`);
+              }
+            }
+            
+            // Si toujours pas trouvé, chercher par id dans les données
+            if (!prospectDoc.exists) {
+              console.log(`Searching for prospect with id field: ${data.prospectId} in ${adAccountDoc.id}`);
+              const prospectsSnapshot = await db
+                .collection('organizations').doc(orgId)
+                .collection('adAccounts').doc(adAccountDoc.id)
+                .collection('prospects')
+                .where('id', '==', data.prospectId)
+                .limit(1)
+                .get();
+              
+              if (!prospectsSnapshot.empty) {
+                prospectDoc = prospectsSnapshot.docs[0];
+                prospectRef = prospectDoc.ref;
+                console.log(`Found prospect with Firebase ID: ${prospectDoc.id} and id field: ${data.prospectId}`);
+              }
+            }
+            
             console.log(`Prospect exists in ${adAccountDoc.id}: ${prospectDoc.exists}`);
             
             if (prospectDoc.exists) {

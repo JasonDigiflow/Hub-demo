@@ -568,6 +568,33 @@ export default function ProspectsPage() {
                       <span>🔧</span>
                       Corriger les noms manquants
                     </button>
+                    <button
+                      onClick={async () => {
+                        setShowAdvancedOptions(false);
+                        if (confirm('⚠️ Voulez-vous migrer les IDs des prospects vers les IDs Meta?\n\nCela va remplacer les IDs Firebase par les IDs Meta pour une meilleure synchronisation.')) {
+                          try {
+                            const response = await fetch('/api/aids/migrate-prospect-ids', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' }
+                            });
+                            const result = await response.json();
+                            if (result.success) {
+                              alert(`✅ Migration terminée:\n- ${result.summary.migrated} prospects migrés\n- ${result.summary.skipped} ignorés\n- ${result.summary.errors} erreurs`);
+                              loadProspects(); // Recharger la liste
+                            } else {
+                              alert('❌ Erreur lors de la migration');
+                            }
+                          } catch (error) {
+                            console.error('Error migrating prospects:', error);
+                            alert('❌ Erreur lors de la migration');
+                          }
+                        }
+                      }}
+                      className="w-full text-left px-3 py-2 text-sm text-purple-400 hover:bg-gray-800 rounded flex items-center gap-2"
+                    >
+                      <span>🔄</span>
+                      Migrer vers IDs Meta
+                    </button>
                     <div className="px-3 py-2 text-xs text-gray-500 mt-2">
                       {prospects.length} prospects affichés
                     </div>

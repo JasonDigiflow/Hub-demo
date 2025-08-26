@@ -430,7 +430,8 @@ export async function GET(request) {
               syncedAt: new Date().toISOString()
             };
             
-            const docRef = prospectsRef.doc();
+            // Utiliser l'ID Meta comme ID du document Firebase
+            const docRef = prospectsRef.doc(lead.id); // lead.id contient déjà "LEAD_XXX"
             batch.set(docRef, prospectData);
             savedCount++;
             batchCount++;

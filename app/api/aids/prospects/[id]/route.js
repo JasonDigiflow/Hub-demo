@@ -75,12 +75,50 @@ export async function PUT(request, { params }) {
       // Search for the prospect in each ad account
       for (const adAccountDoc of adAccountsSnapshot.docs) {
         const adAccountId = adAccountDoc.id;
-        const ref = db
+        
+        // Essayer d'abord avec l'ID direct
+        let ref = db
           .collection('organizations').doc(orgId)
           .collection('adAccounts').doc(adAccountId)
           .collection('prospects').doc(id);
         
-        const prospectDoc = await ref.get();
+        let prospectDoc = await ref.get();
+        
+        // Si pas trouvé et que l'ID commence par LEAD_, chercher par metaId
+        if (!prospectDoc.exists && id.startsWith('LEAD_')) {
+          console.log(`Searching for prospect with metaId: ${id} in ${adAccountId}`);
+          const prospectsSnapshot = await db
+            .collection('organizations').doc(orgId)
+            .collection('adAccounts').doc(adAccountId)
+            .collection('prospects')
+            .where('metaId', '==', id)
+            .limit(1)
+            .get();
+          
+          if (!prospectsSnapshot.empty) {
+            prospectDoc = prospectsSnapshot.docs[0];
+            ref = prospectDoc.ref;
+            console.log(`Found prospect with Firebase ID: ${prospectDoc.id} and metaId: ${id}`);
+          }
+        }
+        
+        // Si toujours pas trouvé, chercher par id dans les données
+        if (!prospectDoc.exists) {
+          console.log(`Searching for prospect with id field: ${id} in ${adAccountId}`);
+          const prospectsSnapshot = await db
+            .collection('organizations').doc(orgId)
+            .collection('adAccounts').doc(adAccountId)
+            .collection('prospects')
+            .where('id', '==', id)
+            .limit(1)
+            .get();
+          
+          if (!prospectsSnapshot.empty) {
+            prospectDoc = prospectsSnapshot.docs[0];
+            ref = prospectDoc.ref;
+            console.log(`Found prospect with Firebase ID: ${prospectDoc.id} and id field: ${id}`);
+          }
+        }
         
         if (prospectDoc.exists) {
           console.log(`Found prospect ${id} in ad account ${adAccountId}`);
@@ -221,12 +259,45 @@ export async function GET(request, { params }) {
         .get();
       
       for (const adAccountDoc of adAccountsSnapshot.docs) {
-        const prospectRef = db
+        const adAccountId = adAccountDoc.id;
+        
+        // Essayer d'abord avec l'ID direct
+        let prospectRef = db
           .collection('organizations').doc(orgId)
-          .collection('adAccounts').doc(adAccountDoc.id)
+          .collection('adAccounts').doc(adAccountId)
           .collection('prospects').doc(id);
         
-        const prospectDoc = await prospectRef.get();
+        let prospectDoc = await prospectRef.get();
+        
+        // Si pas trouvé et que l'ID commence par LEAD_, chercher par metaId
+        if (!prospectDoc.exists && id.startsWith('LEAD_')) {
+          const prospectsSnapshot = await db
+            .collection('organizations').doc(orgId)
+            .collection('adAccounts').doc(adAccountId)
+            .collection('prospects')
+            .where('metaId', '==', id)
+            .limit(1)
+            .get();
+          
+          if (!prospectsSnapshot.empty) {
+            prospectDoc = prospectsSnapshot.docs[0];
+          }
+        }
+        
+        // Si toujours pas trouvé, chercher par id dans les données
+        if (!prospectDoc.exists) {
+          const prospectsSnapshot = await db
+            .collection('organizations').doc(orgId)
+            .collection('adAccounts').doc(adAccountId)
+            .collection('prospects')
+            .where('id', '==', id)
+            .limit(1)
+            .get();
+          
+          if (!prospectsSnapshot.empty) {
+            prospectDoc = prospectsSnapshot.docs[0];
+          }
+        }
         
         if (prospectDoc.exists) {
           return NextResponse.json({
@@ -312,12 +383,47 @@ export async function DELETE(request, { params }) {
         .get();
       
       for (const adAccountDoc of adAccountsSnapshot.docs) {
-        const prospectRef = db
+        const adAccountId = adAccountDoc.id;
+        
+        // Essayer d'abord avec l'ID direct
+        let prospectRef = db
           .collection('organizations').doc(orgId)
-          .collection('adAccounts').doc(adAccountDoc.id)
+          .collection('adAccounts').doc(adAccountId)
           .collection('prospects').doc(id);
         
-        const prospectDoc = await prospectRef.get();
+        let prospectDoc = await prospectRef.get();
+        
+        // Si pas trouvé et que l'ID commence par LEAD_, chercher par metaId
+        if (!prospectDoc.exists && id.startsWith('LEAD_')) {
+          const prospectsSnapshot = await db
+            .collection('organizations').doc(orgId)
+            .collection('adAccounts').doc(adAccountId)
+            .collection('prospects')
+            .where('metaId', '==', id)
+            .limit(1)
+            .get();
+          
+          if (!prospectsSnapshot.empty) {
+            prospectDoc = prospectsSnapshot.docs[0];
+            prospectRef = prospectDoc.ref;
+          }
+        }
+        
+        // Si toujours pas trouvé, chercher par id dans les données
+        if (!prospectDoc.exists) {
+          const prospectsSnapshot = await db
+            .collection('organizations').doc(orgId)
+            .collection('adAccounts').doc(adAccountId)
+            .collection('prospects')
+            .where('id', '==', id)
+            .limit(1)
+            .get();
+          
+          if (!prospectsSnapshot.empty) {
+            prospectDoc = prospectsSnapshot.docs[0];
+            prospectRef = prospectDoc.ref;
+          }
+        }
         
         if (prospectDoc.exists) {
           await prospectRef.delete();

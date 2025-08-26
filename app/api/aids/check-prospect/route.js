@@ -58,23 +58,59 @@ export async function POST(request) {
       locations: []
     };
     
-    // Check all ad accounts including default
-    const adAccountsToCheck = ['adacc_meta_1756199456471', 'default'];
+    // Check all ad accounts
+    const adAccountsSnapshot = await db
+      .collection('organizations').doc(orgId)
+      .collection('adAccounts')
+      .get();
     
-    for (const adAccountId of adAccountsToCheck) {
+    for (const adAccountDoc of adAccountsSnapshot.docs) {
+      const adAccountId = adAccountDoc.id;
       try {
-        const prospectRef = db
+        // Essayer d'abord avec l'ID direct (pour les nouveaux prospects avec ID Meta)
+        let prospectRef = db
           .collection('organizations').doc(orgId)
           .collection('adAccounts').doc(adAccountId)
           .collection('prospects').doc(prospectId);
         
-        const prospectDoc = await prospectRef.get();
+        let prospectDoc = await prospectRef.get();
+        
+        // Si pas trouvé et que l'ID commence par LEAD_, chercher par metaId dans les données
+        if (!prospectDoc.exists && prospectId.startsWith('LEAD_')) {
+          const prospectsSnapshot = await db
+            .collection('organizations').doc(orgId)
+            .collection('adAccounts').doc(adAccountId)
+            .collection('prospects')
+            .where('metaId', '==', prospectId)
+            .limit(1)
+            .get();
+          
+          if (!prospectsSnapshot.empty) {
+            prospectDoc = prospectsSnapshot.docs[0];
+          }
+        }
+        
+        // Si toujours pas trouvé, chercher par id dans les données
+        if (!prospectDoc.exists) {
+          const prospectsSnapshot = await db
+            .collection('organizations').doc(orgId)
+            .collection('adAccounts').doc(adAccountId)
+            .collection('prospects')
+            .where('id', '==', prospectId)
+            .limit(1)
+            .get();
+          
+          if (!prospectsSnapshot.empty) {
+            prospectDoc = prospectsSnapshot.docs[0];
+          }
+        }
         
         if (prospectDoc.exists) {
           result.found = true;
           const data = prospectDoc.data();
           result.locations.push({
             adAccountId,
+            firebaseId: prospectDoc.id,
             data: {
               name: data.name,
               status: data.status,

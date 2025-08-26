@@ -134,8 +134,11 @@ async function fetchProspectsForUser(userId) {
           
           prospectsSnapshot.forEach(doc => {
             const data = doc.data();
+            // Utiliser l'ID Meta s'il existe, sinon l'ID Firebase
+            const prospectId = data.metaId || data.id || doc.id;
             allProspects.push({
-              id: doc.id,
+              id: prospectId,
+              firebaseId: doc.id,
               ...data
             });
           });
@@ -154,10 +157,13 @@ async function fetchProspectsForUser(userId) {
           
           defaultProspectsSnapshot.forEach(doc => {
             const data = doc.data();
-            // Avoid duplicates
-            if (!allProspects.find(p => p.id === doc.id)) {
+            // Utiliser l'ID Meta s'il existe, sinon l'ID Firebase
+            const prospectId = data.metaId || data.id || doc.id;
+            // Avoid duplicates (check both Meta ID and Firebase ID)
+            if (!allProspects.find(p => p.id === prospectId || p.firebaseId === doc.id)) {
               allProspects.push({
-                id: doc.id,
+                id: prospectId,
+                firebaseId: doc.id,
                 ...data
               });
             }
@@ -185,10 +191,13 @@ async function fetchProspectsForUser(userId) {
       
       oldSnapshot.forEach(doc => {
         const data = doc.data();
-        // Avoid duplicates
-        if (!allProspects.find(p => p.id === doc.id)) {
+        // Utiliser l'ID Meta s'il existe, sinon l'ID Firebase
+        const prospectId = data.metaId || data.id || doc.id;
+        // Avoid duplicates (check both Meta ID and Firebase ID)
+        if (!allProspects.find(p => p.id === prospectId || p.firebaseId === doc.id)) {
           allProspects.push({
-            id: doc.id,
+            id: prospectId,
+            firebaseId: doc.id,
             ...data
           });
         }
