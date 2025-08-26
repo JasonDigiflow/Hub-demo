@@ -627,6 +627,12 @@ export default function RevenuesPage() {
                           key={prospect.id}
                           type="button"
                           onClick={() => {
+                            console.log('🔍 Prospect sélectionné:', {
+                              id: prospect.id,
+                              name: prospect.name,
+                              company: prospect.company,
+                              status: prospect.status
+                            });
                             setFormData({
                               ...formData,
                               prospectId: prospect.id,
