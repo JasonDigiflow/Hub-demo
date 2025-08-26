@@ -54,18 +54,18 @@ export default function AIDsDashboard() {
   });
   
   // Nouvelles métriques avancées
-  const [performanceScore, setPerformanceScore] = useState(87);
-  const [adSpendToday, setAdSpendToday] = useState(1234.56);
-  const [activeCampaigns, setActiveCampaigns] = useState(12);
-  const [totalLeads, setTotalLeads] = useState(892);
-  const [conversionRate, setConversionRate] = useState(3.45);
-  const [avgCostPerLead, setAvgCostPerLead] = useState(18.50);
-  const [bestPerformingAd, setBestPerformingAd] = useState('Black Friday Special');
-  const [worstPerformingAd, setWorstPerformingAd] = useState('Generic Sale');
+  const [performanceScore, setPerformanceScore] = useState(0);
+  const [adSpendToday, setAdSpendToday] = useState(0);
+  const [activeCampaigns, setActiveCampaigns] = useState(0);
+  const [totalLeads, setTotalLeads] = useState(0);
+  const [conversionRate, setConversionRate] = useState(0);
+  const [avgCostPerLead, setAvgCostPerLead] = useState(0);
+  const [bestPerformingAd, setBestPerformingAd] = useState('');
+  const [worstPerformingAd, setWorstPerformingAd] = useState('');
   
   // Métriques ROI
-  const [totalRevenue, setTotalRevenue] = useState(48567.89);
-  const [totalSpend, setTotalSpend] = useState(12456.78);
+  const [totalRevenue, setTotalRevenue] = useState(0);
+  const [totalSpend, setTotalSpend] = useState(0);
   const [roi, setRoi] = useState(0);
   const [roiTrend, setRoiTrend] = useState([]);
 
@@ -130,13 +130,13 @@ export default function AIDsDashboard() {
           
           const realMetrics = {
             overview: {
-              totalSpend: parseFloat(stats.totalRevenue || 0) * 0.25, // Estimate spend as 25% of revenue
+              totalSpend: 0, // Pas de vraies dépenses publicitaires
               totalRevenue: parseFloat(stats.totalRevenue || 0),
               totalLeads: parseInt(stats.totalProspects || 0),
               conversions: parseInt(stats.convertedProspects || 0),
               ctr: parseFloat(stats.conversionRate || 0),
-              cpc: stats.totalProspects > 0 ? parseFloat((stats.totalRevenue * 0.25 / stats.totalProspects) || 0) : 0,
-              roas: stats.totalRevenue > 0 ? parseFloat((stats.totalRevenue / (stats.totalRevenue * 0.25)) || 4) : 4,
+              cpc: 0, // Pas de vraies dépenses publicitaires
+              roas: 0, // Pas de vraies dépenses publicitaires,
               conversionRate: parseFloat(stats.conversionRate || 0),
               activeAds: 0
             },
@@ -165,10 +165,14 @@ export default function AIDsDashboard() {
           };
           
           setMetrics(realMetrics);
-          setTotalRevenue(stats.totalRevenue);
-          setTotalSpend(stats.totalRevenue * 0.25);
-          setRecentActions(generateRecentActions(realMetrics));
-          analyzeWithAI(realMetrics);
+          setTotalRevenue(stats.totalRevenue || 0);
+          setTotalSpend(0); // Pas de vraies dépenses publicitaires
+          setTotalLeads(stats.totalProspects || 0);
+          setConversionRate(stats.conversionRate || 0);
+          setActiveCampaigns(0); // Pas de vraies campagnes
+          setAdSpendToday(0); // Pas de vraies dépenses
+          setAvgCostPerLead(0); // Pas de vraies dépenses
+          setRecentActions([]); // Pas de fake actions
           setLoading(false);
           
           aidsLogger.success(LogCategories.META_API, 'Données réelles chargées depuis Firebase', { 
@@ -205,8 +209,8 @@ export default function AIDsDashboard() {
             
             // Update revenue and spend for ROI calculation
             if (insightsData.metrics.overview) {
-              setTotalRevenue(insightsData.metrics.overview.totalRevenue || 48567.89);
-              setTotalSpend(insightsData.metrics.overview.totalSpend || 12456.78);
+              setTotalRevenue(insightsData.metrics.overview.totalRevenue || 0);
+              setTotalSpend(insightsData.metrics.overview.totalSpend || 0);
             }
             
             aidsLogger.success(LogCategories.META_API, 'Données Meta chargées avec succès', { 
@@ -861,18 +865,18 @@ export default function AIDsDashboard() {
                     transition={{ duration: 1, delay: 0.5 }}
                   />
                 </div>
-                <span className="text-3xl font-bold text-white">{performanceScore}%</span>
+                <span className="text-3xl font-bold text-white">{metrics?.overview?.conversions || 0}</span>
               </div>
               <div className="text-sm text-gray-400">
-                <p>📈 +5% vs hier</p>
-                <p>🎯 Objectif: 90%</p>
+                <p>📈 Prospects convertis</p>
+                <p>🎯 Sur {totalLeads} total</p>
               </div>
             </div>
           </div>
           <div className="text-right">
-            <p className="text-sm text-gray-400 mb-1">Temps réel</p>
-            <p className="text-2xl font-bold text-white">€{parseFloat(adSpendToday || 0).toFixed(2)}</p>
-            <p className="text-xs text-gray-500">dépensé aujourd'hui</p>
+            <p className="text-sm text-gray-400 mb-1">Total</p>
+            <p className="text-2xl font-bold text-white">€{parseFloat(totalRevenue || 0).toFixed(0)}</p>
+            <p className="text-xs text-gray-500">de revenus</p>
           </div>
         </div>
       </motion.div>
@@ -880,14 +884,10 @@ export default function AIDsDashboard() {
       {/* Quick Stats Grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3 mb-6">
         {[
-          { label: 'Campagnes', value: activeCampaigns, icon: '📊', change: '+2' },
-          { label: 'Leads Totaux', value: totalLeads, icon: '👥', change: '+45' },
-          { label: 'Conv. Rate', value: `${conversionRate}%`, icon: '📈', change: '+0.3%' },
-          { label: 'CPL Moyen', value: `€${avgCostPerLead}`, icon: '💰', change: '-€2.5' },
-          { label: 'Impressions', value: '1.2M', icon: '👁️', change: '+15%' },
-          { label: 'Clicks', value: '45.6k', icon: '👆', change: '+8%' },
-          { label: 'CTR Moyen', value: '3.8%', icon: '🎯', change: '+0.2%' },
-          { label: 'CPC Moyen', value: '€0.27', icon: '💵', change: '-€0.03' }
+          { label: 'Prospects', value: totalLeads, icon: '👥', change: '' },
+          { label: 'Convertis', value: metrics?.overview?.conversions || 0, icon: '🎯', change: '' },
+          { label: 'Revenus', value: `€${parseFloat(totalRevenue || 0).toFixed(0)}`, icon: '💰', change: '' },
+          { label: 'Conv. Rate', value: `${parseFloat(conversionRate || 0).toFixed(1)}%`, icon: '📈', change: '' }
         ].map((stat, i) => (
           <motion.div
             key={stat.label}
@@ -900,9 +900,11 @@ export default function AIDsDashboard() {
             <div className="text-xl mb-1">{stat.icon}</div>
             <p className="text-xs text-gray-400">{stat.label}</p>
             <p className="text-lg font-bold text-white">{stat.value}</p>
-            <p className={`text-xs mt-1 ${stat.change.startsWith('+') ? 'text-green-400' : 'text-red-400'}`}>
-              {stat.change}
-            </p>
+            {stat.change && (
+              <p className={`text-xs mt-1 ${stat.change.startsWith('+') ? 'text-green-400' : 'text-red-400'}`}>
+                {stat.change}
+              </p>
+            )}
           </motion.div>
         ))}
       </div>
@@ -1109,105 +1111,7 @@ export default function AIDsDashboard() {
         </div>
       </div>
 
-      {/* Top & Worst Performers */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
-        {/* Top Performers */}
-        <motion.div
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          className="bg-gradient-to-br from-green-600/10 to-emerald-600/10 rounded-xl p-6 border border-green-500/20"
-        >
-          <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-            <span className="text-2xl">🏆</span>
-            Top Performers
-          </h3>
-          <div className="space-y-3">
-            {[
-              { name: bestPerformingAd, roas: 5.8, spend: 2340, conversions: 156, trend: '+23%' },
-              { name: 'Summer Collection', roas: 4.9, spend: 1890, conversions: 98, trend: '+18%' },
-              { name: 'Flash Sale 48h', roas: 4.2, spend: 1560, conversions: 76, trend: '+15%' }
-            ].map((campaign, i) => (
-              <motion.div
-                key={campaign.name}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.1 * i }}
-                className="bg-white/5 rounded-lg p-4 hover:bg-white/10 transition-all cursor-pointer"
-                whileHover={{ x: 5 }}
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <h4 className="font-medium text-white">{campaign.name}</h4>
-                  <span className="text-green-400 text-sm font-bold">{campaign.trend}</span>
-                </div>
-                <div className="grid grid-cols-3 gap-2 text-xs">
-                  <div>
-                    <span className="text-gray-500">ROAS</span>
-                    <p className="text-white font-bold">{campaign.roas}x</p>
-                  </div>
-                  <div>
-                    <span className="text-gray-500">Dépensé</span>
-                    <p className="text-white font-bold">€{campaign.spend}</p>
-                  </div>
-                  <div>
-                    <span className="text-gray-500">Conv.</span>
-                    <p className="text-white font-bold">{campaign.conversions}</p>
-                  </div>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </motion.div>
-
-        {/* Worst Performers */}
-        <motion.div
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          className="bg-gradient-to-br from-red-600/10 to-orange-600/10 rounded-xl p-6 border border-red-500/20"
-        >
-          <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-            <span className="text-2xl">⚠️</span>
-            À Optimiser
-          </h3>
-          <div className="space-y-3">
-            {[
-              { name: worstPerformingAd, roas: 0.8, spend: 890, conversions: 12, issue: 'CTR faible' },
-              { name: 'Old Product Line', roas: 1.2, spend: 670, conversions: 18, issue: 'CPA élevé' },
-              { name: 'Broad Audience Test', roas: 1.5, spend: 450, conversions: 15, issue: 'Audience large' }
-            ].map((campaign, i) => (
-              <motion.div
-                key={campaign.name}
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.1 * i }}
-                className="bg-white/5 rounded-lg p-4 hover:bg-white/10 transition-all cursor-pointer"
-                whileHover={{ x: -5 }}
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <h4 className="font-medium text-white">{campaign.name}</h4>
-                  <span className="text-red-400 text-xs bg-red-500/20 px-2 py-1 rounded">{campaign.issue}</span>
-                </div>
-                <div className="grid grid-cols-3 gap-2 text-xs">
-                  <div>
-                    <span className="text-gray-500">ROAS</span>
-                    <p className="text-red-400 font-bold">{campaign.roas}x</p>
-                  </div>
-                  <div>
-                    <span className="text-gray-500">Dépensé</span>
-                    <p className="text-white font-bold">€{campaign.spend}</p>
-                  </div>
-                  <div>
-                    <span className="text-gray-500">Conv.</span>
-                    <p className="text-white font-bold">{campaign.conversions}</p>
-                  </div>
-                </div>
-                <button className="mt-2 text-xs text-orange-400 hover:text-orange-300 transition-colors">
-                  → Optimiser maintenant
-                </button>
-              </motion.div>
-            ))}
-          </div>
-        </motion.div>
-      </div>
+      {/* Sections supprimées - Pas de fake data */}
 
       {/* Audience Performance Matrix */}
       <motion.div
