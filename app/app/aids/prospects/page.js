@@ -500,323 +500,47 @@ export default function ProspectsPage() {
                     <button
                       onClick={async () => {
                         setShowAdvancedOptions(false);
-                        if (confirm('Voulez-vous vraiment forcer la resynchronisation complète?\n\nCela va récupérer TOUS les prospects depuis Meta, même ceux déjà importés.')) {
+                        if (confirm('Voulez-vous vraiment forcer la resynchronisation?\n\nCela va rechercher de nouveaux prospects depuis Meta.')) {
                           setSyncLoading(true);
                           try {
-                            console.log('Forçage de la resynchronisation...');
-                            
-                            // Utiliser la route Lead Center V2 pour récupérer TOUS les leads
                             const response = await fetch('/api/aids/meta/leadcenter-v2');
                             const data = await response.json();
                             
                             if (data.success) {
-                              console.log(`Force sync: ${data.savedToFirebase} saved, ${data.skipped} skipped`);
-                              
-                              // Recharger les prospects
                               await loadProspects();
-                              
-                              const message = data.message || `✅ Resynchronisation terminée!\n${data.totalCount} prospects traités.`;
+                              const message = data.message || `✅ Synchronisation terminée!\n${data.totalCount} prospects traités.`;
                               alert(message);
                             } else {
                               alert(`❌ Erreur: ${data.error || 'Impossible de récupérer les leads depuis Meta'}`);
                             }
                           } catch (error) {
-                            console.error('Error during force sync:', error);
-                            alert('❌ Erreur lors de la resynchronisation forcée: ' + error.message);
+                            console.error('Error during sync:', error);
+                            alert('❌ Erreur lors de la synchronisation: ' + error.message);
                           }
                           setSyncLoading(false);
                         }
                       }}
                       disabled={syncLoading}
-                      className="w-full text-left px-3 py-2 text-sm text-orange-400 hover:bg-gray-800 rounded flex items-center gap-2"
+                      className="w-full text-left px-3 py-2 text-sm text-blue-400 hover:bg-gray-800 rounded flex items-center gap-2"
                     >
-                      <span>🔃</span>
-                      Forcer la resynchronisation complète
+                      <span>🔄</span>
+                      Forcer la synchronisation
                     </button>
+                    <div className="border-t border-gray-700 my-2"></div>
                     <button
                       onClick={() => {
                         setShowAdvancedOptions(false);
-                        clearLocalCache();
+                        if (confirm('⚠️ Voulez-vous vraiment supprimer tous les prospects?\n\nCette action est irréversible.')) {
+                          clearLocalCache();
+                        }
                       }}
                       className="w-full text-left px-3 py-2 text-sm text-red-400 hover:bg-gray-800 rounded flex items-center gap-2"
                     >
                       <span>🗑️</span>
-                      Vider le cache local
-                    </button>
-                    <div className="border-t border-gray-700 my-2"></div>
-                    <button
-                      onClick={async () => {
-                        setShowAdvancedOptions(false);
-                        const response = await fetch('/api/aids/meta/debug-leads');
-                        const data = await response.json();
-                        console.log('=== DEBUG LEADS RESULTS ===');
-                        console.log(JSON.stringify(data, null, 2));
-                        
-                        // Afficher un résumé
-                        let summary = '📊 Debug Meta Leads:\n\n';
-                        data.tests?.forEach(test => {
-                          summary += `${test.success ? '✅' : '❌'} ${test.name}\n`;
-                          if (test.count !== undefined) {
-                            summary += `   → ${test.count} résultats\n`;
-                          }
-                          if (test.error) {
-                            summary += `   → Erreur: ${test.error}\n`;
-                          }
-                        });
-                        
-                        alert(summary + '\n\nDétails complets dans la console (F12)');
-                      }}
-                      className="w-full text-left px-3 py-2 text-sm text-yellow-400 hover:bg-gray-800 rounded flex items-center gap-2"
-                    >
-                      <span>🐛</span>
-                      Debug Meta Leads
-                    </button>
-                    <button
-                      onClick={async () => {
-                        setShowAdvancedOptions(false);
-                        const response = await fetch('/api/aids/meta/test-leads');
-                        const data = await response.json();
-                        console.log('=== TEST API RESULTS ===');
-                        console.log(JSON.stringify(data, null, 2));
-                        alert('Vérifiez la console pour voir les résultats du test API');
-                      }}
-                      className="w-full text-left px-3 py-2 text-sm text-blue-400 hover:bg-gray-800 rounded flex items-center gap-2"
-                    >
-                      <span>🧪</span>
-                      Tester l'API Facebook
-                    </button>
-                    <button
-                      onClick={async () => {
-                        setShowAdvancedOptions(false);
-                        setSyncLoading(true);
-                        
-                        try {
-                          console.log('=== TEST LEAD CENTER API V2 ===');
-                          const response = await fetch('/api/aids/meta/leadcenter-v2');
-                          const data = await response.json();
-                          
-                          console.log('Lead Center response:', data);
-                          
-                          if (data.success) {
-                            alert(`✅ Lead Center API:\n\n${data.totalCount} prospects trouvés\n${data.savedToFirebase || 0} nouveaux sauvegardés\n${data.skipped || 0} déjà existants\n\nVos prospects devraient maintenant apparaître dans la liste.`);
-                            // Recharger les prospects
-                            await loadProspects();
-                          } else {
-                            alert(`❌ Erreur Lead Center:\n${data.error || 'Erreur inconnue'}\n\nDétails: ${data.details || 'Aucun détail'}`);
-                          }
-                        } catch (error) {
-                          console.error('Lead Center error:', error);
-                          alert('❌ Erreur: ' + error.message);
-                        }
-                        
-                        setSyncLoading(false);
-                      }}
-                      disabled={syncLoading}
-                      className="w-full text-left px-3 py-2 text-sm text-purple-400 hover:bg-gray-800 rounded flex items-center gap-2"
-                    >
-                      <span>🎯</span>
-                      Récupérer les 107 prospects du Lead Center
-                    </button>
-                    <button
-                      onClick={async () => {
-                        setShowAdvancedOptions(false);
-                        setSyncLoading(true);
-                        
-                        try {
-                          console.log('=== TEST DIRECT LEADS ===');
-                          const response = await fetch('/api/aids/meta/direct-leads');
-                          const data = await response.json();
-                          
-                          console.log('Direct leads response:', data);
-                          
-                          if (data.success && data.leads && data.leads.length > 0) {
-                            // Les leads sont automatiquement sauvegardés dans Firebase par l'API
-                            if (data.savedToFirebase && data.savedToFirebase > 0) {
-                              console.log(`✅ ${data.savedToFirebase} prospects automatiquement sauvegardés dans Firebase`);
-                              // Recharger les prospects depuis Firebase
-                              await loadProspects();
-                              alert(`✅ ${data.savedToFirebase} nouveaux prospects importés avec succès!\n${data.skipped} déjà existants.\n\n${data.message}`);
-                            } else if (data.skipped > 0) {
-                              alert(`ℹ️ Tous les prospects sont déjà importés.\n${data.skipped} prospects existants dans Firebase.`);
-                            } else {
-                              alert(`✅ ${data.leads.length} prospects récupérés.\n\n${data.message}`);
-                              // Recharger au cas où
-                              await loadProspects();
-                            }
-                          } else {
-                            alert(`❌ Erreur: ${data.message || data.error?.message || 'Impossible de récupérer les leads'}\n\nVérifiez la console pour plus de détails.`);
-                            console.error('Direct leads error:', data);
-                          }
-                        } catch (error) {
-                          console.error('Error:', error);
-                          alert('❌ Erreur lors de la récupération directe');
-                        }
-                        
-                        setSyncLoading(false);
-                      }}
-                      className="w-full text-left px-3 py-2 text-sm text-green-400 hover:bg-gray-800 rounded flex items-center gap-2"
-                    >
-                      <span>🎯</span>
-                      Import direct (106 prospects)
-                    </button>
-                    <div className="border-t border-gray-700 my-2"></div>
-                    <button
-                      onClick={async () => {
-                        setShowAdvancedOptions(false);
-                        console.log('Running FULL debug...');
-                        const response = await fetch('/api/aids/meta/full-debug');
-                        const data = await response.json();
-                        
-                        console.log('=== FULL DEBUG RESULTS ===');
-                        console.log(data);
-                        
-                        let message = '🔍 DEBUG COMPLET:\n\n';
-                        
-                        if (data.summary) {
-                          message += `📊 RÉSUMÉ:\n`;
-                          message += `- Total leads trouvés: ${data.summary.totalLeadsFound}\n`;
-                          message += `- Nombre de comptes pub: ${data.summary.totalAdAccounts}\n`;
-                          message += `- Compte sélectionné: ${data.summary.currentlySelected || 'AUCUN'}\n\n`;
-                          
-                          if (data.summary.accountWithMostLeads) {
-                            message += `🎯 COMPTE AVEC LE PLUS DE LEADS:\n`;
-                            message += `"${data.summary.accountWithMostLeads.name}"\n`;
-                            message += `${data.summary.accountWithMostLeads.leads} leads\n`;
-                            message += `ID: ${data.summary.accountWithMostLeads.id}\n\n`;
-                          }
-                        }
-                        
-                        if (data.recommendations?.length > 0) {
-                          message += `💡 RECOMMANDATIONS:\n`;
-                          data.recommendations.forEach(rec => {
-                            message += `${rec}\n`;
-                          });
-                        }
-                        
-                        message += '\n📋 Détails COMPLETS dans la console (F12)';
-                        alert(message);
-                      }}
-                      className="w-full text-left px-3 py-2 text-sm text-purple-500 hover:bg-gray-800 rounded flex items-center gap-2 font-bold"
-                    >
-                      <span>🚨</span>
-                      DEBUG ULTIME - Trouve mes 107 prospects!
-                    </button>
-                    <button
-                      onClick={async () => {
-                        setShowAdvancedOptions(false);
-                        console.log('Running Lead Center diagnostic...');
-                        const response = await fetch('/api/aids/meta/test-leadcenter');
-                        const data = await response.json();
-                        
-                        console.log('=== LEAD CENTER DIAGNOSTIC ===');
-                        console.log(data);
-                        
-                        let message = '🔍 Diagnostic Lead Center:\n\n';
-                        
-                        // Check each test
-                        data.tests?.forEach(test => {
-                          if (test.test === 'Token Validity') {
-                            message += test.valid ? '✅ Token valide\n' : '❌ Token invalide\n';
-                          }
-                          if (test.test === 'Permissions') {
-                            message += test.hasLeadsRetrieval ? '✅ Permission leads_retrieval\n' : '❌ Permission leads_retrieval manquante\n';
-                          }
-                          if (test.test === 'Lead Forms in Account') {
-                            message += `📊 ${test.formsCount} formulaires, ${test.totalLeadsAcrossForms} leads total\n`;
-                          }
-                          if (test.test === 'Pages and Their Forms') {
-                            message += `📄 ${test.totalLeadsAcrossPages} leads dans les pages\n`;
-                          }
-                        });
-                        
-                        if (data.recommendations?.length > 0) {
-                          message += '\n💡 Recommandations:\n';
-                          data.recommendations.forEach(rec => {
-                            message += `${rec}\n`;
-                          });
-                        }
-                        
-                        message += '\n📋 Détails complets dans la console (F12)';
-                        alert(message);
-                      }}
-                      className="w-full text-left px-3 py-2 text-sm text-red-400 hover:bg-gray-800 rounded flex items-center gap-2"
-                    >
-                      <span>🔍</span>
-                      Diagnostic: Pourquoi 0 prospects?
-                    </button>
-                    <button
-                      onClick={async () => {
-                        setShowAdvancedOptions(false);
-                        setSyncLoading(true);
-                        console.log('Trying DIRECT Lead Center access...');
-                        
-                        try {
-                          const response = await fetch('/api/aids/meta/direct-leadcenter');
-                          const data = await response.json();
-                          
-                          console.log('=== DIRECT LEAD CENTER RESULTS ===');
-                          console.log(data);
-                          
-                          if (data.success && data.leads?.length > 0) {
-                            alert(`✅ TROUVÉ ${data.leads.length} LEADS!\n\nIls vont être importés maintenant...`);
-                            
-                            // TODO: Sauvegarder dans Firebase
-                            await loadProspects();
-                          } else {
-                            let message = '❌ Toujours 0 leads trouvés\n\n';
-                            
-                            if (data.summary?.tests) {
-                              message += 'Tests effectués:\n';
-                              data.summary.tests.forEach(test => {
-                                message += `- ${test.endpoint}: ${test.success ? '✅' : '❌'}\n`;
-                              });
-                            }
-                            
-                            if (data.summary?.recommendations) {
-                              message += '\nRecommandations:\n';
-                              data.summary.recommendations.forEach(rec => {
-                                message += `${rec}\n`;
-                              });
-                            }
-                            
-                            alert(message);
-                          }
-                        } catch (error) {
-                          console.error('Error:', error);
-                          alert('❌ Erreur: ' + error.message);
-                        }
-                        
-                        setSyncLoading(false);
-                      }}
-                      disabled={syncLoading}
-                      className="w-full text-left px-3 py-2 text-sm text-yellow-500 hover:bg-gray-800 rounded flex items-center gap-2 font-bold"
-                    >
-                      <span>⚡</span>
-                      ACCÈS DIRECT Lead Center (Test final)
-                    </button>
-                    <div className="border-t border-gray-700 my-2"></div>
-                    <button
-                      onClick={() => {
-                        setShowAdvancedOptions(false);
-                        router.push('/app/aids/fix-leads-permission');
-                      }}
-                      className="w-full text-left px-3 py-2 text-sm text-yellow-400 hover:bg-gray-800 rounded flex items-center gap-2 font-bold"
-                    >
-                      <span>⚠️</span>
-                      Configurer les permissions Meta
-                    </button>
-                    <button
-                      onClick={() => {
-                        setShowAdvancedOptions(false);
-                        router.push('/app/aids/token');
-                      }}
-                      className="w-full text-left px-3 py-2 text-sm text-green-400 hover:bg-gray-800 rounded flex items-center gap-2"
-                    >
-                      <span>🔑</span>
-                      Utiliser token Graph API Explorer
+                      Supprimer tous les prospects
                     </button>
                     <div className="px-3 py-2 text-xs text-gray-500 mt-2">
-                      {prospects.length} prospects en cache
+                      {prospects.length} prospects affichés
                     </div>
                   </div>
                 )}
