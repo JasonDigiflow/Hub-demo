@@ -140,6 +140,31 @@ async function fetchProspectsForUser(userId) {
             });
           });
         }
+        
+        // Also check the "default" ad account (for prospects created from revenues)
+        try {
+          console.log('Checking default ad account for converted prospects...');
+          const defaultProspectsSnapshot = await db
+            .collection('organizations').doc(orgId)
+            .collection('adAccounts').doc('default')
+            .collection('prospects')
+            .get();
+          
+          console.log(`Default ad account: ${defaultProspectsSnapshot.size} prospects found`);
+          
+          defaultProspectsSnapshot.forEach(doc => {
+            const data = doc.data();
+            // Avoid duplicates
+            if (!allProspects.find(p => p.id === doc.id)) {
+              allProspects.push({
+                id: doc.id,
+                ...data
+              });
+            }
+          });
+        } catch (error) {
+          console.log('No default ad account or error accessing it:', error.message);
+        }
       } else {
         console.log('No organization found for user:', userId);
         console.log('userData:', userData);
