@@ -58,7 +58,7 @@ export default function DebugLeadsPage() {
     try {
       aidsLogger.info(LogCategories.PROSPECT, 'Synchronisation normale des leads');
       
-      const response = await fetch('/api/aids/meta/leadcenter');
+      const response = await fetch('/api/aids/meta/leadcenter-v2');
       const data = await response.json();
       
       if (data.leads) {

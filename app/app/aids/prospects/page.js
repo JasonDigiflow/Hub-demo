@@ -140,8 +140,8 @@ export default function ProspectsPage() {
     if (showLoading) setSyncLoading(true);
     
     try {
-      // Utiliser la nouvelle route Lead Center pour récupérer TOUS les leads
-      const url = '/api/aids/meta/leadcenter';
+      // Utiliser la nouvelle route Lead Center V2 pour récupérer TOUS les leads
+      const url = '/api/aids/meta/leadcenter-v2';
       const response = await fetch(url);
       const data = await response.json();
       
@@ -489,8 +489,8 @@ export default function ProspectsPage() {
                           try {
                             console.log('Forçage de la resynchronisation...');
                             
-                            // Utiliser la route Lead Center pour récupérer TOUS les leads
-                            const response = await fetch('/api/aids/meta/leadcenter');
+                            // Utiliser la route Lead Center V2 pour récupérer TOUS les leads
+                            const response = await fetch('/api/aids/meta/leadcenter-v2');
                             const data = await response.json();
                             
                             if (data.success) {
@@ -575,8 +575,8 @@ export default function ProspectsPage() {
                         setSyncLoading(true);
                         
                         try {
-                          console.log('=== TEST LEAD CENTER API ===');
-                          const response = await fetch('/api/aids/meta/leadcenter');
+                          console.log('=== TEST LEAD CENTER API V2 ===');
+                          const response = await fetch('/api/aids/meta/leadcenter-v2');
                           const data = await response.json();
                           
                           console.log('Lead Center response:', data);
