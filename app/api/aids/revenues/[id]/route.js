@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
+import jwt from 'jsonwebtoken';
 import { db } from '@/lib/firebase-admin';
 import inMemoryStore from '@/lib/aids/inMemoryStore';
 
@@ -142,6 +144,37 @@ export async function PUT(request, { params }) {
     console.log(`PUT /api/aids/revenues/${id} - Updating revenue`);
     console.log('Update data:', data);
     
+    // Get current user ID from auth
+    const cookieStore = cookies();
+    const authCookie = cookieStore.get('auth-token') || cookieStore.get('auth_token');
+    const metaSession = cookieStore.get('meta_session');
+    
+    let userId = null;
+    
+    if (authCookie) {
+      try {
+        const decoded = jwt.verify(authCookie.value, process.env.JWT_SECRET || 'default-secret-key');
+        userId = decoded.uid || decoded.userId || decoded.id;
+      } catch (e) {
+        console.error('JWT verification failed:', e.message);
+      }
+    }
+    
+    if (!userId && metaSession) {
+      try {
+        const session = JSON.parse(metaSession.value);
+        userId = session.userID || session.userId;
+      } catch (e) {
+        console.error('Meta session parse error:', e);
+      }
+    }
+    
+    if (!userId) {
+      return NextResponse.json({ error: 'Non authentifié' }, { status: 401 });
+    }
+    
+    console.log('Authenticated user ID:', userId);
+    
     // Update revenue - try Firebase first, fallback to in-memory
     let success = false;
     
@@ -172,12 +205,12 @@ export async function PUT(request, { params }) {
             
             // Mettre à jour le nouveau prospect si nécessaire
             if (updateData.prospectId) {
-              await updateProspectStatus(existingData.userId || updateData.userId, updateData.prospectId, updateData.amount);
+              await updateProspectStatus(userId, updateData.prospectId, updateData.amount);
             }
             
             // Si le prospect a changé, réinitialiser l'ancien
             if (existingData.prospectId && existingData.prospectId !== updateData.prospectId) {
-              await resetProspectStatus(existingData.userId || updateData.userId, existingData.prospectId);
+              await resetProspectStatus(userId, existingData.prospectId);
             }
           }
         } else {
@@ -230,6 +263,37 @@ export async function DELETE(request, { params }) {
     
     console.log(`DELETE /api/aids/revenues/${id} - Deleting revenue`);
     
+    // Get current user ID from auth
+    const cookieStore = cookies();
+    const authCookie = cookieStore.get('auth-token') || cookieStore.get('auth_token');
+    const metaSession = cookieStore.get('meta_session');
+    
+    let userId = null;
+    
+    if (authCookie) {
+      try {
+        const decoded = jwt.verify(authCookie.value, process.env.JWT_SECRET || 'default-secret-key');
+        userId = decoded.uid || decoded.userId || decoded.id;
+      } catch (e) {
+        console.error('JWT verification failed:', e.message);
+      }
+    }
+    
+    if (!userId && metaSession) {
+      try {
+        const session = JSON.parse(metaSession.value);
+        userId = session.userID || session.userId;
+      } catch (e) {
+        console.error('Meta session parse error:', e);
+      }
+    }
+    
+    if (!userId) {
+      return NextResponse.json({ error: 'Non authentifié' }, { status: 401 });
+    }
+    
+    console.log('Authenticated user ID:', userId);
+    
     // First get the revenue to find associated prospect
     let revenueData = null;
     let success = false;
@@ -267,7 +331,7 @@ export async function DELETE(request, { params }) {
         // If revenue had a prospect associated, update its status
         if (success && revenueData && revenueData.prospectId) {
           console.log(`Revenue deleted, resetting prospect ${revenueData.prospectId} status`);
-          await resetProspectStatus(revenueData.userId, revenueData.prospectId);
+          await resetProspectStatus(userId, revenueData.prospectId);
         }
       } catch (error) {
         console.error('Firebase error, using in-memory store:', error.message);
