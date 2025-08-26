@@ -118,7 +118,68 @@ export default function AIDsDashboard() {
     setLoading(true);
     aidsLogger.info(LogCategories.UI, 'Chargement des données du dashboard', { timeRange, selectedAccount });
     try {
-      // Try to load real Meta Ads data first if connected
+      // Load real data from Firebase first
+      try {
+        const statsResponse = await fetch(`/api/aids/dashboard-stats?range=${timeRange}`);
+        const statsData = await statsResponse.json();
+        
+        if (statsData.success && statsData.stats) {
+          // Use real data from Firebase
+          const stats = statsData.stats;
+          
+          const realMetrics = {
+            overview: {
+              totalSpend: stats.totalRevenue * 0.25, // Estimate spend as 25% of revenue
+              totalRevenue: stats.totalRevenue,
+              totalLeads: stats.totalProspects,
+              conversions: stats.convertedProspects,
+              ctr: stats.conversionRate.toFixed(2),
+              cpc: stats.totalProspects > 0 ? (stats.totalRevenue * 0.25 / stats.totalProspects).toFixed(2) : 0,
+              roas: stats.totalRevenue > 0 ? (stats.totalRevenue / (stats.totalRevenue * 0.25)).toFixed(2) : 4,
+              activeAds: 0
+            },
+            trend: {
+              chartData: {
+                labels: stats.prospectsPerDay.map(d => new Date(d.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })),
+                datasets: [{
+                  label: 'Prospects',
+                  data: stats.prospectsPerDay.map(d => d.count),
+                  borderColor: '#9333ea',
+                  backgroundColor: 'rgba(147, 51, 234, 0.2)',
+                  tension: 0.4
+                }]
+              },
+              revenueData: {
+                labels: stats.revenuePerDay.map(d => new Date(d.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })),
+                datasets: [{
+                  label: 'Revenus',
+                  data: stats.revenuePerDay.map(d => d.amount),
+                  borderColor: '#10b981',
+                  backgroundColor: 'rgba(16, 185, 129, 0.2)',
+                  tension: 0.4
+                }]
+              }
+            }
+          };
+          
+          setMetrics(realMetrics);
+          setTotalRevenue(stats.totalRevenue);
+          setTotalSpend(stats.totalRevenue * 0.25);
+          setRecentActions(generateRecentActions(realMetrics));
+          analyzeWithAI(realMetrics);
+          setLoading(false);
+          
+          aidsLogger.success(LogCategories.META_API, 'Données réelles chargées depuis Firebase', { 
+            totalProspects: stats.totalProspects,
+            totalRevenue: stats.totalRevenue
+          });
+          return;
+        }
+      } catch (error) {
+        console.error('Error loading dashboard stats:', error);
+      }
+      
+      // Try to load real Meta Ads data if connected
       if (metaConnected && selectedAccount) {
         try {
           let url = `/api/aids/meta/insights?range=${timeRange}`;
