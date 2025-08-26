@@ -2,10 +2,16 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import aidsLogger, { LogCategories } from '@/lib/aids-logger';
 
+// Cache pour éviter les limites de rate
+const insightsCache = new Map();
+const CACHE_DURATION = 60 * 1000; // 60 secondes
+
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
-    const timeRange = searchParams.get('time_range') || 'last_7d';
+    const timeRange = searchParams.get('time_range') || searchParams.get('range') || 'last_7d';
+    const breakdowns = searchParams.get('breakdowns'); // age,gender,publisher_platform,etc.
+    const timeIncrement = searchParams.get('time_increment') || '1'; // Pour les séries temporelles
     
     aidsLogger.info(LogCategories.ANALYTICS, `Récupération insights Meta: ${timeRange}`);
     
@@ -36,11 +42,31 @@ export async function GET(request) {
     
     const datePreset = datePresetMap[timeRange] || 'last_7d';
     
-    // Récupérer les insights du compte publicitaire
-    const insightsUrl = `https://graph.facebook.com/v18.0/${accountId}/insights?` +
-      `fields=spend,impressions,clicks,ctr,cpc,cpm,cpp,reach,frequency,conversions,conversion_values,cost_per_conversion,actions,action_values&` +
-      `date_preset=${datePreset}&` +
-      `access_token=${accessToken}`;
+    // Clé de cache unique
+    const cacheKey = `${accountId}_${timeRange}_${breakdowns || 'none'}_${timeIncrement}`;
+    const cached = insightsCache.get(cacheKey);
+    
+    if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+      console.log('Returning cached insights data');
+      return NextResponse.json(cached.data);
+    }
+    
+    // Construire l'URL des insights avec ou sans breakdowns
+    let insightsUrl = `https://graph.facebook.com/v18.0/${accountId}/insights?` +
+      `fields=spend,impressions,clicks,ctr,cpc,cpm,cpp,reach,frequency,conversions,conversion_values,cost_per_conversion,actions,action_values,cost_per_result&` +
+      `date_preset=${datePreset}&`;
+    
+    // Ajouter breakdowns si demandé
+    if (breakdowns) {
+      insightsUrl += `breakdowns=${breakdowns}&`;
+    }
+    
+    // Ajouter time_increment pour les séries temporelles
+    if (timeIncrement && timeRange !== 'lifetime' && timeRange !== 'today') {
+      insightsUrl += `time_increment=${timeIncrement}&`;
+    }
+    
+    insightsUrl += `access_token=${accessToken}`;
     
     const response = await fetch(insightsUrl);
     const data = await response.json();
@@ -58,61 +84,151 @@ export async function GET(request) {
       });
     }
     
-    // Récupérer les données par jour si disponible
-    let dailyData = [];
-    if (timeRange !== 'lifetime' && timeRange !== 'today') {
-      try {
-        const dailyUrl = `https://graph.facebook.com/v18.0/${accountId}/insights?` +
-          `fields=spend,impressions,clicks,ctr&` +
-          `date_preset=${datePreset}&` +
-          `time_increment=1&` + // Données quotidiennes
-          `access_token=${accessToken}`;
+    // Traiter les données récupérées
+    let processedData = data.data || [];
+    
+    // Si nous avons des breakdowns, organiser les données par breakdown
+    let breakdownData = null;
+    if (breakdowns && processedData.length > 0) {
+      breakdownData = processedData.map(item => {
+        // Extraire les valeurs des breakdowns
+        const breakdownValues = {};
+        if (breakdowns.includes('age')) breakdownValues.age = item.age;
+        if (breakdowns.includes('gender')) breakdownValues.gender = item.gender;
+        if (breakdowns.includes('publisher_platform')) breakdownValues.publisher_platform = item.publisher_platform;
+        if (breakdowns.includes('platform_position')) breakdownValues.platform_position = item.platform_position;
+        if (breakdowns.includes('impression_device')) breakdownValues.impression_device = item.impression_device;
+        if (breakdowns.includes('region')) breakdownValues.region = item.region;
         
-        const dailyResponse = await fetch(dailyUrl);
-        const dailyDataResponse = await dailyResponse.json();
+        // Extraire les conversions et valeurs
+        let conversions = 0;
+        let conversionValue = 0;
         
-        if (dailyDataResponse.data) {
-          dailyData = dailyDataResponse.data.map(day => ({
-            date: day.date_start,
-            spend: parseFloat(day.spend || 0),
-            impressions: parseInt(day.impressions || 0),
-            clicks: parseInt(day.clicks || 0),
-            ctr: parseFloat(day.ctr || 0)
-          }));
+        if (item.actions) {
+          const conversionActions = item.actions.filter(a => 
+            ['lead', 'purchase', 'complete_registration'].includes(a.action_type)
+          );
+          conversions = conversionActions.reduce((sum, a) => sum + parseInt(a.value || 0), 0);
         }
-      } catch (error) {
-        aidsLogger.warning(LogCategories.ANALYTICS, 'Erreur récupération données quotidiennes', error);
+        
+        if (item.action_values) {
+          const purchaseValues = item.action_values.filter(a => 
+            a.action_type === 'purchase'
+          );
+          conversionValue = purchaseValues.reduce((sum, a) => sum + parseFloat(a.value || 0), 0);
+        }
+        
+        return {
+          ...breakdownValues,
+          metrics: {
+            spend: parseFloat(item.spend || 0),
+            impressions: parseInt(item.impressions || 0),
+            clicks: parseInt(item.clicks || 0),
+            ctr: parseFloat(item.ctr || 0),
+            cpc: parseFloat(item.cpc || 0),
+            cpm: parseFloat(item.cpm || 0),
+            reach: parseInt(item.reach || 0),
+            conversions: conversions,
+            conversionValue: conversionValue,
+            cost_per_result: parseFloat(item.cost_per_result || 0)
+          },
+          date_start: item.date_start,
+          date_stop: item.date_stop
+        };
+      });
+    }
+    
+    // Récupérer les données par jour si nécessaire
+    let dailyData = [];
+    if (timeIncrement === '1' && processedData.length > 0) {
+      dailyData = processedData.map(day => ({
+        date: day.date_start,
+        spend: parseFloat(day.spend || 0),
+        impressions: parseInt(day.impressions || 0),
+        clicks: parseInt(day.clicks || 0),
+        ctr: parseFloat(day.ctr || 0),
+        actions: day.actions,
+        action_values: day.action_values
+      }));
+    }
+    
+    // Calculer les totaux si nous n'avons pas de données agrégées
+    const insights = (!breakdowns && processedData.length === 1) ? processedData[0] : {};
+    
+    // Extraire les conversions depuis actions
+    let totalConversions = 0;
+    let totalConversionValue = 0;
+    let totalSpend = 0;
+    let totalImpressions = 0;
+    let totalClicks = 0;
+    let totalReach = 0;
+    
+    if (!breakdowns && processedData.length > 0) {
+      // Agréger les données
+      processedData.forEach(item => {
+        totalSpend += parseFloat(item.spend || 0);
+        totalImpressions += parseInt(item.impressions || 0);
+        totalClicks += parseInt(item.clicks || 0);
+        totalReach = Math.max(totalReach, parseInt(item.reach || 0));
+        
+        if (item.actions) {
+          const conversionActions = ['purchase', 'lead', 'complete_registration'];
+          const conversions = item.actions
+            .filter(action => conversionActions.includes(action.action_type))
+            .reduce((sum, action) => sum + parseInt(action.value || 0), 0);
+          totalConversions += conversions;
+        }
+        
+        if (item.action_values) {
+          const purchaseValues = item.action_values
+            .filter(a => a.action_type === 'purchase')
+            .reduce((sum, a) => sum + parseFloat(a.value || 0), 0);
+          totalConversionValue += purchaseValues;
+        }
+      });
+    } else if (insights.spend) {
+      totalSpend = parseFloat(insights.spend || 0);
+      totalImpressions = parseInt(insights.impressions || 0);
+      totalClicks = parseInt(insights.clicks || 0);
+      totalReach = parseInt(insights.reach || 0);
+      
+      if (insights.actions) {
+        const conversionActions = ['purchase', 'lead', 'complete_registration'];
+        totalConversions = insights.actions
+          .filter(action => conversionActions.includes(action.action_type))
+          .reduce((sum, action) => sum + parseInt(action.value || 0), 0);
+      }
+      
+      if (insights.action_values) {
+        const purchaseValues = insights.action_values
+          .filter(a => a.action_type === 'purchase');
+        totalConversionValue = purchaseValues.reduce((sum, a) => sum + parseFloat(a.value || 0), 0);
       }
     }
     
-    const insights = data.data?.[0] || {};
-    
-    // Extraire les conversions depuis actions
-    let conversions = 0;
-    if (insights.actions) {
-      const conversionActions = ['purchase', 'lead', 'complete_registration', 'add_to_cart'];
-      conversions = insights.actions
-        .filter(action => conversionActions.includes(action.action_type))
-        .reduce((sum, action) => sum + parseInt(action.value || 0), 0);
-    }
+    // Calculer les métriques dérivées
+    const ctr = totalImpressions > 0 ? (totalClicks / totalImpressions * 100) : 0;
+    const cpc = totalClicks > 0 ? (totalSpend / totalClicks) : 0;
+    const cpm = totalImpressions > 0 ? (totalSpend / totalImpressions * 1000) : 0;
+    const costPerConversion = totalConversions > 0 ? (totalSpend / totalConversions) : 0;
+    const roas = totalSpend > 0 ? (totalConversionValue / totalSpend) : 0;
     
     const formattedInsights = {
-      spend: parseFloat(insights.spend || 0).toFixed(2),
-      impressions: parseInt(insights.impressions || 0),
-      clicks: parseInt(insights.clicks || 0),
-      ctr: parseFloat(insights.ctr || 0).toFixed(2),
-      cpc: parseFloat(insights.cpc || 0).toFixed(2),
-      cpm: parseFloat(insights.cpm || 0).toFixed(2),
-      cpp: parseFloat(insights.cpp || 0).toFixed(2),
-      reach: parseInt(insights.reach || 0),
-      frequency: parseFloat(insights.frequency || 0).toFixed(2),
-      conversions: conversions,
-      conversion_value: parseFloat(insights.conversion_values?.value || 0).toFixed(2),
-      cost_per_conversion: conversions > 0 
-        ? (parseFloat(insights.spend || 0) / conversions).toFixed(2)
-        : '0',
+      spend: totalSpend.toFixed(2),
+      impressions: totalImpressions,
+      clicks: totalClicks,
+      ctr: ctr.toFixed(2),
+      cpc: cpc.toFixed(2),
+      cpm: cpm.toFixed(2),
+      reach: totalReach,
+      conversions: totalConversions,
+      conversion_value: totalConversionValue.toFixed(2),
+      cost_per_conversion: costPerConversion.toFixed(2),
+      roas: roas.toFixed(2),
       daily_data: dailyData,
-      time_range: timeRange
+      breakdown_data: breakdownData,
+      time_range: timeRange,
+      has_revenue_data: totalConversionValue > 0
     };
     
     aidsLogger.success(LogCategories.ANALYTICS, 'Insights récupérés avec succès', {
@@ -120,10 +236,20 @@ export async function GET(request) {
       hasData: !!insights.spend
     });
     
-    return NextResponse.json({
+    const responseData = {
       success: true,
-      insights: formattedInsights
+      insights: formattedInsights,
+      timestamp: new Date().toISOString(),
+      accountId: accountId
+    };
+    
+    // Mettre en cache
+    insightsCache.set(cacheKey, {
+      data: responseData,
+      timestamp: Date.now()
     });
+    
+    return NextResponse.json(responseData);
     
   } catch (error) {
     aidsLogger.critical(LogCategories.META_API, 'Erreur critique API insights', error);

@@ -52,6 +52,9 @@ export default function AIDsDashboard() {
     start: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
     end: new Date().toISOString().split('T')[0]
   });
+  const [campaignsList, setCampaignsList] = useState([]);
+  const [audienceBreakdown, setAudienceBreakdown] = useState(null);
+  const [lastSync, setLastSync] = useState(null);
   
   // Nouvelles métriques avancées
   const [performanceScore, setPerformanceScore] = useState(0);
@@ -119,81 +122,121 @@ export default function AIDsDashboard() {
     setLoading(true);
     aidsLogger.info(LogCategories.UI, 'Chargement des données du dashboard', { timeRange, selectedAccount });
     try {
-      // Load real data from Firebase first
-      try {
-        const statsResponse = await fetch(`/api/aids/dashboard-stats?range=${timeRange}`);
-        const statsData = await statsResponse.json();
-        
-        if (statsData.success && statsData.stats) {
-          // Use real data from Firebase
-          const stats = statsData.stats;
-          
-          const realMetrics = {
-            overview: {
-              totalSpend: 0, // Pas de vraies dépenses publicitaires
-              totalRevenue: parseFloat(stats.totalRevenue || 0),
-              totalLeads: parseInt(stats.totalProspects || 0),
-              conversions: parseInt(stats.convertedProspects || 0),
-              ctr: parseFloat(stats.conversionRate || 0),
-              cpc: 0, // Pas de vraies dépenses publicitaires
-              roas: 0, // Pas de vraies dépenses publicitaires,
-              conversionRate: parseFloat(stats.conversionRate || 0),
-              activeAds: 0
-            },
-            trend: {
-              chartData: {
-                labels: stats.prospectsPerDay.map(d => new Date(d.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })),
-                datasets: [{
-                  label: 'Prospects',
-                  data: stats.prospectsPerDay.map(d => d.count),
-                  borderColor: '#9333ea',
-                  backgroundColor: 'rgba(147, 51, 234, 0.2)',
-                  tension: 0.4
-                }]
-              },
-              revenueData: {
-                labels: stats.revenuePerDay.map(d => new Date(d.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })),
-                datasets: [{
-                  label: 'Revenus',
-                  data: stats.revenuePerDay.map(d => d.amount),
-                  borderColor: '#10b981',
-                  backgroundColor: 'rgba(16, 185, 129, 0.2)',
-                  tension: 0.4
-                }]
-              }
-            }
-          };
-          
-          setMetrics(realMetrics);
-          setTotalRevenue(stats.totalRevenue || 0);
-          setTotalSpend(0); // Pas de vraies dépenses publicitaires
-          setTotalLeads(stats.totalProspects || 0);
-          setConversionRate(stats.conversionRate || 0);
-          setActiveCampaigns(0); // Pas de vraies campagnes
-          setAdSpendToday(0); // Pas de vraies dépenses
-          setAvgCostPerLead(0); // Pas de vraies dépenses
-          setRecentActions([]); // Pas de fake actions
-          setLoading(false);
-          
-          aidsLogger.success(LogCategories.META_API, 'Données réelles chargées depuis Firebase', { 
-            totalProspects: stats.totalProspects,
-            totalRevenue: stats.totalRevenue
-          });
-          return;
-        }
-      } catch (error) {
-        console.error('Error loading dashboard stats:', error);
-      }
-      
-      // Try to load real Meta Ads data if connected
+      // Try to load real Meta Ads data first if connected
       if (metaConnected && selectedAccount) {
         try {
-          let url = `/api/aids/meta/insights?range=${timeRange}`;
+          // Récupérer les insights depuis Meta
+          let url = `/api/aids/meta/insights?time_range=${timeRange}&time_increment=1`;
           if (timeRange === 'custom') {
             url += `&start_date=${customDateRange.start}&end_date=${customDateRange.end}`;
           }
-          const insightsResponse = await fetch(url);
-          const insightsData = await insightsResponse.json();
+          
+          const [insightsResponse, campaignsResponse] = await Promise.all([
+            fetch(url),
+            fetch(`/api/aids/meta/campaigns?include_insights=true`)
+          ]);
+          
+          const [insightsData, campaignsData] = await Promise.all([
+            insightsResponse.json(),
+            campaignsResponse.json()
+          ]);
+          
+          if (insightsData.success && insightsData.insights) {
+            const insights = insightsData.insights;
+            const campaigns = campaignsData.campaigns || [];
+          
+            const realMetrics = {
+              overview: {
+                totalSpend: parseFloat(insights.spend || 0),
+                totalRevenue: parseFloat(insights.conversion_value || 0),
+                totalLeads: parseInt(insights.conversions || 0),
+                conversions: parseInt(insights.conversions || 0),
+                impressions: parseInt(insights.impressions || 0),
+                clicks: parseInt(insights.clicks || 0),
+                ctr: parseFloat(insights.ctr || 0),
+                cpc: parseFloat(insights.cpc || 0),
+                cpm: parseFloat(insights.cpm || 0),
+                roas: parseFloat(insights.roas || 0),
+                reach: parseInt(insights.reach || 0),
+                cost_per_conversion: parseFloat(insights.cost_per_conversion || 0),
+                activeAds: campaigns.filter(c => c.effective_status === 'ACTIVE').length,
+                has_revenue_data: insights.has_revenue_data
+              },
+              trend: {
+                chartData: insights.daily_data ? {
+                  labels: insights.daily_data.map(d => new Date(d.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })),
+                  datasets: [{
+                    label: 'Dépenses',
+                    data: insights.daily_data.map(d => d.spend),
+                    borderColor: '#9333ea',
+                    backgroundColor: 'rgba(147, 51, 234, 0.2)',
+                    tension: 0.4
+                  }]
+                } : { labels: [], datasets: [] },
+                revenueData: insights.daily_data && insights.has_revenue_data ? {
+                  labels: insights.daily_data.map(d => new Date(d.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })),
+                  datasets: [{
+                    label: 'Revenus',
+                    data: insights.daily_data.map(d => {
+                      // Calculer le revenu depuis action_values si disponible
+                      if (d.action_values) {
+                        const purchaseValues = d.action_values.filter(a => a.action_type === 'purchase');
+                        return purchaseValues.reduce((sum, a) => sum + parseFloat(a.value || 0), 0);
+                      }
+                      return 0;
+                    }),
+                    borderColor: '#10b981',
+                    backgroundColor: 'rgba(16, 185, 129, 0.2)',
+                    tension: 0.4
+                  }]
+                } : { labels: [], datasets: [] },
+                ctrData: insights.daily_data ? {
+                  labels: insights.daily_data.map(d => new Date(d.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })),
+                  datasets: [{
+                    label: 'CTR %',
+                    data: insights.daily_data.map(d => d.ctr),
+                    borderColor: '#f59e0b',
+                    backgroundColor: 'rgba(245, 158, 11, 0.2)',
+                    tension: 0.4
+                  }]
+                } : { labels: [], datasets: [] }
+              }
+          };
+          
+            setMetrics(realMetrics);
+            setTotalRevenue(parseFloat(insights.conversion_value || 0));
+            setTotalSpend(parseFloat(insights.spend || 0));
+            setTotalLeads(parseInt(insights.conversions || 0));
+            
+            // Calculer le taux de conversion
+            const convRate = insights.clicks > 0 ? (insights.conversions / insights.clicks * 100) : 0;
+            setConversionRate(convRate);
+            
+            setActiveCampaigns(campaigns.filter(c => c.effective_status === 'ACTIVE').length);
+            setAdSpendToday(parseFloat(insights.spend || 0)); // Pour aujourd'hui ou la période
+            setAvgCostPerLead(parseFloat(insights.cost_per_conversion || 0));
+            
+            // Stocker les campagnes pour affichage
+            setCampaignsList(campaigns);
+            
+            setLoading(false);
+            
+            aidsLogger.success(LogCategories.META_API, 'Données Meta chargées avec succès', { 
+              spend: insights.spend,
+              conversions: insights.conversions,
+              hasRevenueData: insights.has_revenue_data
+            });
+            return;
+          }
+        } catch (error) {
+          console.error('Error loading Meta insights:', error);
+        }
+      }
+      
+      // Fallback to Firebase data
+      try {
+        const statsResponse = await fetch(`/api/aids/dashboard-stats?range=${timeRange}`);
+        const statsData = await statsResponse.json();
           
           console.log('Insights response for', timeRange, ':', insightsData);
           
