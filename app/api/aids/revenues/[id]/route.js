@@ -4,7 +4,12 @@ import inMemoryStore from '@/lib/aids/inMemoryStore';
 
 // Helper function to update prospect status
 async function updateProspectStatus(userId, prospectId, amount) {
-  if (!userId || !prospectId) return;
+  console.log(`[updateProspectStatus] Called with userId: ${userId}, prospectId: ${prospectId}, amount: ${amount}`);
+  
+  if (!userId || !prospectId) {
+    console.log('[updateProspectStatus] Missing userId or prospectId, returning');
+    return;
+  }
   
   try {
     // Get user's organization
@@ -12,38 +17,64 @@ async function updateProspectStatus(userId, prospectId, amount) {
     const userData = userDoc.exists ? userDoc.data() : {};
     const orgId = userData.primaryOrgId || userId;
     
+    console.log(`[updateProspectStatus] Using orgId: ${orgId}`);
+    
+    // Try to find org ID from orgIds array if primaryOrgId doesn't exist
+    let actualOrgId = orgId;
+    if (!orgId.startsWith('org_') && userData.orgIds && userData.orgIds.length > 0) {
+      actualOrgId = userData.orgIds[0];
+      console.log(`[updateProspectStatus] Using orgId from array: ${actualOrgId}`);
+    }
+    
     // Search for prospect in all ad accounts
     const adAccountsSnapshot = await db
-      .collection('organizations').doc(orgId)
+      .collection('organizations').doc(actualOrgId)
       .collection('adAccounts')
       .get();
     
+    console.log(`[updateProspectStatus] Found ${adAccountsSnapshot.size} ad accounts`);
+    
+    let prospectFound = false;
     for (const adAccountDoc of adAccountsSnapshot.docs) {
       const prospectRef = db
-        .collection('organizations').doc(orgId)
+        .collection('organizations').doc(actualOrgId)
         .collection('adAccounts').doc(adAccountDoc.id)
         .collection('prospects').doc(prospectId);
       
       const prospectDoc = await prospectRef.get();
       
       if (prospectDoc.exists) {
-        console.log(`Updating prospect ${prospectId} with new amount ${amount}`);
+        console.log(`[updateProspectStatus] Found prospect ${prospectId} in ad account ${adAccountDoc.id}`);
+        console.log(`[updateProspectStatus] Updating with amount ${amount}`);
+        
         await prospectRef.update({
           status: 'converted',
           revenueAmount: amount,
           updatedAt: new Date().toISOString()
         });
+        
+        prospectFound = true;
+        console.log(`[updateProspectStatus] ✅ Successfully updated prospect ${prospectId}`);
         break;
       }
     }
+    
+    if (!prospectFound) {
+      console.log(`[updateProspectStatus] ⚠️ Prospect ${prospectId} not found in any ad account`);
+    }
   } catch (error) {
-    console.error('Error updating prospect:', error);
+    console.error('[updateProspectStatus] Error:', error);
   }
 }
 
 // Helper function to reset prospect status
 async function resetProspectStatus(userId, prospectId) {
-  if (!userId || !prospectId) return;
+  console.log(`[resetProspectStatus] Called with userId: ${userId}, prospectId: ${prospectId}`);
+  
+  if (!userId || !prospectId) {
+    console.log('[resetProspectStatus] Missing userId or prospectId, returning');
+    return;
+  }
   
   try {
     // Get user's organization
@@ -51,22 +82,36 @@ async function resetProspectStatus(userId, prospectId) {
     const userData = userDoc.exists ? userDoc.data() : {};
     const orgId = userData.primaryOrgId || userId;
     
+    console.log(`[resetProspectStatus] Using orgId: ${orgId}`);
+    
+    // Try to find org ID from orgIds array if primaryOrgId doesn't exist
+    let actualOrgId = orgId;
+    if (!orgId.startsWith('org_') && userData.orgIds && userData.orgIds.length > 0) {
+      actualOrgId = userData.orgIds[0];
+      console.log(`[resetProspectStatus] Using orgId from array: ${actualOrgId}`);
+    }
+    
     // Search for prospect in all ad accounts
     const adAccountsSnapshot = await db
-      .collection('organizations').doc(orgId)
+      .collection('organizations').doc(actualOrgId)
       .collection('adAccounts')
       .get();
     
+    console.log(`[resetProspectStatus] Found ${adAccountsSnapshot.size} ad accounts`);
+    
+    let prospectFound = false;
     for (const adAccountDoc of adAccountsSnapshot.docs) {
       const prospectRef = db
-        .collection('organizations').doc(orgId)
+        .collection('organizations').doc(actualOrgId)
         .collection('adAccounts').doc(adAccountDoc.id)
         .collection('prospects').doc(prospectId);
       
       const prospectDoc = await prospectRef.get();
       
       if (prospectDoc.exists) {
-        console.log(`Resetting prospect ${prospectId} to qualified`);
+        console.log(`[resetProspectStatus] Found prospect ${prospectId} in ad account ${adAccountDoc.id}`);
+        console.log(`[resetProspectStatus] Resetting to qualified`);
+        
         await prospectRef.update({
           status: 'qualified',
           revenueAmount: null,
@@ -74,11 +119,18 @@ async function resetProspectStatus(userId, prospectId) {
           convertedAt: null,
           updatedAt: new Date().toISOString()
         });
+        
+        prospectFound = true;
+        console.log(`[resetProspectStatus] ✅ Successfully reset prospect ${prospectId}`);
         break;
       }
     }
+    
+    if (!prospectFound) {
+      console.log(`[resetProspectStatus] ⚠️ Prospect ${prospectId} not found in any ad account`);
+    }
   } catch (error) {
-    console.error('Error resetting prospect:', error);
+    console.error('[resetProspectStatus] Error:', error);
   }
 }
 
