@@ -41,13 +41,14 @@ export async function GET(request) {
     };
     
     const datePreset = datePresetMap[timeRange] || 'last_7d';
+    console.log(`[Insights API] timeRange: ${timeRange}, datePreset: ${datePreset}`);
     
     // Clé de cache unique
     const cacheKey = `${accountId}_${timeRange}_${breakdowns || 'none'}_${timeIncrement}`;
     const cached = insightsCache.get(cacheKey);
     
     if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
-      console.log('Returning cached insights data');
+      console.log('Returning cached insights data for:', cacheKey);
       return NextResponse.json(cached.data);
     }
     
@@ -68,8 +69,15 @@ export async function GET(request) {
     
     insightsUrl += `access_token=${accessToken}`;
     
+    console.log(`[Insights API] Fetching URL: ${insightsUrl.replace(accessToken, 'TOKEN_HIDDEN')}`);
+    
     const response = await fetch(insightsUrl);
     const data = await response.json();
+    
+    console.log(`[Insights API] Response data length: ${data.data?.length || 0}, Time range: ${timeRange}`);
+    if (data.data && data.data[0]) {
+      console.log(`[Insights API] Date range in response: ${data.data[0].date_start} to ${data.data[0].date_stop}`);
+    }
     
     if (data.error) {
       aidsLogger.error(LogCategories.META_API, 'Erreur API Meta insights', {
@@ -213,6 +221,17 @@ export async function GET(request) {
     const costPerConversion = totalConversions > 0 ? (totalSpend / totalConversions) : 0;
     const roas = totalSpend > 0 ? (totalConversionValue / totalSpend) : 0;
     
+    // Get the actual date range from the response
+    let actualDateRange = null;
+    if (processedData.length > 0) {
+      const firstItem = processedData[0];
+      const lastItem = processedData[processedData.length - 1];
+      actualDateRange = {
+        start: firstItem.date_start || lastItem.date_start,
+        end: firstItem.date_stop || lastItem.date_stop
+      };
+    }
+    
     const formattedInsights = {
       spend: totalSpend.toFixed(2),
       impressions: totalImpressions,
@@ -228,6 +247,7 @@ export async function GET(request) {
       daily_data: dailyData,
       breakdown_data: breakdownData,
       time_range: timeRange,
+      date_range: actualDateRange,
       has_revenue_data: totalConversionValue > 0
     };
     

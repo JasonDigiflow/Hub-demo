@@ -161,7 +161,14 @@ export default function AIDsInsights() {
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
             <h1 className="text-4xl font-bold text-white mb-2">Insights</h1>
-            <p className="text-gray-400">Métriques et performances détaillées</p>
+            <p className="text-gray-400">
+              Métriques et performances détaillées
+              {insights?.date_range && (
+                <span className="text-sm ml-2 text-purple-400">
+                  ({new Date(insights.date_range.start).toLocaleDateString('fr-FR')} - {new Date(insights.date_range.end).toLocaleDateString('fr-FR')})
+                </span>
+              )}
+            </p>
           </div>
           
           <div className="flex gap-2">
