@@ -244,7 +244,10 @@ export default function RevenuesPage() {
         body: JSON.stringify(revenueData)
       });
 
-      if (response.ok) {
+      const result = await response.json();
+      console.log('Revenue save response:', { status: response.status, ok: response.ok, result });
+
+      if (response.ok && result.success) {
         // Si un prospect est sélectionné, mettre à jour son statut en "converted" avec le montant
         if (formData.prospectId && !editingRevenue) {
           updateProspectStatus(formData.prospectId, 'converted', revenueData.amount);

@@ -37,15 +37,21 @@ export async function GET() {
       const revenuesRef = db.collection('aids_revenues');
       const snapshot = await revenuesRef.get();
       
+      console.log(`Fetching revenues - Found ${snapshot.size} documents`);
+      
       snapshot.forEach(doc => {
+        const docData = doc.data();
+        console.log(`Revenue ${doc.id}:`, docData);
         revenues.push({
           id: doc.id,
-          ...doc.data()
+          ...docData
         });
       });
       
       // Sort by date
       revenues.sort((a, b) => new Date(b.date || b.createdAt) - new Date(a.date || a.createdAt));
+      
+      console.log(`Returning ${revenues.length} revenues`);
       
     } catch (firebaseError) {
       console.error('Firebase error:', firebaseError);
@@ -124,12 +130,19 @@ export async function POST(request) {
 
     // Create revenue using Firebase Admin directly
     const revenueRef = db.collection('aids_revenues').doc();
-    await revenueRef.set({
+    const revenueData = {
       ...data,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
-    });
+    };
+    
+    console.log('Creating revenue with ID:', revenueRef.id);
+    console.log('Revenue data:', revenueData);
+    
+    await revenueRef.set(revenueData);
     const revenueId = revenueRef.id;
+    
+    console.log('Revenue created successfully with ID:', revenueId);
     
     // Update prospect status to 'converted' with revenue amount
     if (userId && data.prospectId) {
