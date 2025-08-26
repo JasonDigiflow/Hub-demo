@@ -7,6 +7,9 @@ export async function PUT(request, { params }) {
     const { id } = params;
     const data = await request.json();
     
+    console.log(`PUT /api/aids/revenues/${id} - Updating revenue`);
+    console.log('Update data:', data);
+    
     // Update revenue - try Firebase first, fallback to in-memory
     let success = false;
     
@@ -15,12 +18,30 @@ export async function PUT(request, { params }) {
         const docRef = db.collection('aids_revenues').doc(id);
         const doc = await docRef.get();
         
+        console.log(`Revenue ${id} exists in Firebase:`, doc.exists);
+        
         if (doc.exists) {
+          // Ne pas écraser l'ID existant
+          const { id: dataId, ...updateData } = data;
           await docRef.update({
-            ...data,
+            ...updateData,
             updatedAt: new Date().toISOString()
           });
           success = true;
+          console.log(`Revenue ${id} updated successfully in Firebase`);
+        } else {
+          // Si le document n'existe pas mais que l'ID ressemble à un timestamp,
+          // essayer de créer un nouveau document
+          if (id && /^\d{13}$/.test(id)) {
+            console.log(`Revenue ${id} not found, creating new document for legacy ID`);
+            await docRef.set({
+              ...data,
+              updatedAt: new Date().toISOString(),
+              createdAt: new Date().toISOString()
+            });
+            success = true;
+            console.log(`Revenue ${id} created in Firebase with legacy ID`);
+          }
         }
       } catch (error) {
         console.error('Firebase error, using in-memory store:', error.message);
@@ -32,6 +53,7 @@ export async function PUT(request, { params }) {
     }
     
     if (!success) {
+      console.error(`Revenue ${id} not found in any storage`);
       return NextResponse.json(
         { error: 'Revenue not found' },
         { status: 404 }
@@ -39,7 +61,8 @@ export async function PUT(request, { params }) {
     }
 
     return NextResponse.json({ 
-      success: true
+      success: true,
+      message: `Revenue ${id} updated successfully`
     });
   } catch (error) {
     console.error('Error updating revenue:', error);

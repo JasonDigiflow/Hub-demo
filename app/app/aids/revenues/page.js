@@ -225,12 +225,17 @@ export default function RevenuesPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
+    // Ne pas inclure l'ID dans les données envoyées (Firebase le génère)
     const revenueData = {
       ...formData,
       clientId: formData.clientId || nextClientId,
-      amount: parseFloat(formData.amount),
-      id: editingRevenue?.id || Date.now()
+      amount: parseFloat(formData.amount)
     };
+    
+    // Si on édite, ajouter l'ID séparément pour l'URL
+    if (editingRevenue && editingRevenue.id) {
+      console.log('📝 Editing revenue with ID:', editingRevenue.id);
+    }
 
     console.log('📊 Saving revenue with data:', revenueData);
     console.log('🎯 Prospect ID to update:', formData.prospectId);
