@@ -55,7 +55,9 @@ export async function DELETE() {
       let count = 0;
       
       snapshot.forEach(doc => {
-        batch.delete(doc.ref);
+        // Use db.collection().doc() to get proper reference
+        const docRef = db.collection('aids_revenues').doc(doc.id);
+        batch.delete(docRef);
         count++;
       });
       
