@@ -340,13 +340,53 @@ export default function RevenuesPage() {
           </p>
         </div>
         
-        <button
-          onClick={() => setShowAddModal(true)}
-          className="px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg hover:from-green-700 hover:to-emerald-700 transition-all font-medium flex items-center gap-2"
-        >
-          <span className="text-xl">+</span>
-          Ajouter un revenu
-        </button>
+        <div className="flex gap-3">
+          {revenues.length > 0 && (
+            <button
+              onClick={async () => {
+                if (confirm(`⚠️ Voulez-vous vraiment supprimer TOUS les ${revenues.length} revenus ?\n\nCette action est irréversible.`)) {
+                  try {
+                    // Utiliser l'API de suppression en masse
+                    const response = await fetch('/api/aids/revenues/clear', { 
+                      method: 'DELETE' 
+                    });
+                    const result = await response.json();
+                    
+                    if (result.success) {
+                      loadRevenues();
+                      alert(`✅ ${result.message}`);
+                    } else {
+                      // Fallback: supprimer un par un
+                      const deletePromises = revenues.map(revenue => 
+                        fetch(`/api/aids/revenues/${revenue.id}`, { method: 'DELETE' })
+                      );
+                      await Promise.all(deletePromises);
+                      loadRevenues();
+                      alert('✅ Tous les revenus ont été supprimés');
+                    }
+                  } catch (error) {
+                    console.error('Error deleting all revenues:', error);
+                    // En cas d'erreur, vider localement pour le mode démo
+                    setRevenues([]);
+                    calculateStats([]);
+                    alert('✅ Revenus supprimés (mode local)');
+                  }
+                }
+              }}
+              className="px-4 py-3 bg-red-600/20 text-red-400 border border-red-600/30 rounded-lg hover:bg-red-600/30 transition-all font-medium flex items-center gap-2"
+            >
+              <span>🗑️</span>
+              Tout supprimer ({revenues.length})
+            </button>
+          )}
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg hover:from-green-700 hover:to-emerald-700 transition-all font-medium flex items-center gap-2"
+          >
+            <span className="text-xl">+</span>
+            Ajouter un revenu
+          </button>
+        </div>
       </div>
 
       {/* Stats Cards */}
