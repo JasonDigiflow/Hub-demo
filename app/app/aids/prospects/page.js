@@ -629,29 +629,25 @@ export default function ProspectsPage() {
                         if (confirm('🔴 ATTENTION: Voulez-vous VRAIMENT supprimer TOUS les prospects ET revenus?\n\nCette action est IRRÉVERSIBLE et supprimera:\n- Tous les prospects\n- Tous les revenus\n- Toutes les données associées\n\nÊtes-vous SÛR?')) {
                           if (confirm('⏹ DERNIÈRE CONFIRMATION\n\nVoulez-vous vraiment tout effacer?')) {
                             try {
-                              const response = await fetch('/api/aids/reset-all', {
+                              const response = await fetch('/api/aids/force-delete', {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' }
                               });
                               const result = await response.json();
                               
-                              // Afficher les logs dans la console
-                              if (result.logs) {
-                                console.log('=== LOGS DU RESET ===');
-                                result.logs.forEach(log => {
-                                  console.log(`[${log.timestamp}] ${log.message}`, log.data || '');
-                                });
-                              }
-                              
                               if (result.success) {
-                                alert(`✅ Reset complet terminé:\n- ${result.summary.prospectsDeleted} prospects supprimés\n- ${result.summary.revenuesDeleted} revenus supprimés\n\nVous pouvez maintenant resynchroniser depuis Meta.`);
-                                loadProspects(); // Recharger la liste (vide)
+                                alert(`✅ Suppression forcée terminée:\n- ${result.deleted.prospects} prospects supprimés\n- ${result.deleted.revenues} revenus supprimés\n\nLa page va se recharger...`);
+                                
+                                // Recharger la page complètement pour voir les changements
+                                setTimeout(() => {
+                                  window.location.reload();
+                                }, 1000);
                               } else {
-                                alert('❌ Erreur lors du reset: ' + result.error);
+                                alert('❌ Erreur lors de la suppression: ' + result.error);
                               }
                             } catch (error) {
-                              console.error('Error during reset:', error);
-                              alert('❌ Erreur lors du reset');
+                              console.error('Error during force delete:', error);
+                              alert('❌ Erreur lors de la suppression');
                             }
                           }
                         }

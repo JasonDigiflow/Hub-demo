@@ -64,30 +64,40 @@ export async function POST() {
       
       console.log(`Found ${adAccountsSnapshot.size} ad accounts`);
       
-      for (const adAccountDoc of adAccountsSnapshot.docs) {
-        const adAccountId = adAccountDoc.id;
+      // Liste des comptes à vérifier, incluant 'default' même s'il n'apparaît pas dans la liste
+      const adAccountIds = adAccountsSnapshot.docs.map(doc => doc.id);
+      if (!adAccountIds.includes('default')) {
+        adAccountIds.push('default');
+        console.log('Adding default ad account to cleanup list');
+      }
+      
+      for (const adAccountId of adAccountIds) {
         console.log(`Processing ad account: ${adAccountId}`);
         
-        const prospectsSnapshot = await db
-          .collection('organizations').doc(orgId)
-          .collection('adAccounts').doc(adAccountId)
-          .collection('prospects')
-          .get();
-        
-        console.log(`Found ${prospectsSnapshot.size} prospects to delete`);
-        
-        // Delete each one individually
-        for (const doc of prospectsSnapshot.docs) {
-          try {
-            await doc.ref.delete();
-            results.prospects++;
-            if (results.prospects % 10 === 0) {
-              console.log(`Deleted ${results.prospects} prospects...`);
+        try {
+          const prospectsSnapshot = await db
+            .collection('organizations').doc(orgId)
+            .collection('adAccounts').doc(adAccountId)
+            .collection('prospects')
+            .get();
+          
+          console.log(`Found ${prospectsSnapshot.size} prospects to delete in ${adAccountId}`);
+          
+          // Delete each one individually
+          for (const doc of prospectsSnapshot.docs) {
+            try {
+              await doc.ref.delete();
+              results.prospects++;
+              if (results.prospects % 10 === 0) {
+                console.log(`Deleted ${results.prospects} prospects...`);
+              }
+            } catch (error) {
+              console.error(`Failed to delete prospect ${doc.id}:`, error.message);
+              results.errors.push(`Prospect ${doc.id}: ${error.message}`);
             }
-          } catch (error) {
-            console.error(`Failed to delete prospect ${doc.id}:`, error.message);
-            results.errors.push(`Prospect ${doc.id}: ${error.message}`);
           }
+        } catch (error) {
+          console.log(`Could not access ad account ${adAccountId}: ${error.message}`);
         }
       }
     } catch (error) {
