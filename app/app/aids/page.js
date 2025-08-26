@@ -129,13 +129,13 @@ export default function AIDsDashboard() {
           
           const realMetrics = {
             overview: {
-              totalSpend: stats.totalRevenue * 0.25, // Estimate spend as 25% of revenue
-              totalRevenue: stats.totalRevenue,
-              totalLeads: stats.totalProspects,
-              conversions: stats.convertedProspects,
-              ctr: stats.conversionRate.toFixed(2),
-              cpc: stats.totalProspects > 0 ? (stats.totalRevenue * 0.25 / stats.totalProspects).toFixed(2) : 0,
-              roas: stats.totalRevenue > 0 ? (stats.totalRevenue / (stats.totalRevenue * 0.25)).toFixed(2) : 4,
+              totalSpend: parseFloat(stats.totalRevenue || 0) * 0.25, // Estimate spend as 25% of revenue
+              totalRevenue: parseFloat(stats.totalRevenue || 0),
+              totalLeads: parseInt(stats.totalProspects || 0),
+              conversions: parseInt(stats.convertedProspects || 0),
+              ctr: parseFloat(stats.conversionRate || 0).toFixed(2),
+              cpc: stats.totalProspects > 0 ? parseFloat((stats.totalRevenue * 0.25 / stats.totalProspects) || 0).toFixed(2) : '0.00',
+              roas: stats.totalRevenue > 0 ? parseFloat((stats.totalRevenue / (stats.totalRevenue * 0.25)) || 4).toFixed(2) : '4.00',
               activeAds: 0
             },
             trend: {
