@@ -83,25 +83,39 @@ export async function POST() {
             const newId = data.id || data.metaId; // data.id contains "LEAD_XXX"
             
             if (newId && newId.startsWith('LEAD_')) {
-              console.log(`Migrating ${currentId} to ${newId}`);
-              
-              // Create new document with Meta ID
-              const newDocRef = db
+              // Vérifier si le document avec le Meta ID existe déjà
+              const existingDocRef = db
                 .collection('organizations').doc(orgId)
                 .collection('adAccounts').doc(adAccountId)
                 .collection('prospects').doc(newId);
               
-              // Copy all data to new document
-              await newDocRef.set(data);
+              const existingDoc = await existingDocRef.get();
               
-              // Delete old document
-              await doc.ref.delete();
-              
-              results.migrated.push({
-                oldId: currentId,
-                newId: newId,
-                name: data.name
-              });
+              if (existingDoc.exists) {
+                // Un document avec cet ID existe déjà, supprimer l'ancien seulement
+                console.log(`Document with Meta ID ${newId} already exists, deleting old document ${currentId}`);
+                await doc.ref.delete();
+                results.skipped.push({
+                  id: currentId,
+                  reason: 'Meta ID document already exists, deleted duplicate',
+                  metaId: newId
+                });
+              } else {
+                // Pas de doublon, procéder à la migration
+                console.log(`Migrating ${currentId} to ${newId}`);
+                
+                // Copy all data to new document
+                await existingDocRef.set(data);
+                
+                // Delete old document
+                await doc.ref.delete();
+                
+                results.migrated.push({
+                  oldId: currentId,
+                  newId: newId,
+                  name: data.name
+                });
+              }
             } else {
               results.skipped.push({
                 id: currentId,

@@ -595,6 +595,33 @@ export default function ProspectsPage() {
                       <span>🔄</span>
                       Migrer vers IDs Meta
                     </button>
+                    <button
+                      onClick={async () => {
+                        setShowAdvancedOptions(false);
+                        if (confirm('⚠️ Voulez-vous nettoyer les doublons de prospects?\n\nCela va supprimer les prospects en double en gardant la version la plus complète.')) {
+                          try {
+                            const response = await fetch('/api/aids/clean-duplicates', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' }
+                            });
+                            const result = await response.json();
+                            if (result.success) {
+                              alert(`✅ Nettoyage terminé:\n- ${result.summary.deleted} doublons supprimés\n- ${result.summary.kept} prospects conservés\n- ${result.summary.errors} erreurs`);
+                              loadProspects(); // Recharger la liste
+                            } else {
+                              alert('❌ Erreur lors du nettoyage: ' + result.error);
+                            }
+                          } catch (error) {
+                            console.error('Error cleaning duplicates:', error);
+                            alert('❌ Erreur lors du nettoyage');
+                          }
+                        }
+                      }}
+                      className="w-full text-left px-3 py-2 text-sm text-orange-400 hover:bg-gray-800 rounded flex items-center gap-2"
+                    >
+                      <span>🧹</span>
+                      Nettoyer les doublons
+                    </button>
                     <div className="px-3 py-2 text-xs text-gray-500 mt-2">
                       {prospects.length} prospects affichés
                     </div>
