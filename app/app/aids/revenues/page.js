@@ -245,47 +245,53 @@ export default function RevenuesPage() {
       const response = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify(revenueData)
       });
 
       const result = await response.json();
-      console.log('✅ Revenue save response:', { status: response.status, ok: response.ok, result, prospectId: formData.prospectId });
+      console.log('✅ Revenue save response:', { 
+        status: response.status, 
+        ok: response.ok, 
+        result, 
+        prospectId: formData.prospectId,
+        isEdit: !!editingRevenue
+      });
 
-      if (response.ok && result.success) {
+      if (response.ok) {
         // Si un prospect est sélectionné, mettre à jour son statut en "converted" avec le montant
         if (formData.prospectId && !editingRevenue) {
           updateProspectStatus(formData.prospectId, 'converted', revenueData.amount);
         }
         
-        loadRevenues();
+        await loadRevenues(); // Attendre le rechargement
         resetForm();
+        console.log(editingRevenue ? 'Revenue updated successfully' : 'Revenue created successfully');
+      } else {
+        console.error('Failed to save revenue:', result);
+        alert(`Erreur: ${result.error || 'Impossible de sauvegarder le revenu'}`);
       }
     } catch (error) {
       console.error('Error saving revenue:', error);
-      // For demo, add locally
-      if (editingRevenue) {
-        setRevenues(revenues.map(r => r.id === editingRevenue.id ? revenueData : r));
-      } else {
-        setRevenues([revenueData, ...revenues]);
-        // Si un prospect est sélectionné, mettre à jour son statut en "converted" avec le montant
-        if (formData.prospectId) {
-          updateProspectStatus(formData.prospectId, 'converted', revenueData.amount);
-        }
-      }
-      calculateStats([revenueData, ...revenues]);
-      resetForm();
+      alert(`Erreur lors de l'enregistrement: ${error.message}`);
     }
   };
 
   const handleEdit = (revenue) => {
+    console.log('Editing revenue:', revenue);
+    if (!revenue || !revenue.id) {
+      console.error('Invalid revenue object:', revenue);
+      alert('Erreur: Impossible de modifier ce revenu (ID manquant)');
+      return;
+    }
     setEditingRevenue(revenue);
     setFormData({
-      clientId: revenue.clientId,
-      clientName: revenue.clientName,
-      amount: revenue.amount.toString(),
-      date: revenue.date,
-      campaignId: revenue.campaignId,
-      description: revenue.description,
+      clientId: revenue.clientId || '',
+      clientName: revenue.clientName || '',
+      amount: revenue.amount ? revenue.amount.toString() : '',
+      date: revenue.date || new Date().toISOString().split('T')[0],
+      campaignId: revenue.campaignId || '',
+      description: revenue.description || '',
       prospectId: revenue.prospectId || '',
       tva: revenue.tva || 20
     });
@@ -293,17 +299,32 @@ export default function RevenuesPage() {
   };
 
   const handleDelete = async (id) => {
+    console.log('Deleting revenue with ID:', id);
+    if (!id) {
+      console.error('No ID provided for deletion');
+      alert('Erreur: Impossible de supprimer ce revenu (ID manquant)');
+      return;
+    }
+    
     if (!confirm('Voulez-vous vraiment supprimer ce revenu ?')) return;
 
     try {
-      await fetch(`/api/aids/revenues/${id}`, { method: 'DELETE' });
-      loadRevenues();
+      const response = await fetch(`/api/aids/revenues/${id}`, { 
+        method: 'DELETE',
+        credentials: 'include'
+      });
+      
+      if (response.ok) {
+        console.log('Revenue deleted successfully');
+        await loadRevenues(); // Recharger la liste
+      } else {
+        const error = await response.json();
+        console.error('Delete failed:', error);
+        alert(`Erreur lors de la suppression: ${error.error || 'Erreur inconnue'}`);
+      }
     } catch (error) {
       console.error('Error deleting revenue:', error);
-      // For demo, remove locally
-      const newRevenues = revenues.filter(r => r.id !== id);
-      setRevenues(newRevenues);
-      calculateStats(newRevenues);
+      alert(`Erreur lors de la suppression: ${error.message}`);
     }
   };
 
