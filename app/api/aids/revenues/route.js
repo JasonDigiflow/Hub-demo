@@ -167,6 +167,8 @@ export async function POST(request) {
     }
     
     // Update prospect status to 'converted' with revenue amount
+    let prospectUpdated = false; // Declare at outer scope
+    
     if (userId && data.prospectId) {
       session.log('Mise à jour du prospect', { prospectId: data.prospectId });
       try {
@@ -187,7 +189,6 @@ export async function POST(request) {
         }
         
         // Find the prospect in the organization's ad accounts
-        let prospectUpdated = false;
         session.log('Recherche du prospect dans les ad accounts', { orgId, prospectId: data.prospectId });
         
         try {
