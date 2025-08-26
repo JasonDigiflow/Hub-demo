@@ -56,6 +56,7 @@ export default function RevenuesPage() {
     try {
       const response = await fetch('/api/aids/revenues');
       const data = await response.json();
+      console.log('Loaded revenues data:', data);
       const revenuesList = data.revenues || [];
       setRevenues(revenuesList);
       setStats(data.stats || {
