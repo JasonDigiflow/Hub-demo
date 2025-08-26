@@ -289,7 +289,14 @@ export default function RevenuesPage() {
       alert('Erreur: Impossible de modifier ce revenu (ID manquant)');
       return;
     }
-    setEditingRevenue(revenue);
+    
+    // S'assurer que l'ID est une string et pas un timestamp
+    const cleanRevenue = {
+      ...revenue,
+      id: String(revenue.id)
+    };
+    
+    setEditingRevenue(cleanRevenue);
     setFormData({
       clientId: revenue.clientId || '',
       clientName: revenue.clientName || '',
