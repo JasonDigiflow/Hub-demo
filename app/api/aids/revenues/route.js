@@ -33,8 +33,9 @@ export async function GET() {
 
     // Get revenues - try Firebase first, fallback to in-memory
     let revenues = [];
+    const isFirebaseReady = db && db.isInitialized && db.isInitialized();
     
-    if (db && db.collection) {
+    if (isFirebaseReady) {
       try {
         const revenuesRef = db.collection('aids_revenues');
         const snapshot = await revenuesRef.get();
@@ -54,7 +55,7 @@ export async function GET() {
         revenues = await inMemoryStore.getAllRevenues();
       }
     } else {
-      console.log('Firebase not available, using in-memory store');
+      console.log('Firebase not initialized, using in-memory store');
       revenues = await inMemoryStore.getAllRevenues();
     }
     
@@ -140,7 +141,9 @@ export async function POST(request) {
       updatedAt: new Date().toISOString()
     };
     
-    if (db && db.collection) {
+    const isFirebaseReady = db && db.isInitialized && db.isInitialized();
+    
+    if (isFirebaseReady) {
       try {
         const revenueRef = db.collection('aids_revenues').doc();
         console.log('Creating revenue in Firebase with ID:', revenueRef.id);
@@ -153,7 +156,7 @@ export async function POST(request) {
         console.log('Revenue created in memory with ID:', revenueId);
       }
     } else {
-      console.log('Firebase not available, using in-memory store');
+      console.log('Firebase not initialized, using in-memory store');
       revenueId = await inMemoryStore.addRevenue(revenueData);
       console.log('Revenue created in memory with ID:', revenueId);
     }
