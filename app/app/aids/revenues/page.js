@@ -167,9 +167,10 @@ export default function RevenuesPage() {
         status: status 
       };
       
-      // Ajouter le montant et la date de closing si applicable
-      if (status === 'closing' && amount) {
+      // Ajouter le montant et la date de conversion si applicable
+      if ((status === 'converted' || status === 'closing') && amount) {
         updateData.revenueAmount = amount;
+        updateData.convertedAt = new Date().toISOString();
         updateData.closingDate = new Date().toISOString();
         // Note: on ajoute aux notes existantes côté serveur
       }
@@ -244,9 +245,9 @@ export default function RevenuesPage() {
       });
 
       if (response.ok) {
-        // Si un prospect est sélectionné, mettre à jour son statut en "closing" avec le montant
+        // Si un prospect est sélectionné, mettre à jour son statut en "converted" avec le montant
         if (formData.prospectId && !editingRevenue) {
-          updateProspectStatus(formData.prospectId, 'closing', revenueData.amount);
+          updateProspectStatus(formData.prospectId, 'converted', revenueData.amount);
         }
         
         loadRevenues();
@@ -259,9 +260,9 @@ export default function RevenuesPage() {
         setRevenues(revenues.map(r => r.id === editingRevenue.id ? revenueData : r));
       } else {
         setRevenues([revenueData, ...revenues]);
-        // Si un prospect est sélectionné, mettre à jour son statut en "closing" avec le montant
+        // Si un prospect est sélectionné, mettre à jour son statut en "converted" avec le montant
         if (formData.prospectId) {
-          updateProspectStatus(formData.prospectId, 'closing', revenueData.amount);
+          updateProspectStatus(formData.prospectId, 'converted', revenueData.amount);
         }
       }
       calculateStats([revenueData, ...revenues]);

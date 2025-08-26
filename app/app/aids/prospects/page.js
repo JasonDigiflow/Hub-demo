@@ -441,7 +441,10 @@ export default function ProspectsPage() {
     converted: prospects.filter(p => p.status === 'converted').length,
     conversionRate: prospects.length > 0 
       ? ((prospects.filter(p => p.status === 'converted').length / prospects.length) * 100).toFixed(1)
-      : 0
+      : 0,
+    totalRevenue: prospects
+      .filter(p => p.status === 'converted' && p.revenueAmount)
+      .reduce((sum, p) => sum + (p.revenueAmount || 0), 0)
   };
 
   if (loading) {
@@ -595,6 +598,11 @@ export default function ProspectsPage() {
         >
           <div className="text-gray-400 text-sm mb-1">Convertis</div>
           <div className="text-2xl font-bold text-green-400">{stats.converted}</div>
+          {stats.totalRevenue > 0 && (
+            <div className="text-xs text-green-300 mt-1">
+              {stats.totalRevenue.toLocaleString('fr-FR')}€
+            </div>
+          )}
         </motion.div>
 
         <motion.div
@@ -720,17 +728,24 @@ export default function ProspectsPage() {
                     <div className="text-xs text-gray-500">{prospect.campaignName}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <select
-                      value={prospect.status}
-                      onChange={(e) => handleStatusChange(prospect.id, e.target.value)}
-                      className={`px-3 py-1 text-xs rounded-lg border bg-black/50 ${getStatusColor(prospect.status)}`}
-                    >
-                      <option value="new">Nouveau</option>
-                      <option value="contacted">Contacté</option>
-                      <option value="qualified">Qualifié</option>
-                      <option value="converted">Converti</option>
-                      <option value="lost">Perdu</option>
-                    </select>
+                    <div className="flex flex-col gap-1">
+                      <select
+                        value={prospect.status}
+                        onChange={(e) => handleStatusChange(prospect.id, e.target.value)}
+                        className={`px-3 py-1 text-xs rounded-lg border bg-black/50 ${getStatusColor(prospect.status)}`}
+                      >
+                        <option value="new">Nouveau</option>
+                        <option value="contacted">Contacté</option>
+                        <option value="qualified">Qualifié</option>
+                        <option value="converted">Converti</option>
+                        <option value="lost">Perdu</option>
+                      </select>
+                      {prospect.status === 'converted' && prospect.revenueAmount && (
+                        <div className="text-xs text-green-400 font-semibold">
+                          💰 {prospect.revenueAmount.toLocaleString('fr-FR')}€
+                        </div>
+                      )}
+                    </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm">
                     <div className="flex items-center gap-2">
