@@ -2,6 +2,86 @@ import { NextResponse } from 'next/server';
 import { db } from '@/lib/firebase-admin';
 import inMemoryStore from '@/lib/aids/inMemoryStore';
 
+// Helper function to update prospect status
+async function updateProspectStatus(userId, prospectId, amount) {
+  if (!userId || !prospectId) return;
+  
+  try {
+    // Get user's organization
+    const userDoc = await db.collection('users').doc(userId).get();
+    const userData = userDoc.exists ? userDoc.data() : {};
+    const orgId = userData.primaryOrgId || userId;
+    
+    // Search for prospect in all ad accounts
+    const adAccountsSnapshot = await db
+      .collection('organizations').doc(orgId)
+      .collection('adAccounts')
+      .get();
+    
+    for (const adAccountDoc of adAccountsSnapshot.docs) {
+      const prospectRef = db
+        .collection('organizations').doc(orgId)
+        .collection('adAccounts').doc(adAccountDoc.id)
+        .collection('prospects').doc(prospectId);
+      
+      const prospectDoc = await prospectRef.get();
+      
+      if (prospectDoc.exists) {
+        console.log(`Updating prospect ${prospectId} with new amount ${amount}`);
+        await prospectRef.update({
+          status: 'converted',
+          revenueAmount: amount,
+          updatedAt: new Date().toISOString()
+        });
+        break;
+      }
+    }
+  } catch (error) {
+    console.error('Error updating prospect:', error);
+  }
+}
+
+// Helper function to reset prospect status
+async function resetProspectStatus(userId, prospectId) {
+  if (!userId || !prospectId) return;
+  
+  try {
+    // Get user's organization
+    const userDoc = await db.collection('users').doc(userId).get();
+    const userData = userDoc.exists ? userDoc.data() : {};
+    const orgId = userData.primaryOrgId || userId;
+    
+    // Search for prospect in all ad accounts
+    const adAccountsSnapshot = await db
+      .collection('organizations').doc(orgId)
+      .collection('adAccounts')
+      .get();
+    
+    for (const adAccountDoc of adAccountsSnapshot.docs) {
+      const prospectRef = db
+        .collection('organizations').doc(orgId)
+        .collection('adAccounts').doc(adAccountDoc.id)
+        .collection('prospects').doc(prospectId);
+      
+      const prospectDoc = await prospectRef.get();
+      
+      if (prospectDoc.exists) {
+        console.log(`Resetting prospect ${prospectId} to qualified`);
+        await prospectRef.update({
+          status: 'qualified',
+          revenueAmount: null,
+          revenueDate: null,
+          convertedAt: null,
+          updatedAt: new Date().toISOString()
+        });
+        break;
+      }
+    }
+  } catch (error) {
+    console.error('Error resetting prospect:', error);
+  }
+}
+
 export async function PUT(request, { params }) {
   try {
     const { id } = params;
@@ -21,6 +101,9 @@ export async function PUT(request, { params }) {
         console.log(`Revenue ${id} exists in Firebase:`, doc.exists);
         
         if (doc.exists) {
+          // Récupérer les données existantes pour le prospect
+          const existingData = doc.data();
+          
           // Ne pas écraser l'ID existant
           const { id: dataId, ...updateData } = data;
           await docRef.update({
@@ -29,6 +112,22 @@ export async function PUT(request, { params }) {
           });
           success = true;
           console.log(`Revenue ${id} updated successfully in Firebase`);
+          
+          // Si le montant ou le prospectId a changé, mettre à jour le prospect
+          if ((updateData.amount && updateData.amount !== existingData.amount) || 
+              (updateData.prospectId && updateData.prospectId !== existingData.prospectId)) {
+            console.log('Amount or prospect changed, updating prospect status');
+            
+            // Mettre à jour le nouveau prospect si nécessaire
+            if (updateData.prospectId) {
+              await updateProspectStatus(existingData.userId || updateData.userId, updateData.prospectId, updateData.amount);
+            }
+            
+            // Si le prospect a changé, réinitialiser l'ancien
+            if (existingData.prospectId && existingData.prospectId !== updateData.prospectId) {
+              await resetProspectStatus(existingData.userId || updateData.userId, existingData.prospectId);
+            }
+          }
         } else {
           // Si le document n'existe pas mais que l'ID ressemble à un timestamp,
           // essayer de créer un nouveau document
@@ -115,48 +214,9 @@ export async function DELETE(request, { params }) {
         
         // If revenue had a prospect associated, update its status
         if (success && revenueData && revenueData.prospectId) {
-            console.log(`Revenue deleted, updating prospect ${revenueData.prospectId} status`);
-            
-            // Get user's organization
-            const userId = revenueData.userId;
-            if (userId) {
-              const userDoc = await db.collection('users').doc(userId).get();
-              const userData = userDoc.exists ? userDoc.data() : {};
-              const orgId = userData.primaryOrgId || userId;
-              
-              // Search for prospect in all ad accounts
-              const adAccountsSnapshot = await db
-                .collection('organizations').doc(orgId)
-                .collection('adAccounts')
-                .get();
-              
-              for (const adAccountDoc of adAccountsSnapshot.docs) {
-                const prospectRef = db
-                  .collection('organizations').doc(orgId)
-                  .collection('adAccounts').doc(adAccountDoc.id)
-                  .collection('prospects').doc(revenueData.prospectId);
-                
-                const prospectDoc = await prospectRef.get();
-                
-                if (prospectDoc.exists) {
-                  console.log(`Found prospect in ad account ${adAccountDoc.id}, resetting status`);
-                  
-                  // Reset prospect status and remove revenue info
-                  await prospectRef.update({
-                    status: 'qualified', // Reset to qualified instead of new
-                    revenueAmount: null,
-                    revenueDate: null,
-                    revenueService: null,
-                    convertedAt: null,
-                    updatedAt: new Date().toISOString()
-                  });
-                  
-                  console.log(`✅ Prospect ${revenueData.prospectId} status reset to qualified`);
-                  break;
-                }
-              }
-            }
-          }
+          console.log(`Revenue deleted, resetting prospect ${revenueData.prospectId} status`);
+          await resetProspectStatus(revenueData.userId, revenueData.prospectId);
+        }
       } catch (error) {
         console.error('Firebase error, using in-memory store:', error.message);
         success = await inMemoryStore.deleteRevenue(id);
