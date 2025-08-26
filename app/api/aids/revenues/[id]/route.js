@@ -77,6 +77,8 @@ export async function DELETE(request, { params }) {
   try {
     const { id } = params;
     
+    console.log(`DELETE /api/aids/revenues/${id} - Deleting revenue`);
+    
     // First get the revenue to find associated prospect
     let revenueData = null;
     let success = false;
@@ -86,10 +88,30 @@ export async function DELETE(request, { params }) {
         const docRef = db.collection('aids_revenues').doc(id);
         const doc = await docRef.get();
         
+        console.log(`Revenue ${id} exists in Firebase:`, doc.exists);
+        
         if (doc.exists) {
           revenueData = doc.data();
           await docRef.delete();
           success = true;
+          console.log(`Revenue ${id} deleted from Firebase`);
+        } else if (/^\d{13}$/.test(id)) {
+          // Si l'ID est un timestamp, chercher dans tous les documents
+          console.log(`Revenue ${id} not found, searching for timestamp ID in all documents`);
+          
+          const allRevenues = await db.collection('aids_revenues').get();
+          for (const revDoc of allRevenues.docs) {
+            const revData = revDoc.data();
+            // Chercher par oldId ou par correspondance de données
+            if (revData.oldId === id || revDoc.id === id) {
+              console.log(`Found revenue with oldId ${id}, deleting document ${revDoc.id}`);
+              revenueData = revData;
+              await revDoc.ref.delete();
+              success = true;
+              break;
+            }
+          }
+        }
           
           // If revenue had a prospect associated, update its status
           if (revenueData && revenueData.prospectId) {
