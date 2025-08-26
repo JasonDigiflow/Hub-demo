@@ -112,9 +112,9 @@ export async function DELETE(request, { params }) {
             }
           }
         }
-          
-          // If revenue had a prospect associated, update its status
-          if (revenueData && revenueData.prospectId) {
+        
+        // If revenue had a prospect associated, update its status
+        if (success && revenueData && revenueData.prospectId) {
             console.log(`Revenue deleted, updating prospect ${revenueData.prospectId} status`);
             
             // Get user's organization
@@ -157,7 +157,6 @@ export async function DELETE(request, { params }) {
               }
             }
           }
-        }
       } catch (error) {
         console.error('Firebase error, using in-memory store:', error.message);
         success = await inMemoryStore.deleteRevenue(id);
