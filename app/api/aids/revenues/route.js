@@ -46,7 +46,7 @@ export async function GET() {
         snapshot.forEach(doc => {
           const docData = doc.data();
           revenues.push({
-            id: doc.id,
+            id: String(doc.id), // Forcer l'ID en string
             ...docData
           });
         });
