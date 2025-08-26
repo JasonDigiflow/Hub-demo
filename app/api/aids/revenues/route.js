@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import jwt from 'jsonwebtoken';
 import { db } from '@/lib/firebase-admin';
+import inMemoryStore from '@/lib/aids/inMemoryStore';
 
 export async function GET() {
   try {
@@ -30,33 +31,36 @@ export async function GET() {
       }
     }
 
-    // Get revenues directly from Firebase Admin
-    const revenues = [];
+    // Get revenues - try Firebase first, fallback to in-memory
+    let revenues = [];
     
-    try {
-      const revenuesRef = db.collection('aids_revenues');
-      const snapshot = await revenuesRef.get();
-      
-      console.log(`Fetching revenues - Found ${snapshot.size} documents`);
-      
-      snapshot.forEach(doc => {
-        const docData = doc.data();
-        console.log(`Revenue ${doc.id}:`, docData);
-        revenues.push({
-          id: doc.id,
-          ...docData
+    if (db && db.collection) {
+      try {
+        const revenuesRef = db.collection('aids_revenues');
+        const snapshot = await revenuesRef.get();
+        
+        console.log(`Firebase: Found ${snapshot.size} documents`);
+        
+        snapshot.forEach(doc => {
+          const docData = doc.data();
+          revenues.push({
+            id: doc.id,
+            ...docData
+          });
         });
-      });
-      
-      // Sort by date
-      revenues.sort((a, b) => new Date(b.date || b.createdAt) - new Date(a.date || a.createdAt));
-      
-      console.log(`Returning ${revenues.length} revenues`);
-      
-    } catch (firebaseError) {
-      console.error('Firebase error:', firebaseError);
-      // Continue with empty array
+        
+      } catch (firebaseError) {
+        console.error('Firebase error, using in-memory store:', firebaseError.message);
+        revenues = await inMemoryStore.getAllRevenues();
+      }
+    } else {
+      console.log('Firebase not available, using in-memory store');
+      revenues = await inMemoryStore.getAllRevenues();
     }
+    
+    // Sort by date
+    revenues.sort((a, b) => new Date(b.date || b.createdAt) - new Date(a.date || a.createdAt));
+    console.log(`Returning ${revenues.length} revenues`);
     
     // Calculate stats
     const totalRevenue = revenues.reduce((sum, r) => sum + (r.amount || 0), 0);
@@ -128,21 +132,31 @@ export async function POST(request) {
       }
     }
 
-    // Create revenue using Firebase Admin directly
-    const revenueRef = db.collection('aids_revenues').doc();
+    // Create revenue - try Firebase first, fallback to in-memory
+    let revenueId;
     const revenueData = {
       ...data,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
     
-    console.log('Creating revenue with ID:', revenueRef.id);
-    console.log('Revenue data:', revenueData);
-    
-    await revenueRef.set(revenueData);
-    const revenueId = revenueRef.id;
-    
-    console.log('Revenue created successfully with ID:', revenueId);
+    if (db && db.collection) {
+      try {
+        const revenueRef = db.collection('aids_revenues').doc();
+        console.log('Creating revenue in Firebase with ID:', revenueRef.id);
+        await revenueRef.set(revenueData);
+        revenueId = revenueRef.id;
+        console.log('Revenue created in Firebase with ID:', revenueId);
+      } catch (error) {
+        console.error('Firebase error, using in-memory store:', error.message);
+        revenueId = await inMemoryStore.addRevenue(revenueData);
+        console.log('Revenue created in memory with ID:', revenueId);
+      }
+    } else {
+      console.log('Firebase not available, using in-memory store');
+      revenueId = await inMemoryStore.addRevenue(revenueData);
+      console.log('Revenue created in memory with ID:', revenueId);
+    }
     
     // Update prospect status to 'converted' with revenue amount
     if (userId && data.prospectId) {
