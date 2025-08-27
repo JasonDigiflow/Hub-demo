@@ -10,6 +10,8 @@ export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
     const timeRange = searchParams.get('time_range') || 'last_30d';
+    const startDate = searchParams.get('start_date');
+    const endDate = searchParams.get('end_date');
     
     const cookieStore = await cookies();
     const sessionCookie = cookieStore.get('meta_session');
@@ -27,7 +29,9 @@ export async function GET(request) {
     const accessToken = session.accessToken;
     
     // Vérifier le cache mémoire
-    const cacheKey = `${accountId}_${timeRange}`;
+    const cacheKey = startDate && endDate 
+      ? `${accountId}_${startDate}_${endDate}`
+      : `${accountId}_${timeRange}`;
     const cached = hierarchyCache.get(cacheKey);
     
     if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
@@ -74,19 +78,27 @@ export async function GET(request) {
     }
     
     // Si pas de cache valide, récupérer depuis Meta API
-    console.log('[Hierarchy] Fetching from Meta API for timeRange:', timeRange);
+    console.log('[Hierarchy] Fetching from Meta API');
     
-    // Mapper les time ranges
-    const datePresetMap = {
-      'today': 'today',
-      'yesterday': 'yesterday',
-      'last_7d': 'last_7d',
-      'last_30d': 'last_30d',
-      'last_90d': 'last_90d',
-      'lifetime': 'maximum'  // Use maximum for lifetime
-    };
-    const datePreset = datePresetMap[timeRange] || 'last_30d';
-    console.log('[Hierarchy] Using date_preset:', datePreset);
+    // Déterminer le paramètre de date à utiliser
+    let dateParam = '';
+    if (startDate && endDate) {
+      console.log(`[Hierarchy] Using custom date range: ${startDate} to ${endDate}`);
+      dateParam = `time_range={'since':'${startDate}','until':'${endDate}'}`;
+    } else {
+      // Mapper les time ranges
+      const datePresetMap = {
+        'today': 'today',
+        'yesterday': 'yesterday',
+        'last_7d': 'last_7d',
+        'last_30d': 'last_30d',
+        'last_90d': 'last_90d',
+        'lifetime': 'maximum'  // Use maximum for lifetime
+      };
+      const datePreset = datePresetMap[timeRange] || 'last_30d';
+      console.log('[Hierarchy] Using date_preset:', datePreset);
+      dateParam = `date_preset=${datePreset}`;
+    }
     
     // Récupérer les campagnes
     const campaignsUrl = `https://graph.facebook.com/v18.0/${accountId}/campaigns?` +
@@ -114,7 +126,7 @@ export async function GET(request) {
           // Récupérer les insights de la campagne
           const campaignInsightsUrl = `https://graph.facebook.com/v18.0/${campaign.id}/insights?` +
             `fields=spend,impressions,clicks,ctr,cpc,cpm,reach,frequency,actions,action_values,cost_per_result,results&` +
-            `date_preset=${datePreset}&` +
+            `${dateParam}&` +
             `access_token=${accessToken}`;
           
           const campaignInsightsResponse = await fetch(campaignInsightsUrl);
@@ -165,7 +177,7 @@ export async function GET(request) {
               // Récupérer les insights de l'ad set
               const adSetInsightsUrl = `https://graph.facebook.com/v18.0/${adSet.id}/insights?` +
                 `fields=spend,impressions,clicks,ctr,cpc,cpm,reach,actions,cost_per_result&` +
-                `date_preset=${datePreset}&` +
+                `${dateParam}&` +
                 `access_token=${accessToken}`;
               
               const adSetInsightsResponse = await fetch(adSetInsightsUrl);
@@ -214,7 +226,7 @@ export async function GET(request) {
                   // Récupérer les insights de l'ad
                   const adInsightsUrl = `https://graph.facebook.com/v18.0/${ad.id}/insights?` +
                     `fields=spend,impressions,clicks,ctr,cpc,cpm,reach,actions,cost_per_result&` +
-                    `date_preset=${datePreset}&` +
+                    `${dateParam}&` +
                     `access_token=${accessToken}`;
                   
                   const adInsightsResponse = await fetch(adInsightsUrl);

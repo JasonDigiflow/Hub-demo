@@ -116,6 +116,20 @@ export default function AIDsInsights() {
     setPeriod(newPeriod);
   };
 
+  // Helper function to get date range from period
+  const getPeriodDates = () => {
+    if (period.type === 'month') {
+      const monthStart = `${period.year}-${String(period.month + 1).padStart(2, '0')}-01`;
+      const monthEnd = new Date(period.year, period.month + 1, 0);
+      const monthEndStr = `${period.year}-${String(period.month + 1).padStart(2, '0')}-${String(monthEnd.getDate()).padStart(2, '0')}`;
+      return { startDate: monthStart, endDate: monthEndStr };
+    } else if (period.type === 'custom') {
+      return { startDate: period.start, endDate: period.end };
+    }
+    // For predefined periods, return null and use timeRange
+    return { startDate: null, endDate: null };
+  };
+
   const loadInsightsData = async () => {
     setLoading(true);
     try {
@@ -662,7 +676,11 @@ export default function AIDsInsights() {
         animate={{ opacity: 1, y: 0 }}
         className="mb-8"
       >
-        <CampaignDrilldownTable timeRange={period.period || 'last_30d'} />
+        <CampaignDrilldownTable 
+          timeRange={period.type === 'predefined' ? period.period : 'last_30d'}
+          startDate={getPeriodDates().startDate}
+          endDate={getPeriodDates().endDate}
+        />
       </motion.div>
 
       {/* Audience Breakdown Matrix */}

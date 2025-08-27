@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-export default function CampaignDrilldownTable({ timeRange = 'last_30d' }) {
+export default function CampaignDrilldownTable({ timeRange = 'last_30d', startDate, endDate }) {
   const [campaigns, setCampaigns] = useState([]);
   const [loading, setLoading] = useState(true);
   const [expandedCampaigns, setExpandedCampaigns] = useState({});
@@ -13,15 +13,20 @@ export default function CampaignDrilldownTable({ timeRange = 'last_30d' }) {
 
   useEffect(() => {
     loadCampaignData();
-  }, [timeRange]); // React to timeRange changes
+  }, [timeRange, startDate, endDate]); // React to timeRange and date changes
 
   const loadCampaignData = async () => {
     setLoading(true);
     try {
-      // Use the original hierarchy API that works
-      const response = await fetch(
-        `/api/aids/meta/campaigns/hierarchy?time_range=${timeRange}`
-      );
+      // Build URL with either timeRange or date range
+      let url = '/api/aids/meta/campaigns/hierarchy?';
+      if (startDate && endDate) {
+        url += `start_date=${startDate}&end_date=${endDate}`;
+      } else {
+        url += `time_range=${timeRange}`;
+      }
+      
+      const response = await fetch(url);
       const data = await response.json();
       
       if (data.success) {
