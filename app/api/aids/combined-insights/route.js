@@ -175,11 +175,15 @@ export async function GET(request) {
         if (true) { // Count all for now
           let amount = parseFloat(data.amount || 0);
           
-          // Filter by time range
+          // Filter by time range based on LEAD DATE if available, otherwise use closing date
           if (timeRange !== 'lifetime') {
-            const revenueDate = data.date ? new Date(data.date) : new Date(data.createdAt);
+            // Try to use leadDate first (when the prospect entered the funnel)
+            // If not available, fallback to closing date
+            const dateToCheck = data.leadDate ? new Date(data.leadDate) : 
+                               data.date ? new Date(data.date) : 
+                               new Date(data.createdAt);
             const now = new Date();
-            const daysDiff = Math.floor((now - revenueDate) / (1000 * 60 * 60 * 24));
+            const daysDiff = Math.floor((now - dateToCheck) / (1000 * 60 * 60 * 24));
             
             const days = timeRange === 'last_7d' ? 7 : 
                         timeRange === 'last_14d' ? 14 :
@@ -189,11 +193,11 @@ export async function GET(request) {
             if (daysDiff <= days) {
               totalRevenue += amount;
               revenueCount++;
+              console.log(`[Combined Insights] Revenue ${doc.id}: Lead date ${data.leadDate || 'N/A'}, Amount: €${amount}`);
             }
           } else {
             totalRevenue += amount;
             revenueCount++;
-          }
         }
       });
       
@@ -239,6 +243,9 @@ export async function GET(request) {
     }
     
     // 4. Calculate combined metrics
+    // NOTE: ROAS calculation uses leadDate when available for accurate cohort tracking
+    // This means revenues are attributed to the period when the lead entered the funnel,
+    // not when they closed. This gives a more accurate picture of campaign performance.
     const totalLeads = Math.max(metaInsights.metaLeads || 0, firebaseProspects);
     // Use revenue count as conversions (actual sales) instead of convertedProspects
     const actualConversions = revenueCount > 0 ? revenueCount : convertedProspects;
