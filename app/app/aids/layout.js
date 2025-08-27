@@ -10,6 +10,7 @@ export default function AIDsLayout({ children }) {
   const router = useRouter();
   const [isMenuOpen, setIsMenuOpen] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(false);
 
   useEffect(() => {
     const handleResize = () => {
