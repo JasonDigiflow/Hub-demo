@@ -33,7 +33,13 @@ ChartJS.register(
 
 export default function AIDsInsights() {
   const [loading, setLoading] = useState(true);
-  const [period, setPeriod] = useState({ type: 'predefined', period: 'current_month' });
+  // Initialize with current month
+  const now = new Date();
+  const [period, setPeriod] = useState({ 
+    type: 'month', 
+    month: now.getMonth(), 
+    year: now.getFullYear() 
+  });
   const [compare, setCompare] = useState(true);
   const [insights, setInsights] = useState(null);
   const [comparison, setComparison] = useState(null);
@@ -206,7 +212,7 @@ export default function AIDsInsights() {
       }
       
       // Debug logs for data
-      console.log('[Insights] Time range:', timeRange);
+      console.log('[Insights] Period:', period);
       console.log('[Insights] Combined data:', combinedData);
       console.log('[Insights] Campaigns data:', campaignsData.campaigns);
 
