@@ -752,11 +752,7 @@ export default function AIDsInsights() {
                 indexAxis: 'y',
                 plugins: {
                   ...getChartOptions('').plugins,
-                  datalabels: {
-                    display: true,
-                    color: 'white',
-                    formatter: (value) => `${value.toFixed(0)}€`
-                  }
+                  legend: { display: false }
                 }
               }} 
             />
@@ -781,7 +777,7 @@ export default function AIDsInsights() {
                 },
                 scales: {
                   y: {
-                    type: 'logarithmic',
+                    beginAtZero: true,
                     ticks: { color: 'white' },
                     grid: { color: 'rgba(255,255,255,0.1)' }
                   },
@@ -840,12 +836,7 @@ export default function AIDsInsights() {
                 indexAxis: 'y',
                 plugins: {
                   ...getChartOptions('').plugins,
-                  legend: { display: false },
-                  datalabels: {
-                    display: true,
-                    color: 'white',
-                    formatter: (value) => `${value.toFixed(2)}€`
-                  }
+                  legend: { display: false }
                 }
               }} 
             />
