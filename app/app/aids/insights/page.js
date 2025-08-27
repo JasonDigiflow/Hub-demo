@@ -372,13 +372,46 @@ export default function AIDsInsights() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto p-6">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-purple-900 relative overflow-hidden">
+      {/* Animated background blobs */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <motion.div
+          animate={{
+            x: [0, 100, 0],
+            y: [0, -100, 0],
+          }}
+          transition={{
+            duration: 20,
+            repeat: Infinity,
+            ease: "linear"
+          }}
+          className="absolute top-1/4 left-1/4 w-96 h-96 bg-purple-600/30 rounded-full blur-3xl"
+        />
+        <motion.div
+          animate={{
+            x: [0, -100, 0],
+            y: [0, 100, 0],
+          }}
+          transition={{
+            duration: 25,
+            repeat: Infinity,
+            ease: "linear"
+          }}
+          className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-pink-600/30 rounded-full blur-3xl"
+        />
+      </div>
+
+      <div className="relative z-10 max-w-7xl mx-auto p-6">
       {/* Header with Period Selector */}
-      <div className="mb-8">
+      <motion.div 
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="backdrop-blur-xl bg-white/10 rounded-2xl p-6 border border-white/20 shadow-2xl mb-8"
+      >
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
-            <h1 className="text-4xl font-bold text-white mb-2">Insights</h1>
-            <p className="text-gray-400">
+            <h1 className="text-4xl font-bold bg-gradient-to-r from-white to-purple-200 bg-clip-text text-transparent mb-2">Insights</h1>
+            <p className="text-gray-300">
               Métriques et performances détaillées
               {insights?.date_range && (
                 <span className="text-sm ml-2 text-purple-400">
@@ -395,10 +428,15 @@ export default function AIDsInsights() {
             onCompareToggle={(enabled) => setCompare(enabled)}
           />
         </div>
-      </div>
+      </motion.div>
 
       {/* Sync Status Bar */}
-      <div className="mb-6 bg-white/5 backdrop-blur-sm rounded-lg p-4 border border-white/10">
+      <motion.div 
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.1 }}
+        className="mb-6 backdrop-blur-xl bg-white/10 rounded-xl p-4 border border-white/20 shadow-xl"
+      >
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-6">
             <button
@@ -510,16 +548,22 @@ export default function AIDsInsights() {
             </div>
           </div>
         )}
-      </div>
+      </motion.div>
 
       {/* KPIs Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4 mb-8">
+      <motion.div 
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.3 }}
+        className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4 mb-8"
+      >
         <motion.div
+          whileHover={{ scale: 1.02 }}
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-white/5 backdrop-blur-sm rounded-lg p-4 border border-white/10"
+          className="backdrop-blur-xl bg-white/10 rounded-xl p-4 border border-white/20 shadow-xl"
         >
-          <div className="text-xs text-gray-400 mb-1">Dépenses</div>
+          <div className="text-xs text-gray-300 mb-1">Dépenses</div>
           <div className="text-xl font-bold text-white">
             {formatCurrency(insights?.spend || 0)}
           </div>
@@ -533,12 +577,13 @@ export default function AIDsInsights() {
         </motion.div>
 
         <motion.div
+          whileHover={{ scale: 1.02 }}
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.05 }}
-          className="bg-white/5 backdrop-blur-sm rounded-lg p-4 border border-white/10"
+          className="backdrop-blur-xl bg-white/10 rounded-xl p-4 border border-white/20 shadow-xl"
         >
-          <div className="text-xs text-gray-400 mb-1">Impressions</div>
+          <div className="text-xs text-gray-300 mb-1">Impressions</div>
           <div className="text-xl font-bold text-white">
             {formatNumber(insights?.impressions || 0)}
           </div>
@@ -552,12 +597,13 @@ export default function AIDsInsights() {
         </motion.div>
 
         <motion.div
+          whileHover={{ scale: 1.02 }}
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="bg-white/5 backdrop-blur-sm rounded-lg p-4 border border-white/10"
+          className="backdrop-blur-xl bg-white/10 rounded-xl p-4 border border-white/20 shadow-xl"
         >
-          <div className="text-xs text-gray-400 mb-1">Clics</div>
+          <div className="text-xs text-gray-300 mb-1">Clics</div>
           <div className="text-xl font-bold text-white">
             {formatNumber(insights?.clicks || 0)}
           </div>
@@ -607,13 +653,14 @@ export default function AIDsInsights() {
         </motion.div>
 
         <motion.div
+          whileHover={{ scale: 1.02 }}
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
-          className="bg-gradient-to-br from-blue-500/10 to-cyan-500/10 rounded-lg p-4 border border-blue-500/20"
+          className="backdrop-blur-xl bg-gradient-to-br from-blue-500/20 to-cyan-500/20 rounded-xl p-4 border border-blue-500/30 shadow-xl"
         >
-          <div className="text-xs text-blue-400 mb-1">Leads Générés</div>
-          <div className="text-xl font-bold text-blue-400">
+          <div className="text-xs text-blue-300 mb-1">Leads Générés</div>
+          <div className="text-xl font-bold text-blue-300">
             {formatNumber(insights?.leads || 0)}
           </div>
           <div className="text-xs text-gray-400 mt-1">
@@ -728,7 +775,7 @@ export default function AIDsInsights() {
               : 'Pas de données'}
           </div>
         </motion.div>
-      </div>
+      </motion.div>
 
       {/* 4 Charts - Full Width */}
       {mounted && (
@@ -756,10 +803,11 @@ export default function AIDsInsights() {
 
         {/* Chart 2: Entonnoir de Conversion */}
         <motion.div
+          whileHover={{ scale: 1.01 }}
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10"
+          className="backdrop-blur-xl bg-white/10 rounded-xl p-6 border border-white/20 shadow-2xl"
         >
           <div className="h-80">
             <Bar 
@@ -789,10 +837,11 @@ export default function AIDsInsights() {
         {/* Chart 3: Comparaison Périodes */}
         {compare && comparison && (
           <motion.div
+            whileHover={{ scale: 1.01 }}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10"
+            className="backdrop-blur-xl bg-white/10 rounded-xl p-6 border border-white/20 shadow-2xl"
           >
             <div className="h-80">
               <Bar 
@@ -818,10 +867,11 @@ export default function AIDsInsights() {
 
         {/* Chart 4: Métriques de Coût */}
         <motion.div
+          whileHover={{ scale: 1.01 }}
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
-          className="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10"
+          className="backdrop-blur-xl bg-white/10 rounded-xl p-6 border border-white/20 shadow-2xl"
         >
           <div className="h-80">
             <Bar 
@@ -959,6 +1009,7 @@ export default function AIDsInsights() {
           )}
         </div>
       </motion.div>
+    </div>
     </div>
   );
 }
