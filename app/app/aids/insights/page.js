@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Line, Bar } from 'react-chartjs-2';
 import CampaignDrilldownTable from '@/components/aids/CampaignDrilldownTable';
+import AutoSyncManager from '@/components/aids/AutoSyncManager';
+import useAidsStore from '@/lib/aids-store';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -31,7 +33,6 @@ ChartJS.register(
 
 export default function AIDsInsights() {
   const [loading, setLoading] = useState(true);
-  const [timeRange, setTimeRange] = useState('last_30d'); // Default to 30 days
   const [insights, setInsights] = useState(null);
   const [campaigns, setCampaigns] = useState([]);
   const [audienceBreakdown, setAudienceBreakdown] = useState(null);
@@ -40,11 +41,14 @@ export default function AIDsInsights() {
   const [revenueData, setRevenueData] = useState(null);
   const [syncStatus, setSyncStatus] = useState(null);
   const [syncing, setSyncing] = useState(false);
+  
+  // Use Zustand store for date management
+  const { dateRange, datePreset, setDatePreset } = useAidsStore();
 
   useEffect(() => {
     loadInsightsData();
     fetchSyncStatus();
-  }, [timeRange, showBreakdownType]);
+  }, [dateRange, showBreakdownType]); // React to dateRange from store
 
   const fetchSyncStatus = async () => {
     try {
@@ -62,7 +66,12 @@ export default function AIDsInsights() {
     setSyncing(true);
     try {
       const response = await fetch('/api/aids/insights/sync', {
-        method: 'POST'
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          since: dateRange.since,
+          until: dateRange.until
+        })
       });
       const data = await response.json();
       
@@ -81,12 +90,12 @@ export default function AIDsInsights() {
   const loadInsightsData = async () => {
     setLoading(true);
     try {
-      // Load insights with time series and revenue data
+      // Use new API v2 with since/until
       const [insightsRes, campaignsRes, breakdownRes, revenueRes] = await Promise.all([
-        fetch(`/api/aids/meta/insights?time_range=${timeRange}&time_increment=1`),
-        fetch(`/api/aids/meta/campaigns?include_insights=true&time_range=${timeRange}`),
-        fetch(`/api/aids/meta/insights?time_range=${timeRange}&breakdowns=${showBreakdownType}`),
-        fetch(`/api/aids/insights/revenues?time_range=${timeRange}`)
+        fetch(`/api/aids/meta/insights-v2?since=${dateRange.since}&until=${dateRange.until}&level=account&time_increment=1`),
+        fetch(`/api/aids/meta/insights-v2?since=${dateRange.since}&until=${dateRange.until}&level=campaign`),
+        fetch(`/api/aids/meta/insights?time_range=${datePreset}&breakdowns=${showBreakdownType}`),
+        fetch(`/api/aids/insights/revenues?since=${dateRange.since}&until=${dateRange.until}`)
       ]);
 
       const [insightsData, campaignsData, breakdownData, revData] = await Promise.all([
@@ -97,11 +106,11 @@ export default function AIDsInsights() {
       ]);
 
       if (insightsData.success) {
-        setInsights(insightsData.insights);
+        setInsights(insightsData.data);
       }
 
       if (campaignsData.success) {
-        setCampaigns(campaignsData.campaigns || []);
+        setCampaigns(campaignsData.data || []);
       }
 
       if (breakdownData.success && breakdownData.insights?.breakdown_data) {
@@ -109,7 +118,7 @@ export default function AIDsInsights() {
       }
 
       if (revData.success) {
-        setRevenueData(revData.revenues);
+        setRevenueData(revData.revenues || { total: 0, count: 0, daily_data: [] });
       }
 
       setLoading(false);
@@ -200,6 +209,7 @@ export default function AIDsInsights() {
 
   return (
     <div className="max-w-7xl mx-auto p-6">
+      <AutoSyncManager />
       {/* Header with Period Selector */}
       <div className="mb-8">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -207,9 +217,9 @@ export default function AIDsInsights() {
             <h1 className="text-4xl font-bold text-white mb-2">Insights</h1>
             <p className="text-gray-400">
               Métriques et performances détaillées
-              {insights?.date_range && (
+              {dateRange && (
                 <span className="text-sm ml-2 text-purple-400">
-                  ({new Date(insights.date_range.start).toLocaleDateString('fr-FR')} - {new Date(insights.date_range.end).toLocaleDateString('fr-FR')})
+                  ({new Date(dateRange.since).toLocaleDateString('fr-FR')} - {new Date(dateRange.until).toLocaleDateString('fr-FR')})
                 </span>
               )}
             </p>
@@ -219,9 +229,9 @@ export default function AIDsInsights() {
             {['today', 'yesterday', 'last_7d', 'last_30d', 'last_90d', 'lifetime'].map((range) => (
               <button
                 key={range}
-                onClick={() => setTimeRange(range)}
+                onClick={() => setDatePreset(range)}
                 className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                  timeRange === range
+                  datePreset === range
                     ? 'bg-purple-600 text-white'
                     : 'bg-white/10 text-gray-300 hover:bg-white/20'
                 }`}
@@ -493,7 +503,7 @@ export default function AIDsInsights() {
         animate={{ opacity: 1, y: 0 }}
         className="mb-8"
       >
-        <CampaignDrilldownTable timeRange={timeRange} />
+        <CampaignDrilldownTable />
       </motion.div>
 
       {/* Audience Breakdown Matrix */}
