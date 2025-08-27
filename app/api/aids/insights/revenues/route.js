@@ -176,9 +176,9 @@ export async function GET(request) {
     return NextResponse.json({
       success: true,
       revenues: {
-        total: totalRevenue.toFixed(2),
+        total: parseFloat(totalRevenue.toFixed(2)),
         count: revenues.length,
-        average: revenues.length > 0 ? (totalRevenue / revenues.length).toFixed(2) : '0',
+        average: revenues.length > 0 ? parseFloat((totalRevenue / revenues.length).toFixed(2)) : 0,
         daily_data: dailyRevenues,
         by_campaign: revenuesByCampaign,
         by_ad: revenuesByAd,

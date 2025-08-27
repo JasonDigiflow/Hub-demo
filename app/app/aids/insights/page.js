@@ -118,8 +118,14 @@ export default function AIDsInsights() {
       }
 
       if (revData.success) {
+        console.log('[Insights] Revenue data loaded:', revData.revenues);
         setRevenueData(revData.revenues || { total: 0, count: 0, daily_data: [] });
       }
+      
+      // Debug logs for data
+      console.log('[Insights] Date range:', dateRange);
+      console.log('[Insights] Insights data:', insightsData.data);
+      console.log('[Insights] Campaigns data:', campaignsData.data);
 
       setLoading(false);
     } catch (error) {
@@ -363,7 +369,7 @@ export default function AIDsInsights() {
         >
           <div className="text-xs text-gray-400 mb-1">CTR</div>
           <div className="text-xl font-bold text-white">
-            {insights?.ctr || '0'}%
+            {typeof insights?.ctr === 'number' ? insights.ctr.toFixed(2) : (insights?.ctr || '0')}%
           </div>
         </motion.div>
 
@@ -566,7 +572,7 @@ export default function AIDsInsights() {
                   <div className="flex justify-between">
                     <span className="text-gray-400">CTR</span>
                     <span className="text-white font-medium">
-                      {segment.metrics?.ctr || '0'}%
+                      {typeof segment.metrics?.ctr === 'number' ? segment.metrics.ctr.toFixed(2) : (segment.metrics?.ctr || '0')}%
                     </span>
                   </div>
                   <div className="flex justify-between">

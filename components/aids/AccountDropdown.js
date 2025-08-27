@@ -43,17 +43,18 @@ export default function AccountDropdown({
     setIsOpen(false);
   };
 
-  const getDropdownPosition = () => {
-    if (!buttonRef.current) return { top: 0, left: 0, width: 0 };
-    const rect = buttonRef.current.getBoundingClientRect();
-    return {
-      top: rect.bottom + 8,
-      left: rect.left,
-      width: rect.width
-    };
-  };
+  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 });
 
-  const position = getDropdownPosition();
+  useEffect(() => {
+    if (isOpen && buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      setDropdownPosition({
+        top: rect.bottom + 8,
+        left: rect.left,
+        width: rect.width
+      });
+    }
+  }, [isOpen]);
 
   if (!metaConnected) {
     return <span className="text-gray-500 text-sm">Non connecté</span>;
@@ -84,10 +85,11 @@ export default function AccountDropdown({
           ref={dropdownRef}
           style={{
             position: 'fixed',
-            top: `${position.top}px`,
-            left: `${position.left}px`,
-            width: `${position.width}px`,
-            zIndex: 99999
+            top: `${dropdownPosition.top}px`,
+            left: `${dropdownPosition.left}px`,
+            width: `${dropdownPosition.width}px`,
+            zIndex: 99999,
+            pointerEvents: 'auto'
           }}
           className="bg-gray-900 border border-gray-700 rounded-lg shadow-2xl max-h-60 overflow-y-auto"
         >

@@ -111,6 +111,22 @@ export async function GET(request) {
     
     console.log(`[Insights V2] Got ${data.data?.length || 0} records for level: ${level}`);
     
+    // Log the raw data for debugging
+    if (data.data && data.data.length > 0) {
+      const totalRawSpend = data.data.reduce((sum, item) => sum + parseFloat(item.spend || 0), 0);
+      const totalRawImpressions = data.data.reduce((sum, item) => sum + parseInt(item.impressions || 0), 0);
+      const totalRawClicks = data.data.reduce((sum, item) => sum + parseInt(item.clicks || 0), 0);
+      console.log(`[Insights V2] Raw totals from Meta API:`);
+      console.log(`  - Spend: €${totalRawSpend.toFixed(2)}`);
+      console.log(`  - Impressions: ${totalRawImpressions}`);
+      console.log(`  - Clicks: ${totalRawClicks}`);
+      console.log(`  - Date range: ${since || datePreset} to ${until || 'today'}`);
+      
+      if (data.data[0]) {
+        console.log(`  - First item date: ${data.data[0].date_start || 'N/A'} to ${data.data[0].date_stop || 'N/A'}`);
+      }
+    }
+    
     // Process data based on level
     let processedData = null;
     
@@ -149,9 +165,9 @@ export async function GET(request) {
           impressions: parseInt(item.impressions || 0),
           clicks: parseInt(item.clicks || 0),
           reach: parseInt(item.reach || 0),
-          ctr: parseFloat(item.ctr || 0),
-          cpm: parseFloat(item.cpm || 0),
-          cpc: parseFloat(item.cpc || 0),
+          ctr: parseFloat((item.ctr || 0).toFixed(2)),
+          cpm: parseFloat((item.cpm || 0).toFixed(2)),
+          cpc: parseFloat((item.cpc || 0).toFixed(2)),
           leads: leads,
           costPerLead: leads > 0 ? parseFloat(item.spend || 0) / leads : null,
           conversions: conversions,
@@ -195,20 +211,29 @@ export async function GET(request) {
       });
       
       processedData = {
-        spend: totalSpend,
+        spend: parseFloat(totalSpend.toFixed(2)),
         impressions: totalImpressions,
         clicks: totalClicks,
         reach: totalReach,
-        ctr: totalImpressions > 0 ? (totalClicks / totalImpressions * 100) : 0,
-        cpm: totalImpressions > 0 ? (totalSpend / totalImpressions * 1000) : 0,
-        cpc: totalClicks > 0 ? (totalSpend / totalClicks) : 0,
+        ctr: parseFloat((totalImpressions > 0 ? (totalClicks / totalImpressions * 100) : 0).toFixed(2)),
+        cpm: parseFloat((totalImpressions > 0 ? (totalSpend / totalImpressions * 1000) : 0).toFixed(2)),
+        cpc: parseFloat((totalClicks > 0 ? (totalSpend / totalClicks) : 0).toFixed(2)),
         leads: totalLeads,
-        costPerLead: totalLeads > 0 ? totalSpend / totalLeads : null,
+        costPerLead: totalLeads > 0 ? parseFloat((totalSpend / totalLeads).toFixed(2)) : null,
         conversions: totalConversions,
-        conversionValue: totalConversionValue,
+        conversionValue: parseFloat(totalConversionValue.toFixed(2)),
         daily_data: timeIncrement ? data.data : null,
         breakdown_data: breakdowns ? data.data : null
       };
+      
+      console.log('[Insights V2] Account totals:', {
+        spend: processedData.spend,
+        impressions: processedData.impressions,
+        clicks: processedData.clicks,
+        reach: processedData.reach,
+        leads: processedData.leads,
+        dateRange: { since, until }
+      });
     } else {
       // For adset and ad levels, return raw processed data
       processedData = data.data;
