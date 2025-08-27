@@ -257,50 +257,125 @@ export default function AIDsInsights() {
     );
   }
 
-  // Prepare chart data with real revenue data
-  const spendRevenueChart = insights?.daily_data ? {
-    labels: insights.daily_data.map(d => new Date(d.date).toLocaleDateString('fr-FR', { 
-      day: 'numeric', 
-      month: 'short' 
-    })),
+  // Prepare chart data - Create 4 important charts
+  
+  // 1. Dépenses vs Revenus (ROAS visuel)
+  const spendRevenueChart = {
+    labels: ['Dépenses', 'Revenus'],
+    datasets: [{
+      label: 'Montant (€)',
+      data: [
+        insights?.spend || 0,
+        insights?.revenues || revenueData?.total || 0
+      ],
+      backgroundColor: [
+        'rgba(147, 51, 234, 0.8)',
+        'rgba(16, 185, 129, 0.8)'
+      ],
+      borderColor: [
+        '#9333ea',
+        '#10b981'
+      ],
+      borderWidth: 2
+    }]
+  };
+
+  // 2. Performance des métriques clés
+  const performanceChart = {
+    labels: ['Impressions', 'Clics', 'Leads', 'Ventes'].map(label => {
+      const values = {
+        'Impressions': (insights?.impressions || 0) / 1000,
+        'Clics': insights?.clicks || 0,
+        'Leads': insights?.leads || 0,
+        'Ventes': insights?.revenueCount || revenueData?.count || 0
+      };
+      return `${label}\n${values[label] >= 1000 ? (values[label]/1000).toFixed(1) + 'k' : values[label].toFixed(0)}`;
+    }),
+    datasets: [{
+      label: 'Entonnoir de conversion',
+      data: [
+        (insights?.impressions || 0) / 1000, // Diviser par 1000 pour l'échelle
+        insights?.clicks || 0,
+        insights?.leads || 0,
+        insights?.revenueCount || revenueData?.count || 0
+      ],
+      backgroundColor: [
+        'rgba(99, 102, 241, 0.8)',
+        'rgba(59, 130, 246, 0.8)',
+        'rgba(14, 165, 233, 0.8)',
+        'rgba(6, 182, 212, 0.8)'
+      ],
+      borderColor: [
+        '#6366f1',
+        '#3b82f6',
+        '#0ea5e9',
+        '#06b6d4'
+      ],
+      borderWidth: 2
+    }]
+  };
+
+  // 3. Comparaison avec période précédente
+  const comparisonChart = compare && comparison ? {
+    labels: ['Dépenses', 'Impressions (k)', 'Clics', 'Leads', 'Revenus (€)', 'ROAS'],
     datasets: [
       {
-        label: 'Dépenses',
-        data: insights.daily_data.map(d => d.spend),
+        label: 'Période actuelle',
+        data: [
+          insights?.spend || 0,
+          (insights?.impressions || 0) / 1000,
+          insights?.clicks || 0,
+          insights?.leads || 0,
+          insights?.revenues || revenueData?.total || 0,
+          parseFloat(insights?.roas || 0) * 100 // Multiplier par 100 pour l'échelle
+        ],
+        backgroundColor: 'rgba(147, 51, 234, 0.8)',
         borderColor: '#9333ea',
-        backgroundColor: 'rgba(147, 51, 234, 0.2)',
-        tension: 0.4
+        borderWidth: 2
       },
       {
-        label: 'Revenus (Réels)',
-        data: insights.daily_data.map(d => {
-          // Use real revenue data from our database
-          if (revenueData?.daily_data) {
-            const dayRevenue = revenueData.daily_data.find(r => r.date === d.date);
-            return dayRevenue ? dayRevenue.amount : 0;
-          }
-          return 0;
-        }),
-        borderColor: '#10b981',
-        backgroundColor: 'rgba(16, 185, 129, 0.2)',
-        tension: 0.4
+        label: 'Période précédente',
+        data: [
+          comparison?.spend || 0,
+          (comparison?.impressions || 0) / 1000,
+          comparison?.clicks || 0,
+          comparison?.leads || 0,
+          comparison?.revenues || 0,
+          parseFloat(comparison?.roas || 0) * 100
+        ],
+        backgroundColor: 'rgba(156, 163, 175, 0.5)',
+        borderColor: '#9ca3af',
+        borderWidth: 2
       }
     ]
   } : { labels: [], datasets: [] };
 
-  const ctrChart = insights?.daily_data ? {
-    labels: insights.daily_data.map(d => new Date(d.date).toLocaleDateString('fr-FR', { 
-      day: 'numeric', 
-      month: 'short' 
-    })),
+  // 4. Métriques de coût (CPM, CPC, CPL)
+  const costMetricsChart = {
+    labels: ['CPM', 'CPC', 'CPL', 'CAC'],
     datasets: [{
-      label: 'CTR %',
-      data: insights.daily_data.map(d => d.ctr),
-      borderColor: '#f59e0b',
-      backgroundColor: 'rgba(245, 158, 11, 0.2)',
-      tension: 0.4
+      label: 'Coût (€)',
+      data: [
+        insights?.cpm || 0,
+        insights?.cpc || 0,
+        insights?.costPerLead || (insights?.spend && insights?.leads ? (insights.spend / insights.leads) : 0),
+        insights?.costPerConversion || (insights?.spend && revenueData?.count ? (insights.spend / revenueData.count) : 0)
+      ],
+      backgroundColor: [
+        'rgba(251, 146, 60, 0.8)',
+        'rgba(250, 204, 21, 0.8)',
+        'rgba(163, 230, 53, 0.8)',
+        'rgba(34, 197, 94, 0.8)'
+      ],
+      borderColor: [
+        '#fb923c',
+        '#facc15',
+        '#a3e635',
+        '#22c55e'
+      ],
+      borderWidth: 2
     }]
-  } : { labels: [], datasets: [] };
+  };
 
   return (
     <div className="max-w-7xl mx-auto p-6">
@@ -661,31 +736,118 @@ export default function AIDsInsights() {
         </motion.div>
       </div>
 
-      {/* Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+      {/* 4 Charts - Full Width */}
+      <div className="space-y-6 mb-8">
+        {/* Chart 1: Dépenses vs Revenus (ROAS visuel) */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           className="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10"
         >
-          <div className="h-64">
-            <Line 
+          <div className="h-80">
+            <Bar 
               data={spendRevenueChart} 
-              options={getChartOptions('Dépenses vs Revenus')} 
+              options={{
+                ...getChartOptions('💰 Dépenses vs Revenus - ROAS Visuel'),
+                indexAxis: 'y',
+                plugins: {
+                  ...getChartOptions('').plugins,
+                  datalabels: {
+                    display: true,
+                    color: 'white',
+                    formatter: (value) => `${value.toFixed(0)}€`
+                  }
+                }
+              }} 
             />
           </div>
         </motion.div>
 
+        {/* Chart 2: Entonnoir de Conversion */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
           className="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10"
         >
-          <div className="h-64">
-            <Line 
-              data={ctrChart} 
-              options={getChartOptions('Evolution du CTR')} 
+          <div className="h-80">
+            <Bar 
+              data={performanceChart} 
+              options={{
+                ...getChartOptions('🎯 Entonnoir de Conversion'),
+                plugins: {
+                  ...getChartOptions('').plugins,
+                  legend: { display: false }
+                },
+                scales: {
+                  y: {
+                    type: 'logarithmic',
+                    ticks: { color: 'white' },
+                    grid: { color: 'rgba(255,255,255,0.1)' }
+                  },
+                  x: {
+                    ticks: { color: 'white' },
+                    grid: { color: 'rgba(255,255,255,0.1)' }
+                  }
+                }
+              }} 
+            />
+          </div>
+        </motion.div>
+
+        {/* Chart 3: Comparaison Périodes */}
+        {compare && comparison && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10"
+          >
+            <div className="h-80">
+              <Bar 
+                data={comparisonChart} 
+                options={{
+                  ...getChartOptions('📊 Comparaison avec la Période Précédente'),
+                  scales: {
+                    y: {
+                      beginAtZero: true,
+                      ticks: { color: 'white' },
+                      grid: { color: 'rgba(255,255,255,0.1)' }
+                    },
+                    x: {
+                      ticks: { color: 'white' },
+                      grid: { color: 'rgba(255,255,255,0.1)' }
+                    }
+                  }
+                }} 
+              />
+            </div>
+          </motion.div>
+        )}
+
+        {/* Chart 4: Métriques de Coût */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+          className="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10"
+        >
+          <div className="h-80">
+            <Bar 
+              data={costMetricsChart} 
+              options={{
+                ...getChartOptions('💸 Métriques de Coût par Action'),
+                indexAxis: 'y',
+                plugins: {
+                  ...getChartOptions('').plugins,
+                  legend: { display: false },
+                  datalabels: {
+                    display: true,
+                    color: 'white',
+                    formatter: (value) => `${value.toFixed(2)}€`
+                  }
+                }
+              }} 
             />
           </div>
         </motion.div>

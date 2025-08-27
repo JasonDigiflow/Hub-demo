@@ -160,11 +160,16 @@ export default function AIDsLayout({ children }) {
               whileTap={{ scale: 0.98 }}
             >
               <span className="font-medium flex items-center gap-2">
-                {item.name}
-                {item.badge && (
-                  <span className="px-2 py-0.5 bg-purple-600 text-white text-xs rounded-full">
-                    {item.badge}
-                  </span>
+                <span className="text-xl">{item.name.split(' ')[0]}</span>
+                {!isCollapsed && (
+                  <>
+                    <span>{item.name.split(' ').slice(1).join(' ')}</span>
+                    {item.badge && (
+                      <span className="px-2 py-0.5 bg-purple-600 text-white text-xs rounded-full">
+                        {item.badge}
+                      </span>
+                    )}
+                  </>
                 )}
               </span>
               {item.premium && (
@@ -182,20 +187,22 @@ export default function AIDsLayout({ children }) {
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
             </svg>
-            <span className="font-medium">Retour à l'accueil</span>
+            {!isCollapsed && <span className="font-medium">Retour à l'accueil</span>}
           </button>
         </nav>
 
         {/* Footer */}
-        <div className="p-4 border-t border-white/10">
-          <div className="bg-gradient-to-r from-purple-600/20 to-pink-600/20 rounded-xl p-4 border border-purple-500/30">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium text-white">Autopilot</span>
-              <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse" />
+        {!isCollapsed && (
+          <div className="p-4 border-t border-white/10">
+            <div className="bg-gradient-to-r from-purple-600/20 to-pink-600/20 rounded-xl p-4 border border-purple-500/30">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium text-white">Autopilot</span>
+                <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse" />
+              </div>
+              <p className="text-xs text-gray-400">Octavia optimise 24/7</p>
             </div>
-            <p className="text-xs text-gray-400">Octavia optimise 24/7</p>
           </div>
-        </div>
+        )}
       </aside>
 
       {/* Mobile Sidebar */}
