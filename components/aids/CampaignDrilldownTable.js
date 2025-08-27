@@ -2,30 +2,59 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import useAidsStore from '@/lib/aids-store';
 
-export default function CampaignDrilldownTable({ timeRange = 'last_30d' }) {
+export default function CampaignDrilldownTable() {
   const [campaigns, setCampaigns] = useState([]);
   const [loading, setLoading] = useState(true);
   const [expandedCampaigns, setExpandedCampaigns] = useState({});
   const [expandedAdSets, setExpandedAdSets] = useState({});
   const [level, setLevel] = useState('campaign'); // campaign, adset, ad
   const [syncing, setSyncing] = useState(false);
+  
+  // Get state from store
+  const { dateRange, datePreset } = useAidsStore();
 
   useEffect(() => {
     loadCampaignData();
-  }, [timeRange]);
+  }, [dateRange]); // React to dateRange changes
 
   const loadCampaignData = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`/api/aids/meta/campaigns/hierarchy?time_range=${timeRange}`);
+      // Use the new insights-v2 API with since/until
+      const response = await fetch(
+        `/api/aids/meta/insights-v2?` +
+        `since=${dateRange.since}&` +
+        `until=${dateRange.until}&` +
+        `level=campaign`
+      );
       const data = await response.json();
       
       if (data.success) {
-        setCampaigns(data.campaigns || []);
+        // Transform data to match hierarchy format
+        const transformedCampaigns = (data.data || []).map(campaign => ({
+          id: campaign.id,
+          name: campaign.name,
+          status: 'ACTIVE', // Status will be fetched separately if needed
+          objective: campaign.objective,
+          insights: {
+            spend: campaign.spend,
+            impressions: campaign.impressions,
+            clicks: campaign.clicks,
+            ctr: campaign.ctr,
+            cpc: campaign.cpc,
+            cpm: campaign.cpm,
+            reach: campaign.reach,
+            leads: campaign.leads,
+            cost_per_result: campaign.costPerLead
+          },
+          adsets: [] // Will be loaded on expand
+        }));
+        setCampaigns(transformedCampaigns);
       }
     } catch (error) {
-      console.error('Error loading campaign hierarchy:', error);
+      console.error('Error loading campaigns:', error);
     } finally {
       setLoading(false);
     }
@@ -35,7 +64,12 @@ export default function CampaignDrilldownTable({ timeRange = 'last_30d' }) {
     setSyncing(true);
     try {
       const response = await fetch('/api/aids/insights/sync', {
-        method: 'POST'
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          since: dateRange.since, 
+          until: dateRange.until 
+        })
       });
       const data = await response.json();
       

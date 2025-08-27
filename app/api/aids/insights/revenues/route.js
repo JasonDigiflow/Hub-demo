@@ -5,7 +5,10 @@ import { db, admin } from '@/lib/firebase-admin';
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
+    const since = searchParams.get('since');
+    const until = searchParams.get('until');
     const timeRange = searchParams.get('time_range') || 'last_30d';
+    const campaignId = searchParams.get('campaign_id'); // Optional filter by campaign
     
     // Get auth from cookies
     const cookieStore = cookies();
@@ -44,33 +47,48 @@ export async function GET(request) {
     }
     
     // Calculate date range
+    let startDate, endDate;
     const now = new Date();
-    let startDate = new Date();
     
-    switch(timeRange) {
-      case 'today':
-        startDate.setHours(0, 0, 0, 0);
-        break;
-      case 'yesterday':
-        startDate.setDate(startDate.getDate() - 1);
-        startDate.setHours(0, 0, 0, 0);
-        now.setDate(now.getDate() - 1);
-        now.setHours(23, 59, 59, 999);
-        break;
-      case 'last_7d':
-        startDate.setDate(startDate.getDate() - 7);
-        break;
-      case 'last_30d':
-        startDate.setDate(startDate.getDate() - 30);
-        break;
-      case 'lifetime':
-        startDate.setDate(startDate.getDate() - 90); // 90 days for "TOUT"
-        break;
-      default:
-        startDate.setDate(startDate.getDate() - 30);
+    if (since && until) {
+      // Use specific dates if provided
+      startDate = new Date(since);
+      endDate = new Date(until);
+      endDate.setHours(23, 59, 59, 999); // Include entire end day
+    } else {
+      // Fall back to time range
+      endDate = new Date();
+      startDate = new Date();
+      
+      switch(timeRange) {
+        case 'today':
+          startDate.setHours(0, 0, 0, 0);
+          break;
+        case 'yesterday':
+          startDate.setDate(startDate.getDate() - 1);
+          startDate.setHours(0, 0, 0, 0);
+          endDate.setDate(endDate.getDate() - 1);
+          endDate.setHours(23, 59, 59, 999);
+          break;
+        case 'last_7d':
+          startDate.setDate(startDate.getDate() - 7);
+          break;
+        case 'last_30d':
+          startDate.setDate(startDate.getDate() - 30);
+          break;
+        case 'last_90d':
+        case 'lifetime':
+          startDate.setDate(startDate.getDate() - 90);
+          break;
+        default:
+          startDate.setDate(startDate.getDate() - 30);
+      }
     }
     
-    console.log(`[Revenues API] Fetching revenues for user ${userId} from ${startDate.toISOString()} to ${now.toISOString()}`);
+    console.log(`[Revenues API] Fetching revenues for user ${userId} from ${startDate.toISOString()} to ${endDate.toISOString()}`);
+    if (campaignId) {
+      console.log(`[Revenues API] Filtering by campaign: ${campaignId}`);
+    }
     
     if (!userId) {
       console.error('[Revenues API] No userId found');
@@ -82,11 +100,17 @@ export async function GET(request) {
     
     // Get revenues from Firestore
     console.log(`[Revenues API] Querying Firestore with userId: ${userId}`);
-    const revenuesSnapshot = await db.collection('revenues')
+    let query = db.collection('revenues')
       .where('userId', '==', userId)
       .where('createdAt', '>=', startDate)
-      .where('createdAt', '<=', now)
-      .get();
+      .where('createdAt', '<=', endDate);
+    
+    // Add campaign filter if provided
+    if (campaignId) {
+      query = query.where('campaignId', '==', campaignId);
+    }
+    
+    const revenuesSnapshot = await query.get();
     
     console.log(`[Revenues API] Found ${revenuesSnapshot.size} revenue records`);
     
@@ -163,7 +187,7 @@ export async function GET(request) {
       time_range: timeRange,
       date_range: {
         start: startDate.toISOString(),
-        end: now.toISOString()
+        end: endDate.toISOString()
       }
     });
     
