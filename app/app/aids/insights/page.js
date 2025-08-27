@@ -48,7 +48,7 @@ export default function AIDsInsights() {
       // Load insights with time series and revenue data
       const [insightsRes, campaignsRes, breakdownRes, revenueRes] = await Promise.all([
         fetch(`/api/aids/meta/insights?time_range=${timeRange}&time_increment=1`),
-        fetch('/api/aids/meta/campaigns?include_insights=true'),
+        fetch(`/api/aids/meta/campaigns?include_insights=true&time_range=${timeRange}`),
         fetch(`/api/aids/meta/insights?time_range=${timeRange}&breakdowns=${showBreakdownType}`),
         fetch(`/api/aids/insights/revenues?time_range=${timeRange}`)
       ]);
@@ -278,11 +278,11 @@ export default function AIDsInsights() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
-          className="bg-white/5 backdrop-blur-sm rounded-lg p-4 border border-white/10"
+          className="bg-gradient-to-br from-blue-500/10 to-cyan-500/10 rounded-lg p-4 border border-blue-500/20"
         >
-          <div className="text-xs text-gray-400 mb-1">Conversions</div>
-          <div className="text-xl font-bold text-white">
-            {formatNumber(insights?.conversions || 0)}
+          <div className="text-xs text-blue-400 mb-1">Leads Générés</div>
+          <div className="text-xl font-bold text-blue-400">
+            {formatNumber(insights?.leads || 0)}
           </div>
         </motion.div>
 
@@ -292,9 +292,14 @@ export default function AIDsInsights() {
           transition={{ delay: 0.35 }}
           className="bg-white/5 backdrop-blur-sm rounded-lg p-4 border border-white/10"
         >
-          <div className="text-xs text-gray-400 mb-1">Coût/Conv.</div>
+          <div className="text-xs text-gray-400 mb-1">Ventes</div>
           <div className="text-xl font-bold text-white">
-            {formatCurrency(insights?.cost_per_conversion || 0)}
+            {revenueData?.count || 0}
+          </div>
+          <div className="text-xs text-gray-400 mt-1">
+            {insights?.spend && revenueData?.count > 0 
+              ? `${formatCurrency(parseFloat(insights.spend) / revenueData.count)}/vente`
+              : 'N/A'}
           </div>
         </motion.div>
 

@@ -160,19 +160,19 @@ export async function GET(request) {
       }));
     }
     
-    // Calculer les totaux si nous n'avons pas de données agrégées
-    const insights = (!breakdowns && processedData.length === 1) ? processedData[0] : {};
-    
-    // Extraire les conversions depuis actions
+    // Calculer les totaux - TOUJOURS agréger toutes les données
     let totalConversions = 0;
     let totalConversionValue = 0;
     let totalSpend = 0;
     let totalImpressions = 0;
     let totalClicks = 0;
     let totalReach = 0;
+    let totalLeads = 0;
     
+    console.log(`[Insights API] Processing ${processedData.length} data items for aggregation`);
+    
+    // Toujours agréger les données, même s'il n'y en a qu'une
     if (!breakdowns && processedData.length > 0) {
-      // Agréger les données
       processedData.forEach(item => {
         totalSpend += parseFloat(item.spend || 0);
         totalImpressions += parseInt(item.impressions || 0);
@@ -180,11 +180,15 @@ export async function GET(request) {
         totalReach = Math.max(totalReach, parseInt(item.reach || 0));
         
         if (item.actions) {
-          const conversionActions = ['purchase', 'lead', 'complete_registration'];
-          const conversions = item.actions
-            .filter(action => conversionActions.includes(action.action_type))
-            .reduce((sum, action) => sum + parseInt(action.value || 0), 0);
-          totalConversions += conversions;
+          // Compter les leads spécifiquement
+          const leadActions = item.actions.filter(a => a.action_type === 'lead');
+          const leadCount = leadActions.reduce((sum, a) => sum + parseInt(a.value || 0), 0);
+          totalLeads += leadCount;
+          
+          // Compter toutes les conversions (purchases uniquement pour matcher avec revenues)
+          const purchaseActions = item.actions.filter(a => a.action_type === 'purchase');
+          const purchaseCount = purchaseActions.reduce((sum, a) => sum + parseInt(a.value || 0), 0);
+          totalConversions += purchaseCount;
         }
         
         if (item.action_values) {
@@ -194,25 +198,9 @@ export async function GET(request) {
           totalConversionValue += purchaseValues;
         }
       });
-    } else if (insights.spend) {
-      totalSpend = parseFloat(insights.spend || 0);
-      totalImpressions = parseInt(insights.impressions || 0);
-      totalClicks = parseInt(insights.clicks || 0);
-      totalReach = parseInt(insights.reach || 0);
-      
-      if (insights.actions) {
-        const conversionActions = ['purchase', 'lead', 'complete_registration'];
-        totalConversions = insights.actions
-          .filter(action => conversionActions.includes(action.action_type))
-          .reduce((sum, action) => sum + parseInt(action.value || 0), 0);
-      }
-      
-      if (insights.action_values) {
-        const purchaseValues = insights.action_values
-          .filter(a => a.action_type === 'purchase');
-        totalConversionValue = purchaseValues.reduce((sum, a) => sum + parseFloat(a.value || 0), 0);
-      }
     }
+    
+    console.log(`[Insights API] Totals - Spend: ${totalSpend}, Impressions: ${totalImpressions}, Clicks: ${totalClicks}, Leads: ${totalLeads}, Conversions: ${totalConversions}`);
     
     // Calculer les métriques dérivées
     const ctr = totalImpressions > 0 ? (totalClicks / totalImpressions * 100) : 0;
@@ -240,6 +228,7 @@ export async function GET(request) {
       cpc: cpc.toFixed(2),
       cpm: cpm.toFixed(2),
       reach: totalReach,
+      leads: totalLeads,
       conversions: totalConversions,
       conversion_value: totalConversionValue.toFixed(2),
       cost_per_conversion: costPerConversion.toFixed(2),

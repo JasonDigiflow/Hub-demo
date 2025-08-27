@@ -72,12 +72,23 @@ export async function GET(request) {
     
     console.log(`[Revenues API] Fetching revenues for user ${userId} from ${startDate.toISOString()} to ${now.toISOString()}`);
     
+    if (!userId) {
+      console.error('[Revenues API] No userId found');
+      return NextResponse.json({ 
+        error: 'User ID not found',
+        revenues: { total: 0, count: 0, daily_data: [], by_campaign: {}, by_ad: {} }
+      });
+    }
+    
     // Get revenues from Firestore
+    console.log(`[Revenues API] Querying Firestore with userId: ${userId}`);
     const revenuesSnapshot = await db.collection('revenues')
       .where('userId', '==', userId)
       .where('createdAt', '>=', startDate)
       .where('createdAt', '<=', now)
       .get();
+    
+    console.log(`[Revenues API] Found ${revenuesSnapshot.size} revenue records`);
     
     let totalRevenue = 0;
     let revenuesByDay = {};

@@ -10,6 +10,7 @@ export async function GET(request) {
     const { searchParams } = new URL(request.url);
     const includeInsights = searchParams.get('include_insights') === 'true';
     const level = searchParams.get('level') || 'campaign'; // campaign, adset, ad
+    const timeRange = searchParams.get('time_range') || 'last_30d'; // Accepter la période depuis le frontend
     
     // Vérifier l'authentification Meta
     const cookieStore = cookies();
@@ -28,7 +29,7 @@ export async function GET(request) {
     const accessToken = session.accessToken;
     
     // Vérifier le cache
-    const cacheKey = `${accountId}_${level}_${includeInsights}`;
+    const cacheKey = `${accountId}_${level}_${includeInsights}_${timeRange}`;
     const cached = campaignCache.get(cacheKey);
     
     if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
@@ -60,10 +61,20 @@ export async function GET(request) {
     if (includeInsights && campaigns.length > 0) {
       const insightsPromises = campaigns.map(async (campaign) => {
         try {
-          // Récupérer les insights de la dernière semaine par défaut
+          // Mapper les time ranges pour Meta API
+          const datePresetMap = {
+            'today': 'today',
+            'yesterday': 'yesterday',
+            'last_7d': 'last_7d',
+            'last_30d': 'last_30d',
+            'lifetime': 'last_90d'
+          };
+          const datePreset = datePresetMap[timeRange] || 'last_30d';
+          
+          // Récupérer les insights pour la période spécifiée
           const insightsUrl = `https://graph.facebook.com/v18.0/${campaign.id}/insights?` +
             `fields=spend,impressions,clicks,ctr,cpc,cpm,reach,frequency,actions,action_values,conversions,cost_per_result&` +
-            `date_preset=last_7d&` +
+            `date_preset=${datePreset}&` +
             `access_token=${accessToken}`;
           
           const insightsResponse = await fetch(insightsUrl);
