@@ -837,7 +837,7 @@ export default function AIDsInsights() {
             />
           </div>
         </motion.div>
-      </div>
+        </div>
       )}
 
       {/* Campaign Drill-down Table */}
