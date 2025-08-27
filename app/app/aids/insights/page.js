@@ -112,6 +112,10 @@ export default function AIDsInsights() {
     }
   };
 
+  const handlePeriodChange = (newPeriod) => {
+    setPeriod(newPeriod);
+  };
+
   const loadInsightsData = async () => {
     setLoading(true);
     try {
