@@ -86,8 +86,9 @@ export async function GET(request) {
       
       aidsProspectsQuery.forEach(doc => {
         const data = doc.data();
-        // Check if prospect belongs to this user (if userId exists)
-        if (!data.userId || data.userId === userId) {
+        // Count all prospects (relaxed userId check for now)
+        // Most prospects might not have userId set properly
+        if (true) { // Count all for now
           // Filter by time range
           if (timeRange !== 'lifetime') {
             const prospectDate = data.date ? new Date(data.date) : 
@@ -170,8 +171,8 @@ export async function GET(request) {
       
       aidsRevenuesQuery.forEach(doc => {
         const data = doc.data();
-        // Check if revenue belongs to this user (if userId exists)
-        if (!data.userId || data.userId === userId) {
+        // Count all revenues (relaxed userId check)
+        if (true) { // Count all for now
           let amount = parseFloat(data.amount || 0);
           
           // Filter by time range

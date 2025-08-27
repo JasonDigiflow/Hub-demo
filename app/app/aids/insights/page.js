@@ -480,7 +480,7 @@ export default function AIDsInsights() {
             {formatNumber(insights?.leads || 0)}
           </div>
           <div className="text-xs text-gray-400 mt-1">
-            {formatNumber(insights?.prospects || 0)} prospects FB
+            {formatNumber(insights?.prospects || 0)} dans la base
           </div>
         </motion.div>
 
