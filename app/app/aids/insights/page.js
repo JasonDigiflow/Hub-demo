@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Line, Bar } from 'react-chartjs-2';
 import CampaignDrilldownTable from '@/components/aids/CampaignDrilldownTable';
+import PeriodSelector from '@/app/components/aids/PeriodSelector';
+import ComparisonBadge from '@/app/components/aids/ComparisonBadge';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -31,8 +33,11 @@ ChartJS.register(
 
 export default function AIDsInsights() {
   const [loading, setLoading] = useState(true);
-  const [timeRange, setTimeRange] = useState('last_30d');
+  const [period, setPeriod] = useState({ type: 'predefined', period: 'current_month' });
+  const [compare, setCompare] = useState(true);
   const [insights, setInsights] = useState(null);
+  const [comparison, setComparison] = useState(null);
+  const [percentChanges, setPercentChanges] = useState(null);
   const [campaigns, setCampaigns] = useState([]);
   const [audienceBreakdown, setAudienceBreakdown] = useState(null);
   const [showBreakdownType, setShowBreakdownType] = useState('age,gender');
@@ -46,7 +51,7 @@ export default function AIDsInsights() {
   useEffect(() => {
     loadInsightsData();
     fetchSyncStatus();
-  }, [timeRange, showBreakdownType]);
+  }, [period, compare, showBreakdownType]);
 
   const fetchSyncStatus = async () => {
     try {
@@ -110,9 +115,25 @@ export default function AIDsInsights() {
   const loadInsightsData = async () => {
     setLoading(true);
     try {
-      // Use combined API for main insights, plus original APIs for detailed data
+      // Build API URL based on period type
+      let apiUrl = '/api/aids/combined-insights-v2?';
+      if (period.type === 'predefined') {
+        apiUrl += `period=${period.period}`;
+      } else if (period.type === 'month') {
+        const monthStart = `${period.year}-${String(period.month + 1).padStart(2, '0')}-01`;
+        const monthEnd = new Date(period.year, period.month + 1, 0);
+        const monthEndStr = `${period.year}-${String(period.month + 1).padStart(2, '0')}-${String(monthEnd.getDate()).padStart(2, '0')}`;
+        apiUrl += `start_date=${monthStart}&end_date=${monthEndStr}`;
+      } else if (period.type === 'custom') {
+        apiUrl += `start_date=${period.start}&end_date=${period.end}`;
+      }
+      apiUrl += `&compare=${compare}`;
+      
+      // Convert period to timeRange for legacy APIs
+      const timeRange = period.type === 'predefined' ? period.period : 'last_30d';
+      
       const [combinedRes, campaignsRes, breakdownRes] = await Promise.all([
-        fetch(`/api/aids/combined-insights?time_range=${timeRange}`),
+        fetch(apiUrl),
         fetch(`/api/aids/meta/campaigns?include_insights=true&time_range=${timeRange}`),
         fetch(`/api/aids/meta/insights?time_range=${timeRange}&breakdowns=${showBreakdownType}`)
       ]);
@@ -124,21 +145,22 @@ export default function AIDsInsights() {
       ]);
 
       if (combinedData.success) {
-        // Set combined insights with Firebase data
-        setInsights({
-          ...combinedData,
-          revenues: combinedData.revenues || 0,
-          leads: combinedData.leads || 0,
-          prospects: combinedData.prospects || 0
-        });
+        // Set current period insights
+        setInsights(combinedData.current);
+        
+        // Set comparison data if available
+        if (combinedData.comparison) {
+          setComparison(combinedData.comparison);
+          setPercentChanges(combinedData.percentChanges);
+        }
         
         // Set revenue data from combined response
         setRevenueData({
-          total: combinedData.revenues || 0,
-          count: combinedData.revenueCount || 0,
-          convertedProspects: combinedData.convertedProspects || 0,
-          conversionRate: combinedData.conversionRate || 0,
-          roas: combinedData.roas || 0
+          total: combinedData.current.revenues || 0,
+          count: combinedData.current.revenueCount || 0,
+          convertedProspects: combinedData.current.convertedProspects || 0,
+          conversionRate: combinedData.current.conversionRate || 0,
+          roas: combinedData.current.roas || 0
         });
       }
 
@@ -258,26 +280,12 @@ export default function AIDsInsights() {
             </p>
           </div>
           
-          <div className="flex flex-wrap gap-2">
-            {['today', 'yesterday', 'last_7d', 'last_30d', 'last_90d', 'lifetime'].map((range) => (
-              <button
-                key={range}
-                onClick={() => setTimeRange(range)}
-                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                  timeRange === range
-                    ? 'bg-purple-600 text-white'
-                    : 'bg-white/10 text-gray-300 hover:bg-white/20'
-                }`}
-              >
-                {range === 'today' && 'Aujourd\'hui'}
-                {range === 'yesterday' && 'Hier'}
-                {range === 'last_7d' && '7 jours'}
-                {range === 'last_30d' && '30 jours'}
-                {range === 'last_90d' && '90 jours'}
-                {range === 'lifetime' && 'Tout'}
-              </button>
-            ))}
-          </div>
+          <PeriodSelector 
+            value={period}
+            onChange={handlePeriodChange}
+            showComparison={true}
+            onCompareToggle={(enabled) => setCompare(enabled)}
+          />
         </div>
       </div>
 
@@ -407,6 +415,13 @@ export default function AIDsInsights() {
           <div className="text-xl font-bold text-white">
             {formatCurrency(insights?.spend || 0)}
           </div>
+          {compare && comparison && (
+            <ComparisonBadge 
+              value={insights?.spend || 0}
+              previousValue={comparison?.spend || 0}
+              format="currency"
+            />
+          )}
         </motion.div>
 
         <motion.div
@@ -419,6 +434,13 @@ export default function AIDsInsights() {
           <div className="text-xl font-bold text-white">
             {formatNumber(insights?.impressions || 0)}
           </div>
+          {compare && comparison && (
+            <ComparisonBadge 
+              value={insights?.impressions || 0}
+              previousValue={comparison?.impressions || 0}
+              format="number"
+            />
+          )}
         </motion.div>
 
         <motion.div
@@ -431,6 +453,13 @@ export default function AIDsInsights() {
           <div className="text-xl font-bold text-white">
             {formatNumber(insights?.clicks || 0)}
           </div>
+          {compare && comparison && (
+            <ComparisonBadge 
+              value={insights?.clicks || 0}
+              previousValue={comparison?.clicks || 0}
+              format="number"
+            />
+          )}
         </motion.div>
 
         <motion.div
@@ -484,6 +513,13 @@ export default function AIDsInsights() {
               ? formatCurrency(parseFloat(insights.spend) / insights.leads)
               : 'N/A'}
           </div>
+          {compare && comparison && (
+            <ComparisonBadge 
+              value={insights?.leads || 0}
+              previousValue={comparison?.leads || 0}
+              format="number"
+            />
+          )}
         </motion.div>
 
         <motion.div
@@ -523,11 +559,18 @@ export default function AIDsInsights() {
         >
           <div className="text-xs text-green-400 mb-1">Revenus Réels</div>
           <div className="text-xl font-bold text-green-400">
-            {formatCurrency(revenueData?.total || 0)}
+            {formatCurrency(revenueData?.total || insights?.revenues || 0)}
           </div>
           <div className="text-xs text-gray-400 mt-1">
             {revenueData?.count || 0} ventes
           </div>
+          {compare && comparison && (
+            <ComparisonBadge 
+              value={revenueData?.total || insights?.revenues || 0}
+              previousValue={comparison?.revenues || 0}
+              format="currency"
+            />
+          )}
         </motion.div>
 
         <motion.div
@@ -552,6 +595,13 @@ export default function AIDsInsights() {
                   ? `${((parseFloat(revenueData.total) / parseFloat(insights.spend) - 1) * 100).toFixed(0)}% ROI`
                   : 'N/A'}
           </div>
+          {compare && comparison && (
+            <ComparisonBadge 
+              value={parseFloat(insights?.roas || (insights?.spend && revenueData?.total ? (parseFloat(revenueData.total) / parseFloat(insights.spend)) : 0))}
+              previousValue={parseFloat(comparison?.roas || 0)}
+              format="number"
+            />
+          )}
         </motion.div>
 
         <motion.div
@@ -608,7 +658,7 @@ export default function AIDsInsights() {
         animate={{ opacity: 1, y: 0 }}
         className="mb-8"
       >
-        <CampaignDrilldownTable timeRange={timeRange} />
+        <CampaignDrilldownTable timeRange={period.period || 'last_30d'} />
       </motion.div>
 
       {/* Audience Breakdown Matrix */}
