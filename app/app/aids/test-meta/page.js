@@ -64,26 +64,58 @@ export default function TestMetaPage() {
           <h2 className="text-xl font-bold text-white mb-4">Response Analysis</h2>
           
           {response.analysis && (
-            <div className="mb-6 grid grid-cols-2 gap-4">
-              <div className="bg-black/20 p-3 rounded">
-                <div className="text-gray-400 text-sm">Total Spend</div>
-                <div className="text-white font-bold">€{response.analysis.totalSpend?.toFixed(2) || 0}</div>
-              </div>
-              <div className="bg-black/20 p-3 rounded">
-                <div className="text-gray-400 text-sm">Total Clicks</div>
-                <div className="text-white font-bold">{response.analysis.totalClicks || 0}</div>
-              </div>
-              <div className="bg-black/20 p-3 rounded">
-                <div className="text-gray-400 text-sm">Total Results</div>
-                <div className="text-white font-bold">{response.analysis.totalResults || 0}</div>
-              </div>
-              <div className="bg-black/20 p-3 rounded">
-                <div className="text-gray-400 text-sm">Date Range</div>
-                <div className="text-white text-xs">
-                  {response.analysis.dateRange?.start} to {response.analysis.dateRange?.stop}
+            <>
+              <div className="mb-6 grid grid-cols-3 gap-4">
+                <div className="bg-black/20 p-3 rounded">
+                  <div className="text-gray-400 text-sm">Total Spend</div>
+                  <div className="text-white font-bold">€{response.analysis.totalSpend?.toFixed(2) || 0}</div>
+                </div>
+                <div className="bg-black/20 p-3 rounded">
+                  <div className="text-gray-400 text-sm">Total Clicks</div>
+                  <div className="text-white font-bold">{response.analysis.totalClicks || 0}</div>
+                </div>
+                <div className="bg-black/20 p-3 rounded">
+                  <div className="text-gray-400 text-sm">Total Reach</div>
+                  <div className="text-white font-bold">{response.analysis.totalReach || 0}</div>
+                </div>
+                <div className="bg-black/20 p-3 rounded">
+                  <div className="text-gray-400 text-sm">Total Results</div>
+                  <div className="text-white font-bold">{response.analysis.totalResults || 0}</div>
+                </div>
+                <div className="bg-black/20 p-3 rounded">
+                  <div className="text-gray-400 text-sm">Total Leads</div>
+                  <div className="text-white font-bold text-green-400">{response.analysis.totalLeads || 0}</div>
+                </div>
+                <div className="bg-black/20 p-3 rounded">
+                  <div className="text-gray-400 text-sm">Date Range</div>
+                  <div className="text-white text-xs">
+                    {response.analysis.dateRange?.start || 'N/A'} to {response.analysis.dateRange?.stop || 'N/A'}
+                  </div>
                 </div>
               </div>
-            </div>
+              
+              {response.analysis.leadSources && Object.keys(response.analysis.leadSources).length > 0 && (
+                <div className="mb-4 bg-yellow-900/20 p-4 rounded">
+                  <h3 className="text-yellow-400 font-bold mb-2">Lead Sources Found:</h3>
+                  {Object.entries(response.analysis.leadSources).map(([source, count]) => (
+                    <div key={source} className="text-white text-sm">
+                      {source}: {count} leads
+                    </div>
+                  ))}
+                </div>
+              )}
+              
+              {response.analysis.actions && response.analysis.actions.length > 0 && (
+                <div className="mb-4 bg-blue-900/20 p-4 rounded">
+                  <h3 className="text-blue-400 font-bold mb-2">All Actions:</h3>
+                  {response.analysis.actions.map((action, idx) => (
+                    <div key={idx} className="text-white text-sm">
+                      {action.type}: {action.value}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
           )}
 
           <div className="bg-black/20 p-4 rounded overflow-auto">

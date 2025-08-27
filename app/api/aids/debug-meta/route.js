@@ -38,15 +38,10 @@ export async function GET(request) {
     let url = '';
     
     if (endpoint === 'insights') {
-      // Test insights endpoint
+      // Test insights endpoint - Simplified query first
       url = `https://graph.facebook.com/v18.0/${accountId}/insights?` +
-        `fields=spend,impressions,clicks,ctr,cpc,cpm,cpp,reach,frequency,` +
-        `conversions,conversion_values,cost_per_conversion,` +
-        `actions,action_values,cost_per_result,results,` +
-        `cost_per_action_type,website_purchase_roas,purchase_roas,` +
-        `website_ctr,unique_clicks,unique_impressions&` +
+        `fields=spend,impressions,clicks,reach,actions,results&` +
         `date_preset=${datePreset}&` +
-        `time_increment=all_days&` + // Get total for period
         `access_token=${accessToken}`;
     } else if (endpoint === 'campaigns') {
       // Test campaigns endpoint
@@ -92,6 +87,30 @@ export async function GET(request) {
       });
     }
     
+    // Analyze leads from different sources
+    let totalLeads = 0;
+    let leadSources = {};
+    
+    if (data.data && data.data.length > 0) {
+      data.data.forEach(item => {
+        // Check results field
+        if (item.results) {
+          totalLeads += parseInt(item.results || 0);
+          leadSources.results = (leadSources.results || 0) + parseInt(item.results || 0);
+        }
+        
+        // Check actions array
+        if (item.actions) {
+          item.actions.forEach(action => {
+            if (action.action_type && action.action_type.includes('lead')) {
+              totalLeads += parseInt(action.value || 0);
+              leadSources[action.action_type] = (leadSources[action.action_type] || 0) + parseInt(action.value || 0);
+            }
+          });
+        }
+      });
+    }
+    
     // Return formatted response
     return NextResponse.json({
       success: true,
@@ -109,11 +128,18 @@ export async function GET(request) {
         totalSpend: data.data?.reduce((sum, item) => sum + parseFloat(item.spend || 0), 0),
         totalImpressions: data.data?.reduce((sum, item) => sum + parseInt(item.impressions || 0), 0),
         totalClicks: data.data?.reduce((sum, item) => sum + parseInt(item.clicks || 0), 0),
+        totalReach: data.data?.reduce((sum, item) => Math.max(sum, parseInt(item.reach || 0)), 0),
         totalResults: data.data?.reduce((sum, item) => sum + parseInt(item.results || 0), 0),
+        totalLeads: totalLeads,
+        leadSources: leadSources,
         dateRange: data.data?.[0] ? {
           start: data.data[0].date_start,
           stop: data.data[0].date_stop
-        } : null
+        } : null,
+        actions: data.data?.[0]?.actions ? data.data[0].actions.map(a => ({
+          type: a.action_type,
+          value: a.value
+        })) : []
       }
     });
     
