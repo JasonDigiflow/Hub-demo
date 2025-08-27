@@ -37,6 +37,7 @@ export async function GET(request) {
       'yesterday': 'yesterday',
       'last_7d': 'last_7d',
       'last_30d': 'last_30d',
+      'last_90d': 'last_90d',
       'lifetime': 'last_90d'  // Use last_90d instead of lifetime
     };
     
@@ -54,7 +55,7 @@ export async function GET(request) {
     
     // Construire l'URL des insights avec ou sans breakdowns
     let insightsUrl = `https://graph.facebook.com/v18.0/${accountId}/insights?` +
-      `fields=spend,impressions,clicks,ctr,cpc,cpm,cpp,reach,frequency,conversions,conversion_values,cost_per_conversion,actions,action_values,cost_per_result&` +
+      `fields=spend,impressions,clicks,ctr,cpc,cpm,cpp,reach,frequency,conversions,conversion_values,cost_per_conversion,actions,action_values,cost_per_result,results&` +
       `date_preset=${datePreset}&`;
     
     // Ajouter breakdowns si demandé
@@ -71,6 +72,7 @@ export async function GET(request) {
     
     console.log(`[Insights API] Fetching URL: ${insightsUrl.replace(accessToken, 'TOKEN_HIDDEN')}`);
     console.log(`[Insights API] Date preset: ${datePreset}, Time range: ${timeRange}`);
+    console.log(`[Insights API] Account ID: ${accountId}`);
     
     const response = await fetch(insightsUrl);
     const data = await response.json();
@@ -184,13 +186,20 @@ export async function GET(request) {
         // Sum reach across all days (not max) for proper aggregation
         totalReach += parseInt(item.reach || 0);
         
-        if (item.actions) {
-          // Compter les leads spécifiquement
-          const leadActions = item.actions.filter(a => a.action_type === 'lead');
+        // Priorité aux results pour les leads (objectif LEAD_GENERATION)
+        if (item.results) {
+          totalLeads += parseInt(item.results || 0);
+        } else if (item.actions) {
+          // Fallback : compter les leads depuis les actions
+          const leadActions = item.actions.filter(a => 
+            a.action_type === 'lead' || 
+            a.action_type === 'leadgen_grouped' ||
+            a.action_type === 'offsite_conversion.fb_pixel_lead'
+          );
           const leadCount = leadActions.reduce((sum, a) => sum + parseInt(a.value || 0), 0);
           totalLeads += leadCount;
           
-          // Compter toutes les conversions (purchases uniquement pour matcher avec revenues)
+          // Compter les purchases pour les conversions
           const purchaseActions = item.actions.filter(a => a.action_type === 'purchase');
           const purchaseCount = purchaseActions.reduce((sum, a) => sum + parseInt(a.value || 0), 0);
           totalConversions += purchaseCount;

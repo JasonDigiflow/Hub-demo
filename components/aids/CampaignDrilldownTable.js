@@ -22,36 +22,14 @@ export default function CampaignDrilldownTable() {
   const loadCampaignData = async () => {
     setLoading(true);
     try {
-      // Use the new insights-v2 API with since/until
+      // Use the original hierarchy API that works
       const response = await fetch(
-        `/api/aids/meta/insights-v2?` +
-        `since=${dateRange.since}&` +
-        `until=${dateRange.until}&` +
-        `level=campaign`
+        `/api/aids/meta/campaigns/hierarchy?time_range=${datePreset}`
       );
       const data = await response.json();
       
       if (data.success) {
-        // Transform data to match hierarchy format
-        const transformedCampaigns = (data.data || []).map(campaign => ({
-          id: campaign.id,
-          name: campaign.name,
-          status: 'ACTIVE', // Status will be fetched separately if needed
-          objective: campaign.objective,
-          insights: {
-            spend: campaign.spend,
-            impressions: campaign.impressions,
-            clicks: campaign.clicks,
-            ctr: campaign.ctr,
-            cpc: campaign.cpc,
-            cpm: campaign.cpm,
-            reach: campaign.reach,
-            leads: campaign.leads,
-            cost_per_result: campaign.costPerLead
-          },
-          adsets: [] // Will be loaded on expand
-        }));
-        setCampaigns(transformedCampaigns);
+        setCampaigns(data.campaigns || []);
       }
     } catch (error) {
       console.error('Error loading campaigns:', error);

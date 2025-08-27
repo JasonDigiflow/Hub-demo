@@ -112,7 +112,7 @@ export async function GET(request) {
         try {
           // Récupérer les insights de la campagne
           const campaignInsightsUrl = `https://graph.facebook.com/v18.0/${campaign.id}/insights?` +
-            `fields=spend,impressions,clicks,ctr,cpc,cpm,reach,frequency,actions,action_values,cost_per_result&` +
+            `fields=spend,impressions,clicks,ctr,cpc,cpm,reach,frequency,actions,action_values,cost_per_result,results&` +
             `date_preset=${datePreset}&` +
             `access_token=${accessToken}`;
           
@@ -124,10 +124,16 @@ export async function GET(request) {
           if (campaignInsightsData.data && campaignInsightsData.data.length > 0) {
             const insights = campaignInsightsData.data[0];
             
-            // Compter les leads
+            // Compter les leads - priorité aux results
             let leads = 0;
-            if (insights.actions) {
-              const leadActions = insights.actions.filter(a => a.action_type === 'lead');
+            if (insights.results) {
+              leads = parseInt(insights.results || 0);
+            } else if (insights.actions) {
+              const leadActions = insights.actions.filter(a => 
+                a.action_type === 'lead' || 
+                a.action_type === 'leadgen_grouped' ||
+                a.action_type === 'offsite_conversion.fb_pixel_lead'
+              );
               leads = leadActions.reduce((sum, a) => sum + parseInt(a.value || 0), 0);
             }
             
@@ -169,8 +175,14 @@ export async function GET(request) {
                 const insights = adSetInsightsData.data[0];
                 
                 let leads = 0;
-                if (insights.actions) {
-                  const leadActions = insights.actions.filter(a => a.action_type === 'lead');
+                if (insights.results) {
+                  leads = parseInt(insights.results || 0);
+                } else if (insights.actions) {
+                  const leadActions = insights.actions.filter(a => 
+                    a.action_type === 'lead' || 
+                    a.action_type === 'leadgen_grouped' ||
+                    a.action_type === 'offsite_conversion.fb_pixel_lead'
+                  );
                   leads = leadActions.reduce((sum, a) => sum + parseInt(a.value || 0), 0);
                 }
                 

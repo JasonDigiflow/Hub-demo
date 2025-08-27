@@ -90,12 +90,12 @@ export default function AIDsInsights() {
   const loadInsightsData = async () => {
     setLoading(true);
     try {
-      // Use new API v2 with since/until
+      // Use original API with proper time_range
       const [insightsRes, campaignsRes, breakdownRes, revenueRes] = await Promise.all([
-        fetch(`/api/aids/meta/insights-v2?since=${dateRange.since}&until=${dateRange.until}&level=account&time_increment=1`),
-        fetch(`/api/aids/meta/insights-v2?since=${dateRange.since}&until=${dateRange.until}&level=campaign`),
+        fetch(`/api/aids/meta/insights?time_range=${datePreset}&time_increment=1`),
+        fetch(`/api/aids/meta/campaigns?include_insights=true&time_range=${datePreset}`),
         fetch(`/api/aids/meta/insights?time_range=${datePreset}&breakdowns=${showBreakdownType}`),
-        fetch(`/api/aids/insights/revenues?since=${dateRange.since}&until=${dateRange.until}`)
+        fetch(`/api/aids/insights/revenues?time_range=${datePreset}`)
       ]);
 
       const [insightsData, campaignsData, breakdownData, revData] = await Promise.all([
@@ -106,11 +106,11 @@ export default function AIDsInsights() {
       ]);
 
       if (insightsData.success) {
-        setInsights(insightsData.data);
+        setInsights(insightsData.insights);
       }
 
       if (campaignsData.success) {
-        setCampaigns(campaignsData.data || []);
+        setCampaigns(campaignsData.campaigns || []);
       }
 
       if (breakdownData.success && breakdownData.insights?.breakdown_data) {
