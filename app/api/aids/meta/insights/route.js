@@ -15,7 +15,7 @@ export async function GET(request) {
     
     aidsLogger.info(LogCategories.ANALYTICS, `Récupération insights Meta: ${timeRange}`);
     
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
     const sessionCookie = cookieStore.get('meta_session');
     const selectedAccountCookie = cookieStore.get('selected_ad_account');
     
@@ -179,12 +179,16 @@ export async function GET(request) {
     
     // Toujours agréger les données, même s'il n'y en a qu'une
     if (!breakdowns && processedData.length > 0) {
+      // For reach, when we have multiple days, we need the last day's reach (cumulative)
+      // or the max reach value from any single day
+      let reachValues = [];
+      
       processedData.forEach(item => {
         totalSpend += parseFloat(item.spend || 0);
         totalImpressions += parseInt(item.impressions || 0);
         totalClicks += parseInt(item.clicks || 0);
-        // Sum reach across all days (not max) for proper aggregation
-        totalReach += parseInt(item.reach || 0);
+        // Collect reach values to determine the proper total
+        reachValues.push(parseInt(item.reach || 0));
         
         // Priorité aux results pour les leads (objectif LEAD_GENERATION)
         if (item.results) {
@@ -212,6 +216,10 @@ export async function GET(request) {
           totalConversionValue += purchaseValues;
         }
       });
+      
+      // For reach, use the maximum value from all days
+      // (reach represents unique users, not cumulative views)
+      totalReach = Math.max(...reachValues);
     }
     
     console.log(`[Insights API] Totals - Spend: ${totalSpend}, Impressions: ${totalImpressions}, Clicks: ${totalClicks}, Leads: ${totalLeads}, Conversions: ${totalConversions}`);
@@ -253,7 +261,7 @@ export async function GET(request) {
         break;
       case 'last_30d':
         const thirtyDaysAgo = new Date(today);
-        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 29); // -29 because today is included
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30); // Last 30 days
         actualDateRange = {
           start: thirtyDaysAgo.toISOString().split('T')[0],
           end: today.toISOString().split('T')[0]
@@ -262,7 +270,7 @@ export async function GET(request) {
       case 'last_90d':
       case 'lifetime':
         const ninetyDaysAgo = new Date(today);
-        ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 89); // -89 because today is included
+        ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90); // Last 90 days
         actualDateRange = {
           start: ninetyDaysAgo.toISOString().split('T')[0],
           end: today.toISOString().split('T')[0]

@@ -11,7 +11,7 @@ export async function GET(request) {
     const { searchParams } = new URL(request.url);
     const timeRange = searchParams.get('time_range') || 'last_30d';
     
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
     const sessionCookie = cookieStore.get('meta_session');
     const selectedAccountCookie = cookieStore.get('selected_ad_account');
     

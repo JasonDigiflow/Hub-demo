@@ -13,7 +13,7 @@ export async function GET(request) {
     const timeRange = searchParams.get('time_range') || 'last_30d'; // Accepter la période depuis le frontend
     
     // Vérifier l'authentification Meta
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
     const sessionCookie = cookieStore.get('meta_session');
     const selectedAccountCookie = cookieStore.get('selected_ad_account');
     
@@ -67,6 +67,7 @@ export async function GET(request) {
             'yesterday': 'yesterday',
             'last_7d': 'last_7d',
             'last_30d': 'last_30d',
+            'last_90d': 'last_90d',
             'lifetime': 'last_90d'
           };
           const datePreset = datePresetMap[timeRange] || 'last_30d';

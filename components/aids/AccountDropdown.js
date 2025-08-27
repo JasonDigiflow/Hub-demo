@@ -12,6 +12,7 @@ export default function AccountDropdown({
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 });
   const buttonRef = useRef(null);
   const dropdownRef = useRef(null);
 
@@ -38,13 +39,6 @@ export default function AccountDropdown({
     }
   }, [isOpen]);
 
-  const handleSelect = async (accountId) => {
-    await onAccountChange(accountId);
-    setIsOpen(false);
-  };
-
-  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 });
-
   useEffect(() => {
     if (isOpen && buttonRef.current) {
       const rect = buttonRef.current.getBoundingClientRect();
@@ -55,6 +49,11 @@ export default function AccountDropdown({
       });
     }
   }, [isOpen]);
+
+  const handleSelect = async (accountId) => {
+    await onAccountChange(accountId);
+    setIsOpen(false);
+  };
 
   if (!metaConnected) {
     return <span className="text-gray-500 text-sm">Non connecté</span>;

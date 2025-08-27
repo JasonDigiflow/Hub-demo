@@ -2,29 +2,25 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import useAidsStore from '@/lib/aids-store';
 
-export default function CampaignDrilldownTable() {
+export default function CampaignDrilldownTable({ timeRange = 'last_30d' }) {
   const [campaigns, setCampaigns] = useState([]);
   const [loading, setLoading] = useState(true);
   const [expandedCampaigns, setExpandedCampaigns] = useState({});
   const [expandedAdSets, setExpandedAdSets] = useState({});
   const [level, setLevel] = useState('campaign'); // campaign, adset, ad
   const [syncing, setSyncing] = useState(false);
-  
-  // Get state from store
-  const { dateRange, datePreset } = useAidsStore();
 
   useEffect(() => {
     loadCampaignData();
-  }, [dateRange]); // React to dateRange changes
+  }, [timeRange]); // React to timeRange changes
 
   const loadCampaignData = async () => {
     setLoading(true);
     try {
       // Use the original hierarchy API that works
       const response = await fetch(
-        `/api/aids/meta/campaigns/hierarchy?time_range=${datePreset}`
+        `/api/aids/meta/campaigns/hierarchy?time_range=${timeRange}`
       );
       const data = await response.json();
       
@@ -45,8 +41,7 @@ export default function CampaignDrilldownTable() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-          since: dateRange.since, 
-          until: dateRange.until 
+          time_range: timeRange 
         })
       });
       const data = await response.json();

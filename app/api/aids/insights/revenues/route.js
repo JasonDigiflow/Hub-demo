@@ -11,7 +11,7 @@ export async function GET(request) {
     const campaignId = searchParams.get('campaign_id'); // Optional filter by campaign
     
     // Get auth from cookies
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
     const authCookie = cookieStore.get('auth-token') || cookieStore.get('auth_token');
     const metaSession = cookieStore.get('meta_session');
     
