@@ -11,6 +11,8 @@ export async function GET(request) {
     const includeInsights = searchParams.get('include_insights') === 'true';
     const level = searchParams.get('level') || 'campaign'; // campaign, adset, ad
     const timeRange = searchParams.get('time_range') || 'last_30d'; // Accepter la période depuis le frontend
+    const startDate = searchParams.get('start_date');
+    const endDate = searchParams.get('end_date');
     
     // Vérifier l'authentification Meta
     const cookieStore = await cookies();
@@ -29,7 +31,9 @@ export async function GET(request) {
     const accessToken = session.accessToken;
     
     // Vérifier le cache
-    const cacheKey = `${accountId}_${level}_${includeInsights}_${timeRange}`;
+    const cacheKey = startDate && endDate 
+      ? `${accountId}_${level}_${includeInsights}_${startDate}_${endDate}`
+      : `${accountId}_${level}_${includeInsights}_${timeRange}`;
     const cached = campaignCache.get(cacheKey);
     
     if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
@@ -61,21 +65,29 @@ export async function GET(request) {
     if (includeInsights && campaigns.length > 0) {
       const insightsPromises = campaigns.map(async (campaign) => {
         try {
-          // Mapper les time ranges pour Meta API
-          const datePresetMap = {
-            'today': 'today',
-            'yesterday': 'yesterday',
-            'last_7d': 'last_7d',
-            'last_30d': 'last_30d',
-            'last_90d': 'last_90d',
-            'lifetime': 'last_90d'
-          };
-          const datePreset = datePresetMap[timeRange] || 'last_30d';
+          // Déterminer le paramètre de date à utiliser
+          let dateParam = '';
+          if (startDate && endDate) {
+            console.log(`[Campaigns API] Using custom date range: ${startDate} to ${endDate}`);
+            dateParam = `time_range={'since':'${startDate}','until':'${endDate}'}`;
+          } else {
+            // Mapper les time ranges pour Meta API
+            const datePresetMap = {
+              'today': 'today',
+              'yesterday': 'yesterday',
+              'last_7d': 'last_7d',
+              'last_30d': 'last_30d',
+              'last_90d': 'last_90d',
+              'lifetime': 'last_90d'
+            };
+            const datePreset = datePresetMap[timeRange] || 'last_30d';
+            dateParam = `date_preset=${datePreset}`;
+          }
           
           // Récupérer les insights pour la période spécifiée
           const insightsUrl = `https://graph.facebook.com/v18.0/${campaign.id}/insights?` +
             `fields=spend,impressions,clicks,ctr,cpc,cpm,reach,frequency,actions,action_values,conversions,cost_per_result&` +
-            `date_preset=${datePreset}&` +
+            `${dateParam}&` +
             `access_token=${accessToken}`;
           
           const insightsResponse = await fetch(insightsUrl);

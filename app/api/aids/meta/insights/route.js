@@ -10,6 +10,8 @@ export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
     const timeRange = searchParams.get('time_range') || searchParams.get('range') || 'last_7d';
+    const startDate = searchParams.get('start_date');
+    const endDate = searchParams.get('end_date');
     const breakdowns = searchParams.get('breakdowns'); // age,gender,publisher_platform,etc.
     const timeIncrement = searchParams.get('time_increment') || '1'; // Pour les séries temporelles
     
@@ -31,21 +33,31 @@ export async function GET(request) {
     const accountId = selectedAccountCookie.value;
     const accessToken = session.accessToken;
     
-    // Mapper les time ranges
-    const datePresetMap = {
-      'today': 'today',
-      'yesterday': 'yesterday',
-      'last_7d': 'last_7d',
-      'last_30d': 'last_30d',
-      'last_90d': 'last_90d',
-      'lifetime': 'last_90d'  // Use last_90d instead of lifetime
-    };
-    
-    const datePreset = datePresetMap[timeRange] || 'last_7d';
-    console.log(`[Insights API] timeRange: ${timeRange}, datePreset: ${datePreset}`);
+    // Déterminer le paramètre de date à utiliser
+    let dateParam = '';
+    if (startDate && endDate) {
+      console.log(`[Insights API] Using custom date range: ${startDate} to ${endDate}`);
+      dateParam = `time_range={'since':'${startDate}','until':'${endDate}'}`;
+    } else {
+      // Mapper les time ranges
+      const datePresetMap = {
+        'today': 'today',
+        'yesterday': 'yesterday',
+        'last_7d': 'last_7d',
+        'last_30d': 'last_30d',
+        'last_90d': 'last_90d',
+        'lifetime': 'last_90d'  // Use last_90d instead of lifetime
+      };
+      
+      const datePreset = datePresetMap[timeRange] || 'last_7d';
+      console.log(`[Insights API] timeRange: ${timeRange}, datePreset: ${datePreset}`);
+      dateParam = `date_preset=${datePreset}`;
+    }
     
     // Clé de cache unique
-    const cacheKey = `${accountId}_${timeRange}_${breakdowns || 'none'}_${timeIncrement}`;
+    const cacheKey = startDate && endDate 
+      ? `${accountId}_${startDate}_${endDate}_${breakdowns || 'none'}_${timeIncrement}`
+      : `${accountId}_${timeRange}_${breakdowns || 'none'}_${timeIncrement}`;
     const cached = insightsCache.get(cacheKey);
     
     if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
@@ -56,7 +68,7 @@ export async function GET(request) {
     // Construire l'URL des insights avec ou sans breakdowns
     let insightsUrl = `https://graph.facebook.com/v18.0/${accountId}/insights?` +
       `fields=spend,impressions,clicks,ctr,cpc,cpm,cpp,reach,frequency,conversions,conversion_values,cost_per_conversion,actions,action_values,cost_per_result,results&` +
-      `date_preset=${datePreset}&`;
+      `${dateParam}&`;
     
     // Ajouter breakdowns si demandé
     if (breakdowns) {
@@ -71,7 +83,7 @@ export async function GET(request) {
     insightsUrl += `access_token=${accessToken}`;
     
     console.log(`[Insights API] Fetching URL: ${insightsUrl.replace(accessToken, 'TOKEN_HIDDEN')}`);
-    console.log(`[Insights API] Date preset: ${datePreset}, Time range: ${timeRange}`);
+    console.log(`[Insights API] Date param: ${dateParam}, Time range: ${timeRange}`);
     console.log(`[Insights API] Account ID: ${accountId}`);
     
     const response = await fetch(insightsUrl);

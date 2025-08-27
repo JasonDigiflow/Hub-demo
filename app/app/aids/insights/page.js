@@ -147,13 +147,28 @@ export default function AIDsInsights() {
       }
       apiUrl += `&compare=${compare}`;
       
-      // Convert period to timeRange for legacy APIs
-      const timeRange = period.type === 'predefined' ? period.period : 'last_30d';
+      // Build URL parameters for campaigns and breakdown APIs
+      let campaignsUrl = '/api/aids/meta/campaigns?include_insights=true&';
+      let breakdownUrl = `/api/aids/meta/insights?breakdowns=${showBreakdownType}&`;
+      
+      if (period.type === 'predefined') {
+        campaignsUrl += `time_range=${period.period}`;
+        breakdownUrl += `time_range=${period.period}`;
+      } else if (period.type === 'month') {
+        const monthStart = `${period.year}-${String(period.month + 1).padStart(2, '0')}-01`;
+        const monthEnd = new Date(period.year, period.month + 1, 0);
+        const monthEndStr = `${period.year}-${String(period.month + 1).padStart(2, '0')}-${String(monthEnd.getDate()).padStart(2, '0')}`;
+        campaignsUrl += `start_date=${monthStart}&end_date=${monthEndStr}`;
+        breakdownUrl += `start_date=${monthStart}&end_date=${monthEndStr}`;
+      } else if (period.type === 'custom') {
+        campaignsUrl += `start_date=${period.start}&end_date=${period.end}`;
+        breakdownUrl += `start_date=${period.start}&end_date=${period.end}`;
+      }
       
       const [combinedRes, campaignsRes, breakdownRes] = await Promise.all([
         fetch(apiUrl),
-        fetch(`/api/aids/meta/campaigns?include_insights=true&time_range=${timeRange}`),
-        fetch(`/api/aids/meta/insights?time_range=${timeRange}&breakdowns=${showBreakdownType}`)
+        fetch(campaignsUrl),
+        fetch(breakdownUrl)
       ]);
 
       const [combinedData, campaignsData, breakdownData] = await Promise.all([

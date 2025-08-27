@@ -82,9 +82,11 @@ export async function GET(request) {
     
     // Déterminer le paramètre de date à utiliser
     let dateParam = '';
+    let dateForInsights = '';
     if (startDate && endDate) {
       console.log(`[Hierarchy] Using custom date range: ${startDate} to ${endDate}`);
       dateParam = `time_range={'since':'${startDate}','until':'${endDate}'}`;
+      dateForInsights = dateParam;
     } else {
       // Mapper les time ranges
       const datePresetMap = {
@@ -98,6 +100,7 @@ export async function GET(request) {
       const datePreset = datePresetMap[timeRange] || 'last_30d';
       console.log('[Hierarchy] Using date_preset:', datePreset);
       dateParam = `date_preset=${datePreset}`;
+      dateForInsights = dateParam;
     }
     
     // Récupérer les campagnes
@@ -126,8 +129,11 @@ export async function GET(request) {
           // Récupérer les insights de la campagne
           const campaignInsightsUrl = `https://graph.facebook.com/v18.0/${campaign.id}/insights?` +
             `fields=spend,impressions,clicks,ctr,cpc,cpm,reach,frequency,actions,action_values,cost_per_result,results&` +
-            `${dateParam}&` +
+            `${dateForInsights}&` +
             `access_token=${accessToken}`;
+          
+          // Debug log to check the date parameter
+          console.log(`[Hierarchy Debug] Campaign ${campaign.id} - Date param: ${dateForInsights}`);
           
           const campaignInsightsResponse = await fetch(campaignInsightsUrl);
           const campaignInsightsData = await campaignInsightsResponse.json();
@@ -177,7 +183,7 @@ export async function GET(request) {
               // Récupérer les insights de l'ad set
               const adSetInsightsUrl = `https://graph.facebook.com/v18.0/${adSet.id}/insights?` +
                 `fields=spend,impressions,clicks,ctr,cpc,cpm,reach,actions,cost_per_result&` +
-                `${dateParam}&` +
+                `${dateForInsights}&` +
                 `access_token=${accessToken}`;
               
               const adSetInsightsResponse = await fetch(adSetInsightsUrl);
@@ -226,7 +232,7 @@ export async function GET(request) {
                   // Récupérer les insights de l'ad
                   const adInsightsUrl = `https://graph.facebook.com/v18.0/${ad.id}/insights?` +
                     `fields=spend,impressions,clicks,ctr,cpc,cpm,reach,actions,cost_per_result&` +
-                    `${dateParam}&` +
+                    `${dateForInsights}&` +
                     `access_token=${accessToken}`;
                   
                   const adInsightsResponse = await fetch(adInsightsUrl);
