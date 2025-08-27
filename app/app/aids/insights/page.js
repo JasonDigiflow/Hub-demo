@@ -163,25 +163,30 @@ export default function AIDsInsights() {
   };
 
   const formatNumber = (num) => {
-    if (!num) return '0';
-    if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
-    if (num >= 1000) return `${(num / 1000).toFixed(1)}k`;
-    return num.toFixed(0);
+    if (!num && num !== 0) return '0';
+    const value = Number(num);
+    if (isNaN(value)) return '0';
+    if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
+    if (value >= 1000) return `${(value / 1000).toFixed(1)}k`;
+    return value.toFixed(0);
   };
 
   const formatCurrency = (num) => {
-    if (!num) return '€0';
+    if (!num && num !== 0) return '€0';
+    const value = Number(num);
+    if (isNaN(value)) return '€0';
     return new Intl.NumberFormat('fr-FR', { 
       style: 'currency', 
       currency: 'EUR',
       minimumFractionDigits: 0,
       maximumFractionDigits: 0
-    }).format(num);
+    }).format(value);
   };
 
   const getPercentageChange = (metric) => {
     if (!percentChanges || !percentChanges[metric]) return null;
-    const change = percentChanges[metric];
+    const change = Number(percentChanges[metric]);
+    if (isNaN(change)) return null;
     return {
       value: Math.abs(change),
       isPositive: change > 0,
@@ -206,7 +211,7 @@ export default function AIDsInsights() {
     },
     {
       title: 'ROAS',
-      value: (insights?.roas || 0).toFixed(2) + 'x',
+      value: (Number(insights?.roas) || 0).toFixed(2) + 'x',
       change: getPercentageChange('roas'),
       icon: <Target className="w-6 h-6" />,
       color: 'from-blue-500 to-cyan-500'
@@ -430,7 +435,7 @@ export default function AIDsInsights() {
                       ) : (
                         <ArrowDown className="w-4 h-4" />
                       )}
-                      <span className="text-sm font-semibold">{kpi.change.value.toFixed(1)}%</span>
+                      <span className="text-sm font-semibold">{Number(kpi.change.value).toFixed(1)}%</span>
                     </div>
                   )}
                 </div>
@@ -442,7 +447,7 @@ export default function AIDsInsights() {
                   <p className="text-gray-500 text-xs mt-2">
                     vs. {kpi.title === 'Dépenses' ? formatCurrency(comparison.spend) :
                         kpi.title === 'Revenus' ? formatCurrency(comparison.revenues) :
-                        kpi.title === 'ROAS' ? (comparison.roas || 0).toFixed(2) + 'x' :
+                        kpi.title === 'ROAS' ? (Number(comparison?.roas) || 0).toFixed(2) + 'x' :
                         formatNumber(comparison.leads)}
                   </p>
                 )}
@@ -514,7 +519,7 @@ export default function AIDsInsights() {
           {[
             { label: 'Impressions', value: formatNumber(insights?.impressions || 0), icon: <Eye className="w-5 h-5" /> },
             { label: 'Clics', value: formatNumber(insights?.clicks || 0), icon: <MousePointer className="w-5 h-5" /> },
-            { label: 'CTR', value: `${(insights?.ctr || 0).toFixed(2)}%`, icon: <Activity className="w-5 h-5" /> },
+            { label: 'CTR', value: `${(Number(insights?.ctr) || 0).toFixed(2)}%`, icon: <Activity className="w-5 h-5" /> },
             { label: 'CPC', value: formatCurrency(insights?.cpc || 0), icon: <DollarSign className="w-5 h-5" /> }
           ].map((metric, index) => (
             <motion.div
