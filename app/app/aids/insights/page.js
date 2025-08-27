@@ -33,6 +33,7 @@ ChartJS.register(
 
 export default function AIDsInsights() {
   const [loading, setLoading] = useState(true);
+  const [mounted, setMounted] = useState(false);
   // Initialize with current month
   const now = new Date();
   const [period, setPeriod] = useState({ 
@@ -55,6 +56,7 @@ export default function AIDsInsights() {
   const [leadsSyncMessage, setLeadsSyncMessage] = useState('');
 
   useEffect(() => {
+    setMounted(true);
     loadInsightsData();
     fetchSyncStatus();
   }, [period, compare, showBreakdownType]);
@@ -282,15 +284,7 @@ export default function AIDsInsights() {
 
   // 2. Performance des métriques clés
   const performanceChart = {
-    labels: ['Impressions', 'Clics', 'Leads', 'Ventes'].map(label => {
-      const values = {
-        'Impressions': (insights?.impressions || 0) / 1000,
-        'Clics': insights?.clicks || 0,
-        'Leads': insights?.leads || 0,
-        'Ventes': insights?.revenueCount || revenueData?.count || 0
-      };
-      return `${label}\n${values[label] >= 1000 ? (values[label]/1000).toFixed(1) + 'k' : values[label].toFixed(0)}`;
-    }),
+    labels: ['Impressions (k)', 'Clics', 'Leads', 'Ventes'],
     datasets: [{
       label: 'Entonnoir de conversion',
       data: [
@@ -737,15 +731,16 @@ export default function AIDsInsights() {
       </div>
 
       {/* 4 Charts - Full Width */}
-      <div className="space-y-6 mb-8">
-        {/* Chart 1: Dépenses vs Revenus (ROAS visuel) */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10"
-        >
-          <div className="h-80">
-            <Bar 
+      {mounted && (
+        <div className="space-y-6 mb-8">
+          {/* Chart 1: Dépenses vs Revenus (ROAS visuel) */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10"
+          >
+            <div className="h-80">
+              <Bar 
               data={spendRevenueChart} 
               options={{
                 ...getChartOptions('💰 Dépenses vs Revenus - ROAS Visuel'),
@@ -843,6 +838,7 @@ export default function AIDsInsights() {
           </div>
         </motion.div>
       </div>
+      )}
 
       {/* Campaign Drill-down Table */}
       <motion.div
