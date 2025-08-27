@@ -1,17 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Line, Bar, Doughnut } from 'react-chartjs-2';
+import { motion } from 'framer-motion';
+import { Line, Bar } from 'react-chartjs-2';
 import CampaignDrilldownTable from '@/components/aids/CampaignDrilldownTable';
 import PeriodSelector from '@/app/components/aids/PeriodSelector';
 import ComparisonBadge from '@/app/components/aids/ComparisonBadge';
-import {
-  TrendingUp, TrendingDown, Activity, Users, 
-  DollarSign, Target, Eye, MousePointer,
-  RefreshCw, Download, Filter, ChevronRight,
-  BarChart3, PieChart, ArrowUp, ArrowDown
-} from 'lucide-react';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -19,7 +13,6 @@ import {
   PointElement,
   LineElement,
   BarElement,
-  ArcElement,
   Title,
   Tooltip,
   Legend,
@@ -32,7 +25,6 @@ ChartJS.register(
   PointElement,
   LineElement,
   BarElement,
-  ArcElement,
   Title,
   Tooltip,
   Legend,
@@ -42,6 +34,7 @@ ChartJS.register(
 export default function AIDsInsights() {
   const [loading, setLoading] = useState(true);
   const [mounted, setMounted] = useState(false);
+  // Initialize with current month
   const now = new Date();
   const [period, setPeriod] = useState({ 
     type: 'month', 
@@ -59,7 +52,8 @@ export default function AIDsInsights() {
   const [revenueData, setRevenueData] = useState(null);
   const [syncStatus, setSyncStatus] = useState(null);
   const [syncing, setSyncing] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
+  const [syncingLeads, setSyncingLeads] = useState(false);
+  const [leadsSyncMessage, setLeadsSyncMessage] = useState('');
 
   useEffect(() => {
     setMounted(true);
@@ -90,6 +84,7 @@ export default function AIDsInsights() {
       if (data.success) {
         await loadInsightsData();
         await fetchSyncStatus();
+        // You could add a toast notification here
       }
     } catch (error) {
       console.error('Error syncing:', error);
@@ -98,16 +93,38 @@ export default function AIDsInsights() {
     }
   };
 
-  const handleRefresh = async () => {
-    setRefreshing(true);
-    await loadInsightsData();
-    setTimeout(() => setRefreshing(false), 1000);
+  const handleSyncLeads = async () => {
+    setSyncingLeads(true);
+    setLeadsSyncMessage('');
+    try {
+      const response = await fetch('/api/aids/sync-leads', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ timeRange })
+      });
+      const data = await response.json();
+      
+      if (data.success) {
+        setLeadsSyncMessage(`✅ ${data.message}`);
+        // Reload data to show new leads
+        await loadInsightsData();
+      } else {
+        setLeadsSyncMessage(`❌ Erreur: ${data.error}`);
+      }
+    } catch (error) {
+      console.error('Error syncing leads:', error);
+      setLeadsSyncMessage(`❌ Erreur: ${error.message}`);
+    } finally {
+      setSyncingLeads(false);
+      setTimeout(() => setLeadsSyncMessage(''), 5000);
+    }
   };
 
   const handlePeriodChange = (newPeriod) => {
     setPeriod(newPeriod);
   };
 
+  // Helper function to get date range from period
   const getPeriodDates = () => {
     if (period.type === 'month') {
       const monthStart = `${period.year}-${String(period.month + 1).padStart(2, '0')}-01`;
@@ -117,12 +134,14 @@ export default function AIDsInsights() {
     } else if (period.type === 'custom') {
       return { startDate: period.start, endDate: period.end };
     }
+    // For predefined periods, return null and use timeRange
     return { startDate: null, endDate: null };
   };
 
   const loadInsightsData = async () => {
     setLoading(true);
     try {
+      // Build API URL based on period type
       let apiUrl = '/api/aids/combined-insights-v2?';
       if (period.type === 'predefined') {
         apiUrl += `period=${period.period}`;
@@ -134,457 +153,812 @@ export default function AIDsInsights() {
       } else if (period.type === 'custom') {
         apiUrl += `start_date=${period.start}&end_date=${period.end}`;
       }
+      apiUrl += `&compare=${compare}`;
       
-      if (compare) {
-        apiUrl += '&compare=true';
+      // Build URL parameters for campaigns and breakdown APIs
+      let campaignsUrl = '/api/aids/meta/campaigns?include_insights=true&';
+      let breakdownUrl = `/api/aids/meta/insights?breakdowns=${showBreakdownType}&`;
+      
+      if (period.type === 'predefined') {
+        campaignsUrl += `time_range=${period.period}`;
+        breakdownUrl += `time_range=${period.period}`;
+      } else if (period.type === 'month') {
+        const monthStart = `${period.year}-${String(period.month + 1).padStart(2, '0')}-01`;
+        const monthEnd = new Date(period.year, period.month + 1, 0);
+        const monthEndStr = `${period.year}-${String(period.month + 1).padStart(2, '0')}-${String(monthEnd.getDate()).padStart(2, '0')}`;
+        campaignsUrl += `start_date=${monthStart}&end_date=${monthEndStr}`;
+        breakdownUrl += `start_date=${monthStart}&end_date=${monthEndStr}`;
+      } else if (period.type === 'custom') {
+        campaignsUrl += `start_date=${period.start}&end_date=${period.end}`;
+        breakdownUrl += `start_date=${period.start}&end_date=${period.end}`;
+      }
+      
+      const [combinedRes, campaignsRes, breakdownRes] = await Promise.all([
+        fetch(apiUrl),
+        fetch(campaignsUrl),
+        fetch(breakdownUrl)
+      ]);
+
+      const [combinedData, campaignsData, breakdownData] = await Promise.all([
+        combinedRes.json(),
+        campaignsRes.json(),
+        breakdownRes.json()
+      ]);
+
+      if (combinedData.success) {
+        // Set current period insights
+        setInsights(combinedData.current);
+        
+        // Set comparison data if available
+        if (combinedData.comparison) {
+          setComparison(combinedData.comparison);
+          setPercentChanges(combinedData.percentChanges);
+        }
+        
+        // Set revenue data from combined response
+        setRevenueData({
+          total: combinedData.current.revenues || 0,
+          count: combinedData.current.revenueCount || 0,
+          convertedProspects: combinedData.current.convertedProspects || 0,
+          conversionRate: combinedData.current.conversionRate || 0,
+          roas: combinedData.current.roas || 0
+        });
       }
 
-      const response = await fetch(apiUrl);
-      const data = await response.json();
-      
-      if (data.success) {
-        setInsights(data.current);
-        setCampaigns(data.campaigns || []);
-        setAudienceBreakdown(data.audienceBreakdown);
-        setRevenueData(data.revenueData);
-        
-        if (compare && data.comparison) {
-          setComparison(data.comparison);
-          setPercentChanges(data.percentChanges);
-        }
-      } else {
-        console.error('Error loading insights:', data.error);
+      if (campaignsData.success) {
+        setCampaigns(campaignsData.campaigns || []);
       }
+
+      if (breakdownData.success && breakdownData.insights?.breakdown_data) {
+        setAudienceBreakdown(breakdownData.insights.breakdown_data);
+      }
+      
+      // Debug logs for data
+      console.log('[Insights] Period:', period);
+      console.log('[Insights] Combined data:', combinedData);
+      console.log('[Insights] Campaigns data:', campaignsData.campaigns);
+
+      setLoading(false);
     } catch (error) {
       console.error('Error loading insights:', error);
-    } finally {
       setLoading(false);
     }
   };
 
   const formatNumber = (num) => {
-    if (!num) return '0';
-    const value = typeof num === 'string' ? parseFloat(num) : num;
-    if (isNaN(value)) return '0';
-    if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
-    if (value >= 1000) return `${(value / 1000).toFixed(1)}k`;
-    return value.toFixed(0);
+    if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
+    if (num >= 1000) return `${(num / 1000).toFixed(1)}k`;
+    return num?.toString() || '0';
   };
 
-  const formatCurrency = (num) => {
-    if (!num) return '€0';
-    const value = typeof num === 'string' ? parseFloat(num) : num;
-    if (isNaN(value)) return '€0';
-    return new Intl.NumberFormat('fr-FR', { 
-      style: 'currency', 
-      currency: 'EUR',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0
-    }).format(value);
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('fr-FR', {
+      style: 'currency',
+      currency: 'EUR'
+    }).format(amount || 0);
   };
 
-  const getPercentageChange = (metric) => {
-    if (!percentChanges || !percentChanges[metric]) return null;
-    const changeRaw = percentChanges[metric];
-    const change = typeof changeRaw === 'string' ? parseFloat(changeRaw) : changeRaw;
-    if (isNaN(change)) return null;
-    return {
-      value: Math.abs(change),
-      isPositive: change > 0,
-      formatted: `${change > 0 ? '+' : ''}${change.toFixed(1)}%`
-    };
-  };
-
-  const kpiCards = [
-    {
-      title: 'Dépenses',
-      value: formatCurrency(insights?.spend || 0),
-      change: getPercentageChange('spend'),
-      icon: <DollarSign className="w-6 h-6" />,
-      color: 'from-purple-500 to-pink-500'
-    },
-    {
-      title: 'Revenus',
-      value: formatCurrency(revenueData?.total || 0),
-      change: getPercentageChange('revenues'),
-      icon: <TrendingUp className="w-6 h-6" />,
-      color: 'from-green-500 to-emerald-500'
-    },
-    {
-      title: 'ROAS',
-      value: ((typeof insights?.roas === 'string' ? parseFloat(insights.roas) : insights?.roas) || 0).toFixed(2) + 'x',
-      change: getPercentageChange('roas'),
-      icon: <Target className="w-6 h-6" />,
-      color: 'from-blue-500 to-cyan-500'
-    },
-    {
-      title: 'Conversions',
-      value: formatNumber(insights?.leads || 0),
-      change: getPercentageChange('leads'),
-      icon: <Users className="w-6 h-6" />,
-      color: 'from-orange-500 to-red-500'
-    }
-  ];
-
-  // Chart configurations with glassmorphism style
-  const chartOptions = {
+  const getChartOptions = (title) => ({
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
-      legend: {
-        display: true,
-        position: 'top',
-        labels: {
-          color: '#fff',
-          font: { size: 12 },
-          padding: 20
-        }
-      },
-      tooltip: {
-        backgroundColor: 'rgba(0, 0, 0, 0.8)',
-        titleColor: '#fff',
-        bodyColor: '#fff',
-        borderColor: 'rgba(255, 255, 255, 0.1)',
-        borderWidth: 1,
-        padding: 12,
-        cornerRadius: 8,
-        displayColors: true
-      }
+      legend: { display: true, position: 'top' },
+      title: { display: true, text: title, color: 'white' }
     },
     scales: {
-      x: {
-        grid: {
-          color: 'rgba(255, 255, 255, 0.05)',
-          borderColor: 'rgba(255, 255, 255, 0.1)'
-        },
-        ticks: { color: '#9ca3af' }
-      },
-      y: {
-        grid: {
-          color: 'rgba(255, 255, 255, 0.05)',
-          borderColor: 'rgba(255, 255, 255, 0.1)'
-        },
-        ticks: { color: '#9ca3af' }
-      }
+      x: { grid: { color: 'rgba(255, 255, 255, 0.1)' }, ticks: { color: 'white' } },
+      y: { grid: { color: 'rgba(255, 255, 255, 0.1)' }, ticks: { color: 'white' } }
     }
-  };
-
-  // Performance over time chart
-  const performanceChart = campaigns.length > 0 ? {
-    labels: campaigns.slice(0, 7).map(c => c.name.substring(0, 15)),
-    datasets: [
-      {
-        label: 'Dépenses (€)',
-        data: campaigns.slice(0, 7).map(c => c.spend || 0),
-        borderColor: 'rgb(147, 51, 234)',
-        backgroundColor: 'rgba(147, 51, 234, 0.1)',
-        tension: 0.4
-      },
-      {
-        label: 'Revenus (€)',
-        data: campaigns.slice(0, 7).map(c => (c.conversions || 0) * 50),
-        borderColor: 'rgb(34, 197, 94)',
-        backgroundColor: 'rgba(34, 197, 94, 0.1)',
-        tension: 0.4
-      }
-    ]
-  } : { labels: [], datasets: [] };
-
-  // Audience breakdown chart
-  const audienceChart = audienceBreakdown?.age ? {
-    labels: Object.keys(audienceBreakdown.age),
-    datasets: [{
-      data: Object.values(audienceBreakdown.age),
-      backgroundColor: [
-        'rgba(147, 51, 234, 0.8)',
-        'rgba(236, 72, 153, 0.8)',
-        'rgba(59, 130, 246, 0.8)',
-        'rgba(34, 197, 94, 0.8)',
-        'rgba(251, 146, 60, 0.8)',
-        'rgba(99, 102, 241, 0.8)'
-      ],
-      borderWidth: 0
-    }]
-  } : { labels: [], datasets: [] };
-
-  if (!mounted) return null;
+  });
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-950 via-purple-950/30 to-gray-950 flex items-center justify-center">
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="text-center"
-        >
-          <div className="w-16 h-16 border-4 border-purple-500/30 border-t-purple-500 rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-400">Chargement des insights...</p>
-        </motion.div>
+      <div className="flex items-center justify-center h-96">
+        <div className="text-white text-xl">Chargement des données...</div>
       </div>
     );
   }
 
+  // Prepare chart data - Create 4 important charts
+  
+  // 1. Dépenses vs Revenus (ROAS visuel)
+  const spendRevenueChart = {
+    labels: ['Dépenses', 'Revenus'],
+    datasets: [{
+      label: 'Montant (€)',
+      data: [
+        insights?.spend || 0,
+        insights?.revenues || revenueData?.total || 0
+      ],
+      backgroundColor: [
+        'rgba(147, 51, 234, 0.8)',
+        'rgba(16, 185, 129, 0.8)'
+      ],
+      borderColor: [
+        '#9333ea',
+        '#10b981'
+      ],
+      borderWidth: 2
+    }]
+  };
+
+  // 2. Performance des métriques clés
+  const performanceChart = {
+    labels: ['Impressions (k)', 'Clics', 'Leads', 'Ventes'],
+    datasets: [{
+      label: 'Entonnoir de conversion',
+      data: [
+        (insights?.impressions || 0) / 1000, // Diviser par 1000 pour l'échelle
+        insights?.clicks || 0,
+        insights?.leads || 0,
+        insights?.revenueCount || revenueData?.count || 0
+      ],
+      backgroundColor: [
+        'rgba(99, 102, 241, 0.8)',
+        'rgba(59, 130, 246, 0.8)',
+        'rgba(14, 165, 233, 0.8)',
+        'rgba(6, 182, 212, 0.8)'
+      ],
+      borderColor: [
+        '#6366f1',
+        '#3b82f6',
+        '#0ea5e9',
+        '#06b6d4'
+      ],
+      borderWidth: 2
+    }]
+  };
+
+  // 3. Comparaison avec période précédente
+  const comparisonChart = compare && comparison ? {
+    labels: ['Dépenses', 'Impressions (k)', 'Clics', 'Leads', 'Revenus (€)', 'ROAS'],
+    datasets: [
+      {
+        label: 'Période actuelle',
+        data: [
+          insights?.spend || 0,
+          (insights?.impressions || 0) / 1000,
+          insights?.clicks || 0,
+          insights?.leads || 0,
+          insights?.revenues || revenueData?.total || 0,
+          parseFloat(insights?.roas || 0) * 100 // Multiplier par 100 pour l'échelle
+        ],
+        backgroundColor: 'rgba(147, 51, 234, 0.8)',
+        borderColor: '#9333ea',
+        borderWidth: 2
+      },
+      {
+        label: 'Période précédente',
+        data: [
+          comparison?.spend || 0,
+          (comparison?.impressions || 0) / 1000,
+          comparison?.clicks || 0,
+          comparison?.leads || 0,
+          comparison?.revenues || 0,
+          parseFloat(comparison?.roas || 0) * 100
+        ],
+        backgroundColor: 'rgba(156, 163, 175, 0.5)',
+        borderColor: '#9ca3af',
+        borderWidth: 2
+      }
+    ]
+  } : { labels: [], datasets: [] };
+
+  // 4. Métriques de coût (CPM, CPC, CPL)
+  const costMetricsChart = {
+    labels: ['CPM', 'CPC', 'CPL', 'CAC'],
+    datasets: [{
+      label: 'Coût (€)',
+      data: [
+        insights?.cpm || 0,
+        insights?.cpc || 0,
+        insights?.costPerLead || (insights?.spend && insights?.leads ? (insights.spend / insights.leads) : 0),
+        insights?.costPerConversion || (insights?.spend && revenueData?.count ? (insights.spend / revenueData.count) : 0)
+      ],
+      backgroundColor: [
+        'rgba(251, 146, 60, 0.8)',
+        'rgba(250, 204, 21, 0.8)',
+        'rgba(163, 230, 53, 0.8)',
+        'rgba(34, 197, 94, 0.8)'
+      ],
+      borderColor: [
+        '#fb923c',
+        '#facc15',
+        '#a3e635',
+        '#22c55e'
+      ],
+      borderWidth: 2
+    }]
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-950 via-purple-950/30 to-gray-950 relative overflow-hidden">
-      {/* Enhanced Animated Background */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-96 h-96 bg-purple-600 rounded-full mix-blend-screen filter blur-[120px] opacity-30 animate-blob"></div>
-        <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-pink-600 rounded-full mix-blend-screen filter blur-[120px] opacity-30 animate-blob animation-delay-2000"></div>
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-blue-600 rounded-full mix-blend-screen filter blur-[120px] opacity-30 animate-blob animation-delay-4000"></div>
-        <div className="absolute top-1/4 right-1/4 w-64 h-64 bg-indigo-600 rounded-full mix-blend-screen filter blur-[100px] opacity-20 animate-pulse"></div>
+    <div className="max-w-7xl mx-auto p-6">
+      {/* Header with Period Selector */}
+      <div className="mb-8">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div>
+            <h1 className="text-4xl font-bold text-white mb-2">Insights</h1>
+            <p className="text-gray-400">
+              Métriques et performances détaillées
+              {insights?.date_range && (
+                <span className="text-sm ml-2 text-purple-400">
+                  ({new Date(insights.date_range.start).toLocaleDateString('fr-FR')} - {new Date(insights.date_range.end).toLocaleDateString('fr-FR')})
+                </span>
+              )}
+            </p>
+          </div>
+          
+          <PeriodSelector 
+            value={period}
+            onChange={handlePeriodChange}
+            showComparison={true}
+            onCompareToggle={(enabled) => setCompare(enabled)}
+          />
+        </div>
       </div>
 
-      {/* Glass overlay pattern */}
-      <div className="fixed inset-0 bg-gradient-to-br from-purple-500/5 via-transparent to-pink-500/5 pointer-events-none" />
+      {/* Sync Status Bar */}
+      <div className="mb-6 bg-white/5 backdrop-blur-sm rounded-lg p-4 border border-white/10">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-6">
+            <button
+              onClick={handleSync}
+              disabled={syncing}
+              className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 ${
+                syncing 
+                  ? 'bg-gray-600 text-gray-300 cursor-not-allowed' 
+                  : 'bg-purple-600 hover:bg-purple-700 text-white'
+              }`}
+            >
+              {syncing ? (
+                <>
+                  <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                  </svg>
+                  Synchronisation...
+                </>
+              ) : (
+                <>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  Synchroniser maintenant
+                </>
+              )}
+            </button>
 
-      <div className="relative z-10 p-8 max-w-7xl mx-auto">
-        {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-8"
-        >
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
-            <div>
-              <h1 className="text-6xl font-black text-white mb-3">
-                <span className="bg-gradient-to-r from-purple-400 via-pink-400 to-purple-400 bg-clip-text text-transparent bg-300% animate-gradient">
-                  Insights
-                </span>
-              </h1>
-              <p className="text-gray-300 text-xl">
-                Métriques et performances détaillées
-                {insights?.date_range && (
-                  <span className="text-sm ml-2 text-purple-400">
-                    ({new Date(insights.date_range.start).toLocaleDateString('fr-FR')} - {new Date(insights.date_range.end).toLocaleDateString('fr-FR')})
+            <button
+              onClick={handleSyncLeads}
+              disabled={syncingLeads}
+              className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 ${
+                syncingLeads 
+                  ? 'bg-gray-600 text-gray-300 cursor-not-allowed' 
+                  : 'bg-blue-600 hover:bg-blue-700 text-white'
+              }`}
+            >
+              {syncingLeads ? (
+                <>
+                  <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                  </svg>
+                  Synchronisation leads...
+                </>
+              ) : (
+                <>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                  </svg>
+                  Synchroniser les Leads
+                </>
+              )}
+            </button>
+            
+            {syncStatus && (
+              <>
+                <div className="text-sm">
+                  <span className="text-gray-400">Dernière sync:</span>
+                  <span className="text-white ml-2">
+                    {syncStatus.lastSync 
+                      ? new Date(syncStatus.lastSync).toLocaleString('fr-FR', { 
+                          hour: '2-digit', 
+                          minute: '2-digit',
+                          day: '2-digit',
+                          month: 'short'
+                        })
+                      : 'Jamais'}
                   </span>
-                )}
-              </p>
-            </div>
-
-            <div className="flex items-center gap-4">
-              <PeriodSelector 
-                value={period}
-                onChange={handlePeriodChange}
-                showComparison={true}
-                onCompareToggle={(enabled) => setCompare(enabled)}
-              />
-
-              <motion.button
-                onClick={handleRefresh}
-                disabled={refreshing}
-                className="p-4 bg-white/10 backdrop-blur-2xl rounded-2xl text-white hover:bg-white/20 transition-all duration-300 border-2 border-white/20"
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                <RefreshCw className={`w-5 h-5 ${refreshing ? 'animate-spin' : ''}`} />
-              </motion.button>
-
-              <motion.button
-                onClick={handleSync}
-                disabled={syncing}
-                className="px-6 py-4 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-2xl font-semibold hover:from-purple-700 hover:to-pink-700 transition-all duration-300 shadow-lg flex items-center gap-2"
-                whileHover={{ scale: 1.05, boxShadow: '0 20px 40px rgba(168, 85, 247, 0.4)' }}
-                whileTap={{ scale: 0.95 }}
-              >
-                {syncing ? (
-                  <>
-                    <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-white"></div>
-                    <span>Synchronisation...</span>
-                  </>
-                ) : (
-                  <>
-                    <Download className="w-5 h-5" />
-                    <span>Synchroniser</span>
-                  </>
-                )}
-              </motion.button>
+                </div>
+                
+                <div className="text-sm">
+                  <span className="text-gray-400">Prochaine sync:</span>
+                  <span className="text-white ml-2">
+                    {syncStatus.nextSync 
+                      ? new Date(syncStatus.nextSync).toLocaleString('fr-FR', { 
+                          hour: '2-digit', 
+                          minute: '2-digit'
+                        })
+                      : 'Non programmée'}
+                  </span>
+                </div>
+              </>
+            )}
+          </div>
+          
+          <div className="text-xs text-gray-400">
+            {syncStatus?.syncInProgress && (
+              <span className="text-yellow-400">Synchronisation en cours...</span>
+            )}
+          </div>
+        </div>
+        
+        {/* Messages de synchronisation */}
+        {leadsSyncMessage && (
+          <div className="mt-4">
+            <div className={`px-4 py-3 rounded-lg text-sm ${
+              leadsSyncMessage.includes('Erreur') || leadsSyncMessage.includes('Failed') ? 
+              'bg-red-500/20 text-red-400 border border-red-500/30' : 
+              'bg-blue-500/20 text-blue-400 border border-blue-500/30'
+            }`}>
+              <div className="flex items-start gap-2">
+                <svg className="w-4 h-4 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                </svg>
+                <div>{leadsSyncMessage}</div>
+              </div>
             </div>
           </div>
+        )}
+      </div>
+
+      {/* KPIs Grid */}
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4 mb-8">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-white/5 backdrop-blur-sm rounded-lg p-4 border border-white/10"
+        >
+          <div className="text-xs text-gray-400 mb-1">Dépenses</div>
+          <div className="text-xl font-bold text-white">
+            {formatCurrency(insights?.spend || 0)}
+          </div>
+          {compare && comparison && (
+            <ComparisonBadge 
+              value={insights?.spend || 0}
+              previousValue={comparison?.spend || 0}
+              format="currency"
+            />
+          )}
         </motion.div>
 
-        {/* KPI Cards */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.05 }}
+          className="bg-white/5 backdrop-blur-sm rounded-lg p-4 border border-white/10"
+        >
+          <div className="text-xs text-gray-400 mb-1">Impressions</div>
+          <div className="text-xl font-bold text-white">
+            {formatNumber(insights?.impressions || 0)}
+          </div>
+          {compare && comparison && (
+            <ComparisonBadge 
+              value={insights?.impressions || 0}
+              previousValue={comparison?.impressions || 0}
+              format="number"
+            />
+          )}
+        </motion.div>
+
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8"
+          className="bg-white/5 backdrop-blur-sm rounded-lg p-4 border border-white/10"
         >
-          {kpiCards.map((kpi, index) => (
-            <motion.div
-              key={kpi.title}
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.1 + index * 0.05 }}
-              whileHover={{ scale: 1.05, y: -5 }}
-              className="relative p-6 bg-white/10 backdrop-blur-2xl rounded-3xl border-2 border-white/20 overflow-hidden group"
-            >
-              <div className={`absolute inset-0 bg-gradient-to-br ${kpi.color} opacity-0 group-hover:opacity-10 transition-opacity duration-300`} />
-              
-              <div className="relative z-10">
-                <div className="flex items-center justify-between mb-4">
-                  <div className={`w-12 h-12 bg-gradient-to-br ${kpi.color} rounded-xl flex items-center justify-center shadow-lg`}>
-                    {kpi.icon}
-                  </div>
-                  {kpi.change && (
-                    <div className={`flex items-center gap-1 px-3 py-1 rounded-lg ${
-                      kpi.change.isPositive 
-                        ? 'bg-green-500/20 text-green-400' 
-                        : 'bg-red-500/20 text-red-400'
-                    }`}>
-                      {kpi.change.isPositive ? (
-                        <ArrowUp className="w-4 h-4" />
-                      ) : (
-                        <ArrowDown className="w-4 h-4" />
-                      )}
-                      <span className="text-sm font-semibold">{kpi.change.value.toFixed(1)}%</span>
-                    </div>
-                  )}
-                </div>
-                
-                <p className="text-gray-400 text-sm mb-1">{kpi.title}</p>
-                <p className="text-white text-3xl font-bold">{kpi.value}</p>
-                
-                {comparison && (
-                  <p className="text-gray-500 text-xs mt-2">
-                    vs. {kpi.title === 'Dépenses' ? formatCurrency(comparison.spend) :
-                        kpi.title === 'Revenus' ? formatCurrency(comparison.revenues) :
-                        kpi.title === 'ROAS' ? ((typeof comparison?.roas === 'string' ? parseFloat(comparison.roas) : comparison?.roas) || 0).toFixed(2) + 'x' :
-                        formatNumber(comparison.leads)}
-                  </p>
-                )}
-              </div>
-            </motion.div>
-          ))}
+          <div className="text-xs text-gray-400 mb-1">Clics</div>
+          <div className="text-xl font-bold text-white">
+            {formatNumber(insights?.clicks || 0)}
+          </div>
+          {compare && comparison && (
+            <ComparisonBadge 
+              value={insights?.clicks || 0}
+              previousValue={comparison?.clicks || 0}
+              format="number"
+            />
+          )}
         </motion.div>
 
-        {/* Charts Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-          {/* Performance Chart */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className="p-6 bg-white/10 backdrop-blur-2xl rounded-3xl border-2 border-white/20"
-          >
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-bold text-white">Performance des Campagnes</h3>
-              <BarChart3 className="w-5 h-5 text-gray-400" />
-            </div>
-            <div className="h-80">
-              {performanceChart.labels.length > 0 && (
-                <Line data={performanceChart} options={chartOptions} />
-              )}
-            </div>
-          </motion.div>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.15 }}
+          className="bg-white/5 backdrop-blur-sm rounded-lg p-4 border border-white/10"
+        >
+          <div className="text-xs text-gray-400 mb-1">CTR</div>
+          <div className="text-xl font-bold text-white">
+            {typeof insights?.ctr === 'number' ? insights.ctr.toFixed(2) : (insights?.ctr || '0')}%
+          </div>
+        </motion.div>
 
-          {/* Audience Breakdown */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
-            className="p-6 bg-white/10 backdrop-blur-2xl rounded-3xl border-2 border-white/20"
-          >
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-bold text-white">Répartition de l'Audience</h3>
-              <PieChart className="w-5 h-5 text-gray-400" />
-            </div>
-            <div className="h-80 flex items-center justify-center">
-              {audienceChart.labels.length > 0 ? (
-                <Doughnut 
-                  data={audienceChart} 
-                  options={{
-                    ...chartOptions,
-                    plugins: {
-                      ...chartOptions.plugins,
-                      legend: {
-                        ...chartOptions.plugins.legend,
-                        position: 'right'
-                      }
-                    }
-                  }} 
-                />
-              ) : (
-                <p className="text-gray-500">Aucune donnée d'audience disponible</p>
-              )}
-            </div>
-          </motion.div>
-        </div>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="bg-white/5 backdrop-blur-sm rounded-lg p-4 border border-white/10"
+        >
+          <div className="text-xs text-gray-400 mb-1">CPC</div>
+          <div className="text-xl font-bold text-white">
+            {formatCurrency(insights?.cpc || 0)}
+          </div>
+        </motion.div>
 
-        {/* Secondary Metrics */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.25 }}
+          className="bg-white/5 backdrop-blur-sm rounded-lg p-4 border border-white/10"
+        >
+          <div className="text-xs text-gray-400 mb-1">CPM</div>
+          <div className="text-xl font-bold text-white">
+            {formatCurrency(insights?.cpm || 0)}
+          </div>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+          className="bg-gradient-to-br from-blue-500/10 to-cyan-500/10 rounded-lg p-4 border border-blue-500/20"
+        >
+          <div className="text-xs text-blue-400 mb-1">Leads Générés</div>
+          <div className="text-xl font-bold text-blue-400">
+            {formatNumber(insights?.leads || 0)}
+          </div>
+          <div className="text-xs text-gray-400 mt-1">
+            CPL: {insights?.leads && insights?.spend 
+              ? formatCurrency(parseFloat(insights.spend) / insights.leads)
+              : 'N/A'}
+          </div>
+          {compare && comparison && (
+            <ComparisonBadge 
+              value={insights?.leads || 0}
+              previousValue={comparison?.leads || 0}
+              format="number"
+            />
+          )}
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.35 }}
+          className="bg-white/5 backdrop-blur-sm rounded-lg p-4 border border-white/10"
+        >
+          <div className="text-xs text-gray-400 mb-1">Ventes</div>
+          <div className="text-xl font-bold text-white">
+            {revenueData?.count || 0}
+          </div>
+          <div className="text-xs text-gray-400 mt-1">
+            {revenueData?.total && revenueData?.count > 0 
+              ? `${formatCurrency(revenueData.total / revenueData.count)} moy.`
+              : 'N/A'}
+          </div>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+          className="bg-white/5 backdrop-blur-sm rounded-lg p-4 border border-white/10"
+        >
+          <div className="text-xs text-gray-400 mb-1">Portée</div>
+          <div className="text-xl font-bold text-white">
+            {formatNumber(insights?.reach || 0)}
+          </div>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.45 }}
+          className="bg-gradient-to-br from-green-500/10 to-emerald-500/10 rounded-lg p-4 border border-green-500/20"
+        >
+          <div className="text-xs text-green-400 mb-1">Revenus Réels</div>
+          <div className="text-xl font-bold text-green-400">
+            {formatCurrency(revenueData?.total || insights?.revenues || 0)}
+          </div>
+          <div className="text-xs text-gray-400 mt-1">
+            {revenueData?.count || 0} ventes
+          </div>
+          {compare && comparison && (
+            <ComparisonBadge 
+              value={revenueData?.total || insights?.revenues || 0}
+              previousValue={comparison?.revenues || 0}
+              format="currency"
+            />
+          )}
+        </motion.div>
+
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.5 }}
-          className="grid grid-cols-2 lg:grid-cols-4 gap-6 mb-8"
+          className="bg-gradient-to-br from-purple-500/10 to-pink-500/10 rounded-lg p-4 border border-purple-500/20"
         >
-          {[
-            { label: 'Impressions', value: formatNumber(insights?.impressions || 0), icon: <Eye className="w-5 h-5" /> },
-            { label: 'Clics', value: formatNumber(insights?.clicks || 0), icon: <MousePointer className="w-5 h-5" /> },
-            { label: 'CTR', value: `${((typeof insights?.ctr === 'string' ? parseFloat(insights.ctr) : insights?.ctr) || 0).toFixed(2)}%`, icon: <Activity className="w-5 h-5" /> },
-            { label: 'CPC', value: formatCurrency(insights?.cpc || 0), icon: <DollarSign className="w-5 h-5" /> }
-          ].map((metric, index) => (
-            <motion.div
-              key={metric.label}
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.5 + index * 0.05 }}
-              className="p-4 bg-white/5 backdrop-blur-xl rounded-2xl border border-white/10"
-            >
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-gray-400 text-sm">{metric.label}</span>
-                <div className="text-gray-500">{metric.icon}</div>
-              </div>
-              <p className="text-white text-2xl font-bold">{metric.value}</p>
-            </motion.div>
-          ))}
+          <div className="text-xs text-purple-400 mb-1">ROAS Réel</div>
+          <div className="text-xl font-bold text-purple-400">
+            {insights?.roas ? `${insights.roas}x` :
+             insights?.spend && revenueData?.total 
+              ? `${(parseFloat(revenueData.total) / parseFloat(insights.spend)).toFixed(2)}x`
+              : '0.00x'}
+          </div>
+          <div className="text-xs text-gray-400 mt-1">
+            {insights?.conversionRate 
+              ? `Taux conv: ${insights.conversionRate}%`
+              : revenueData?.conversionRate
+                ? `Taux conv: ${revenueData.conversionRate}%`
+                : insights?.spend && revenueData?.total 
+                  ? `${((parseFloat(revenueData.total) / parseFloat(insights.spend) - 1) * 100).toFixed(0)}% ROI`
+                  : 'N/A'}
+          </div>
+          {compare && comparison && (
+            <ComparisonBadge 
+              value={parseFloat(insights?.roas || (insights?.spend && revenueData?.total ? (parseFloat(revenueData.total) / parseFloat(insights.spend)) : 0))}
+              previousValue={parseFloat(comparison?.roas || 0)}
+              format="number"
+            />
+          )}
         </motion.div>
 
-        {/* Campaign Details Table */}
-        {campaigns.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.55 }}
+          className="bg-gradient-to-br from-indigo-500/10 to-blue-500/10 rounded-lg p-4 border border-indigo-500/20"
+        >
+          <div className="text-xs text-indigo-400 mb-1">TTD Moyen</div>
+          <div className="text-xl font-bold text-indigo-400">
+            {insights?.averageTTD ? `${insights.averageTTD}j` : 'N/A'}
+          </div>
+          <div className="text-xs text-gray-400 mt-1">
+            {insights?.ttdCount > 0 
+              ? `Sur ${insights.ttdCount} deals`
+              : 'Pas de données'}
+          </div>
+        </motion.div>
+      </div>
+
+      {/* 4 Charts - Full Width */}
+      {mounted && (
+        <div className="space-y-6 mb-8">
+          {/* Chart 1: Dépenses vs Revenus (ROAS visuel) */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.6 }}
-            className="bg-white/10 backdrop-blur-2xl rounded-3xl border-2 border-white/20 p-6"
+            className="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10"
           >
-            <h3 className="text-xl font-bold text-white mb-6">Détails des Campagnes</h3>
-            <CampaignDrilldownTable 
-              campaigns={campaigns}
-              expandedCampaign={expandedCampaign}
-              setExpandedCampaign={setExpandedCampaign}
+            <div className="h-80">
+              <Bar 
+              data={spendRevenueChart} 
+              options={{
+                ...getChartOptions('💰 Dépenses vs Revenus - ROAS Visuel'),
+                indexAxis: 'y',
+                plugins: {
+                  ...getChartOptions('').plugins,
+                  legend: { display: false }
+                }
+              }} 
             />
+          </div>
+        </motion.div>
+
+        {/* Chart 2: Entonnoir de Conversion */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10"
+        >
+          <div className="h-80">
+            <Bar 
+              data={performanceChart} 
+              options={{
+                ...getChartOptions('🎯 Entonnoir de Conversion'),
+                plugins: {
+                  ...getChartOptions('').plugins,
+                  legend: { display: false }
+                },
+                scales: {
+                  y: {
+                    beginAtZero: true,
+                    ticks: { color: 'white' },
+                    grid: { color: 'rgba(255,255,255,0.1)' }
+                  },
+                  x: {
+                    ticks: { color: 'white' },
+                    grid: { color: 'rgba(255,255,255,0.1)' }
+                  }
+                }
+              }} 
+            />
+          </div>
+        </motion.div>
+
+        {/* Chart 3: Comparaison Périodes */}
+        {compare && comparison && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10"
+          >
+            <div className="h-80">
+              <Bar 
+                data={comparisonChart} 
+                options={{
+                  ...getChartOptions('📊 Comparaison avec la Période Précédente'),
+                  scales: {
+                    y: {
+                      beginAtZero: true,
+                      ticks: { color: 'white' },
+                      grid: { color: 'rgba(255,255,255,0.1)' }
+                    },
+                    x: {
+                      ticks: { color: 'white' },
+                      grid: { color: 'rgba(255,255,255,0.1)' }
+                    }
+                  }
+                }} 
+              />
+            </div>
           </motion.div>
         )}
-      </div>
 
-      <style jsx>{`
-        @keyframes blob {
-          0% { transform: translate(0px, 0px) scale(1) rotate(0deg); }
-          33% { transform: translate(30px, -50px) scale(1.1) rotate(120deg); }
-          66% { transform: translate(-20px, 20px) scale(0.9) rotate(240deg); }
-          100% { transform: translate(0px, 0px) scale(1) rotate(360deg); }
-        }
-        @keyframes gradient {
-          0% { background-position: 0% 50%; }
-          50% { background-position: 100% 50%; }
-          100% { background-position: 0% 50%; }
-        }
-        .animate-blob {
-          animation: blob 10s infinite;
-        }
-        .animate-gradient {
-          animation: gradient 3s ease infinite;
-        }
-        .bg-300\\% {
-          background-size: 300% 300%;
-        }
-        .animation-delay-2000 {
-          animation-delay: 2s;
-        }
-        .animation-delay-4000 {
-          animation-delay: 4s;
-        }
-      `}</style>
+        {/* Chart 4: Métriques de Coût */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+          className="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10"
+        >
+          <div className="h-80">
+            <Bar 
+              data={costMetricsChart} 
+              options={{
+                ...getChartOptions('💸 Métriques de Coût par Action'),
+                indexAxis: 'y',
+                plugins: {
+                  ...getChartOptions('').plugins,
+                  legend: { display: false }
+                }
+              }} 
+            />
+          </div>
+        </motion.div>
+        </div>
+      )}
+
+      {/* Campaign Drill-down Table */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="mb-8"
+      >
+        <CampaignDrilldownTable 
+          timeRange={period.type === 'predefined' ? period.period : 'last_30d'}
+          startDate={getPeriodDates().startDate}
+          endDate={getPeriodDates().endDate}
+        />
+      </motion.div>
+
+      {/* Audience Breakdown Matrix */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10"
+      >
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-semibold text-white">Matrice de Performance Audience</h2>
+          <select
+            value={showBreakdownType}
+            onChange={(e) => setShowBreakdownType(e.target.value)}
+            className="bg-white/10 border border-white/20 rounded-lg px-3 py-1 text-sm text-white"
+          >
+            <option value="age,gender">Age & Genre</option>
+            <option value="publisher_platform">Plateforme</option>
+            <option value="impression_device">Appareil</option>
+            <option value="region">Région</option>
+          </select>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {audienceBreakdown && audienceBreakdown.length > 0 ? (
+            audienceBreakdown.map((segment, index) => (
+              <motion.div
+                key={index}
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.05 * index }}
+                className="bg-black/40 backdrop-blur-sm rounded-lg p-4 border border-white/10"
+              >
+                <h4 className="font-medium text-white mb-3">
+                  {segment.age && `${segment.age} ans`}
+                  {segment.gender && ` • ${segment.gender === 'male' ? 'Homme' : segment.gender === 'female' ? 'Femme' : 'Inconnu'}`}
+                  {segment.publisher_platform}
+                  {segment.impression_device}
+                  {segment.region}
+                </h4>
+                
+                <div className="space-y-2 text-xs">
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Portée</span>
+                    <span className="text-white font-medium">
+                      {formatNumber(segment.metrics?.reach || 0)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Impressions</span>
+                    <span className="text-white font-medium">
+                      {formatNumber(segment.metrics?.impressions || 0)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Clics</span>
+                    <span className="text-white font-medium">
+                      {formatNumber(segment.metrics?.clicks || 0)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">CTR</span>
+                    <span className="text-white font-medium">
+                      {typeof segment.metrics?.ctr === 'number' ? segment.metrics.ctr.toFixed(2) : (segment.metrics?.ctr || '0')}%
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Conversions</span>
+                    <span className="text-white font-medium">
+                      {segment.metrics?.conversions || 0}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Dépenses</span>
+                    <span className="text-green-400 font-medium">
+                      {formatCurrency(segment.metrics?.spend || 0)}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Performance bar */}
+                <div className="mt-3 pt-3 border-t border-white/10">
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-xs text-gray-400">Efficacité</span>
+                    <span className="text-xs text-white font-medium">
+                      {segment.metrics?.ctr > 2 ? 'Élevée' : 
+                       segment.metrics?.ctr > 1 ? 'Moyenne' : 'Faible'}
+                    </span>
+                  </div>
+                  <div className="w-full bg-gray-800 rounded-full h-2">
+                    <div 
+                      className={`h-2 rounded-full ${
+                        segment.metrics?.ctr > 2 ? 'bg-green-500' :
+                        segment.metrics?.ctr > 1 ? 'bg-yellow-500' :
+                        'bg-red-500'
+                      }`}
+                      style={{ width: `${Math.min((segment.metrics?.ctr || 0) * 20, 100)}%` }}
+                    />
+                  </div>
+                </div>
+              </motion.div>
+            ))
+          ) : (
+            <div className="col-span-4 text-center py-8 text-gray-400">
+              Aucune donnée de breakdown disponible pour cette période
+            </div>
+          )}
+        </div>
+      </motion.div>
     </div>
   );
 }
