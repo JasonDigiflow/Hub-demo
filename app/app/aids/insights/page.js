@@ -397,7 +397,7 @@ export default function AIDsInsights() {
       </div>
 
       {/* KPIs Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-8">
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4 mb-8">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -551,6 +551,23 @@ export default function AIDsInsights() {
                 : insights?.spend && revenueData?.total 
                   ? `${((parseFloat(revenueData.total) / parseFloat(insights.spend) - 1) * 100).toFixed(0)}% ROI`
                   : 'N/A'}
+          </div>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.55 }}
+          className="bg-gradient-to-br from-indigo-500/10 to-blue-500/10 rounded-lg p-4 border border-indigo-500/20"
+        >
+          <div className="text-xs text-indigo-400 mb-1">TTD Moyen</div>
+          <div className="text-xl font-bold text-indigo-400">
+            {insights?.averageTTD ? `${insights.averageTTD}j` : 'N/A'}
+          </div>
+          <div className="text-xs text-gray-400 mt-1">
+            {insights?.ttdCount > 0 
+              ? `Sur ${insights.ttdCount} deals`
+              : 'Pas de données'}
           </div>
         </motion.div>
       </div>

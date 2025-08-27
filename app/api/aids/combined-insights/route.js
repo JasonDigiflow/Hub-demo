@@ -159,9 +159,12 @@ export async function GET(request) {
       console.error('[Combined Insights] Error fetching prospects:', error);
     }
     
-    // 3. Get Firebase revenues
+    // 3. Get Firebase revenues and calculate TTD
     let totalRevenue = 0;
     let revenueCount = 0;
+    let totalTTD = 0; // Total Time To Deal in days
+    let ttdCount = 0; // Number of deals with valid TTD
+    
     try {
       // Get ALL revenues from aids_revenues collection (main collection for revenues)
       const aidsRevenuesQuery = await db.collection('aids_revenues')
@@ -193,6 +196,20 @@ export async function GET(request) {
             if (daysDiff <= days) {
               totalRevenue += amount;
               revenueCount++;
+              
+              // Calculate TTD if we have both leadDate and closing date
+              if (data.leadDate && (data.date || data.createdAt)) {
+                const leadDate = new Date(data.leadDate);
+                const closingDate = new Date(data.date || data.createdAt);
+                const ttdDays = Math.floor((closingDate - leadDate) / (1000 * 60 * 60 * 24));
+                
+                if (ttdDays >= 0 && ttdDays < 365) { // Sanity check: TTD should be positive and less than a year
+                  totalTTD += ttdDays;
+                  ttdCount++;
+                  console.log(`[Combined Insights] Revenue ${doc.id}: TTD = ${ttdDays} days`);
+                }
+              }
+              
               console.log(`[Combined Insights] Revenue ${doc.id}: Lead date ${data.leadDate || 'N/A'}, Amount: €${amount}`);
             }
           } else {
@@ -254,13 +271,18 @@ export async function GET(request) {
     const costPerConversion = actualConversions > 0 ? (metaInsights.spend / actualConversions) : 0;
     const roas = metaInsights.spend > 0 ? (totalRevenue / metaInsights.spend) : 0;
     
+    // Calculate average TTD (Time To Deal)
+    const averageTTD = ttdCount > 0 ? Math.round(totalTTD / ttdCount) : 0;
+    
     console.log('[Combined Insights] Results:', {
       metaLeads: metaInsights.metaLeads,
       firebaseProspects,
       totalLeads,
       convertedProspects,
       totalRevenue,
-      roas
+      roas,
+      averageTTD,
+      ttdCount
     });
     
     return NextResponse.json({
@@ -284,6 +306,8 @@ export async function GET(request) {
       costPerLead: costPerLead.toFixed(2),
       costPerConversion: costPerConversion.toFixed(2),
       roas: roas.toFixed(2),
+      averageTTD,  // Average Time To Deal in days
+      ttdCount,    // Number of deals with TTD data
       
       // Source breakdown
       sources: {
