@@ -212,7 +212,7 @@ export default function AIDsDashboard() {
                 </button>
                 
                 {showAccountSelector && accounts.length > 0 && (
-                  <div className="absolute top-full left-0 right-0 mt-2 bg-gray-900 border border-gray-700 rounded-lg shadow-xl z-50 max-h-60 overflow-y-auto">
+                  <div className="absolute top-full left-0 right-0 mt-2 bg-gray-900 border border-gray-700 rounded-lg shadow-xl z-[9999] max-h-60 overflow-y-auto">
                     {accounts.map((account) => (
                       <button
                         key={account.id || account}
