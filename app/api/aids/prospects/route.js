@@ -5,7 +5,7 @@ import { db } from '@/lib/firebase-admin';
 
 export async function GET(request) {
   try {
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
     
     // Check for auth token (both with underscore and dash for compatibility)
     let token = cookieStore.get('auth-token') || cookieStore.get('auth_token');
@@ -225,7 +225,7 @@ async function fetchProspectsForUser(userId) {
 
 export async function POST(request) {
   try {
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
     const token = cookieStore.get('auth-token') || cookieStore.get('auth_token');
     const metaSession = cookieStore.get('meta_session');
     
@@ -300,7 +300,7 @@ export async function POST(request) {
 // Bulk import for Meta sync
 export async function PUT(request) {
   try {
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
     const token = cookieStore.get('auth-token');
     
     if (!token) {

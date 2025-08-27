@@ -8,7 +8,7 @@ import logger from '@/lib/aids/logger';
 export async function GET() {
   try {
     // Get user from cookie to scope revenues per user
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
     const authCookie = cookieStore.get('auth-token') || cookieStore.get('auth_token');
     const metaSession = cookieStore.get('meta_session');
     
@@ -114,7 +114,7 @@ export async function POST(request) {
     }
 
     // Get user authentication
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
     const authCookie = cookieStore.get('auth-token') || cookieStore.get('auth_token');
     const metaSession = cookieStore.get('meta_session');
     
