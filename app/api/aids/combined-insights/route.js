@@ -215,6 +215,18 @@ export async function GET(request) {
           } else {
             totalRevenue += amount;
             revenueCount++;
+            
+            // Calculate TTD for lifetime too
+            if (data.leadDate && (data.date || data.createdAt)) {
+              const leadDate = new Date(data.leadDate);
+              const closingDate = new Date(data.date || data.createdAt);
+              const ttdDays = Math.floor((closingDate - leadDate) / (1000 * 60 * 60 * 24));
+              
+              if (ttdDays >= 0 && ttdDays < 365) {
+                totalTTD += ttdDays;
+                ttdCount++;
+              }
+            }
           }
         }
       });
