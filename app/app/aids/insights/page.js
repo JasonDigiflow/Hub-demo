@@ -480,7 +480,9 @@ export default function AIDsInsights() {
             {formatNumber(insights?.leads || 0)}
           </div>
           <div className="text-xs text-gray-400 mt-1">
-            {formatNumber(insights?.prospects || 0)} dans la base
+            CPL: {insights?.leads && insights?.spend 
+              ? formatCurrency(parseFloat(insights.spend) / insights.leads)
+              : 'N/A'}
           </div>
         </motion.div>
 
