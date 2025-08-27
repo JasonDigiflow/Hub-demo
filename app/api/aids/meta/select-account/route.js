@@ -11,7 +11,7 @@ export async function POST(request) {
       }, { status: 400 });
     }
 
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
     const sessionCookie = cookieStore.get('meta_session');
     
     if (!sessionCookie) {

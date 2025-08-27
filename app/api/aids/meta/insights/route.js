@@ -190,18 +190,31 @@ export async function GET(request) {
         // Collect reach values to determine the proper total
         reachValues.push(parseInt(item.reach || 0));
         
-        // Priorité aux results pour les leads (objectif LEAD_GENERATION)
+        // Compter les leads depuis plusieurs sources possibles
+        // 1. D'abord vérifier results (pour les campagnes avec objectif LEAD_GENERATION)
         if (item.results) {
+          console.log('[Insights API] Found results field:', item.results);
           totalLeads += parseInt(item.results || 0);
-        } else if (item.actions) {
-          // Fallback : compter les leads depuis les actions
+        }
+        
+        // 2. Toujours vérifier aussi les actions car les leads peuvent être là aussi
+        if (item.actions) {
           const leadActions = item.actions.filter(a => 
             a.action_type === 'lead' || 
             a.action_type === 'leadgen_grouped' ||
-            a.action_type === 'offsite_conversion.fb_pixel_lead'
+            a.action_type === 'offsite_conversion.fb_pixel_lead' ||
+            a.action_type === 'onsite_conversion.lead_grouped' ||
+            a.action_type === 'page_engagement' ||
+            a.action_type === 'post_engagement'
           );
           const leadCount = leadActions.reduce((sum, a) => sum + parseInt(a.value || 0), 0);
-          totalLeads += leadCount;
+          if (leadCount > 0) {
+            console.log('[Insights API] Found leads in actions:', leadCount, leadActions);
+          }
+          // Ne pas ajouter si déjà compté dans results
+          if (!item.results) {
+            totalLeads += leadCount;
+          }
           
           // Compter les purchases pour les conversions
           const purchaseActions = item.actions.filter(a => a.action_type === 'purchase');

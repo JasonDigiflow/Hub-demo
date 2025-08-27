@@ -4,7 +4,7 @@ import { db } from '@/lib/firebase-admin';
 
 export async function GET() {
   try {
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
     const sessionCookie = cookieStore.get('meta_session');
     const selectedAccountCookie = cookieStore.get('selected_ad_account');
     

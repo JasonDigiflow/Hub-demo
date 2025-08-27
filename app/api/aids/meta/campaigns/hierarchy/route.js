@@ -74,7 +74,7 @@ export async function GET(request) {
     }
     
     // Si pas de cache valide, récupérer depuis Meta API
-    console.log('[Hierarchy] Fetching from Meta API');
+    console.log('[Hierarchy] Fetching from Meta API for timeRange:', timeRange);
     
     // Mapper les time ranges
     const datePresetMap = {
@@ -83,9 +83,10 @@ export async function GET(request) {
       'last_7d': 'last_7d',
       'last_30d': 'last_30d',
       'last_90d': 'last_90d',
-      'lifetime': 'last_90d'
+      'lifetime': 'maximum'  // Use maximum for lifetime
     };
     const datePreset = datePresetMap[timeRange] || 'last_30d';
+    console.log('[Hierarchy] Using date_preset:', datePreset);
     
     // Récupérer les campagnes
     const campaignsUrl = `https://graph.facebook.com/v18.0/${accountId}/campaigns?` +
