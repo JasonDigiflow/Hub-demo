@@ -242,7 +242,7 @@ export async function GET(request) {
     
     aidsLogger.success(LogCategories.ANALYTICS, 'Insights récupérés avec succès', {
       timeRange,
-      hasData: !!insights.spend
+      hasData: totalSpend > 0
     });
     
     const responseData = {
