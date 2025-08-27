@@ -1,25 +1,47 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { db } from '@/lib/firebase-admin';
+import { db, admin } from '@/lib/firebase-admin';
 
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
     const timeRange = searchParams.get('time_range') || 'last_30d';
     
-    // Get user from cookie
+    // Get auth from cookies
     const cookieStore = cookies();
-    const userCookie = cookieStore.get('user');
+    const authCookie = cookieStore.get('auth-token') || cookieStore.get('auth_token');
+    const metaSession = cookieStore.get('meta_session');
     
-    if (!userCookie) {
+    if (!authCookie && !metaSession) {
       return NextResponse.json({ 
         error: 'Not authenticated',
         revenues: []
       }, { status: 401 });
     }
     
-    const user = JSON.parse(userCookie.value);
-    const userId = user.uid;
+    // Get userId from auth token or meta session
+    let userId;
+    if (authCookie) {
+      try {
+        const decoded = await admin.auth().verifyIdToken(authCookie.value);
+        userId = decoded.uid;
+      } catch (error) {
+        console.error('Error verifying auth token:', error);
+        // Try meta session as fallback
+        if (metaSession) {
+          const session = JSON.parse(metaSession.value);
+          userId = session.userId;
+        } else {
+          return NextResponse.json({ 
+            error: 'Invalid auth token',
+            revenues: []
+          }, { status: 401 });
+        }
+      }
+    } else if (metaSession) {
+      const session = JSON.parse(metaSession.value);
+      userId = session.userId;
+    }
     
     // Calculate date range
     const now = new Date();
