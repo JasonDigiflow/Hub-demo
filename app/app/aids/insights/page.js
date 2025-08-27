@@ -480,7 +480,7 @@ export default function AIDsInsights() {
             {formatNumber(insights?.leads || 0)}
           </div>
           <div className="text-xs text-gray-400 mt-1">
-            {insights?.prospects || 0} prospects FB
+            {formatNumber(insights?.prospects || 0)} prospects FB
           </div>
         </motion.div>
 
@@ -495,8 +495,8 @@ export default function AIDsInsights() {
             {revenueData?.count || 0}
           </div>
           <div className="text-xs text-gray-400 mt-1">
-            {insights?.spend && revenueData?.count > 0 
-              ? `${formatCurrency(parseFloat(insights.spend) / revenueData.count)}/vente`
+            {revenueData?.total && revenueData?.count > 0 
+              ? `${formatCurrency(revenueData.total / revenueData.count)} moy.`
               : 'N/A'}
           </div>
         </motion.div>
@@ -542,11 +542,13 @@ export default function AIDsInsights() {
               : '0.00x'}
           </div>
           <div className="text-xs text-gray-400 mt-1">
-            {revenueData?.conversionRate 
-              ? `Taux conv: ${revenueData.conversionRate}%`
-              : insights?.spend && revenueData?.total 
-                ? `${((parseFloat(revenueData.total) / parseFloat(insights.spend) - 1) * 100).toFixed(0)}% ROI`
-                : 'N/A'}
+            {insights?.conversionRate 
+              ? `Taux conv: ${insights.conversionRate}%`
+              : revenueData?.conversionRate
+                ? `Taux conv: ${revenueData.conversionRate}%`
+                : insights?.spend && revenueData?.total 
+                  ? `${((parseFloat(revenueData.total) / parseFloat(insights.spend) - 1) * 100).toFixed(0)}% ROI`
+                  : 'N/A'}
           </div>
         </motion.div>
       </div>

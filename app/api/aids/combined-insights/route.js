@@ -78,53 +78,81 @@ export async function GET(request) {
     let firebaseProspects = 0;
     let convertedProspects = 0;
     try {
-      // Get all prospects for this user
-      const prospectsQuery = await db.collection('prospects')
-        .where('userId', '==', userId)
+      // Check aids_prospects collection (main collection for prospects)
+      const aidsProspectsQuery = await db.collection('aids_prospects')
         .get();
       
-      prospectsQuery.forEach(doc => {
+      console.log('[Combined Insights] Checking aids_prospects collection...');
+      
+      aidsProspectsQuery.forEach(doc => {
         const data = doc.data();
-        firebaseProspects++;
-        
-        if (data.status === 'converted') {
-          convertedProspects++;
-        }
-        
-        // Filter by time range if needed
-        if (timeRange !== 'lifetime') {
-          const createdAt = new Date(data.createdAt);
-          const now = new Date();
-          const daysDiff = Math.floor((now - createdAt) / (1000 * 60 * 60 * 24));
-          
-          // Check if within time range
-          const days = timeRange === 'last_7d' ? 7 : 
-                      timeRange === 'last_14d' ? 14 :
-                      timeRange === 'last_30d' ? 30 :
-                      timeRange === 'last_90d' ? 90 : 365;
-          
-          if (daysDiff > days) {
-            firebaseProspects--;
+        // Check if prospect belongs to this user (if userId exists)
+        if (!data.userId || data.userId === userId) {
+          // Filter by time range
+          if (timeRange !== 'lifetime') {
+            const prospectDate = data.date ? new Date(data.date) : 
+                               data.createdAt ? new Date(data.createdAt) : new Date();
+            const now = new Date();
+            const daysDiff = Math.floor((now - prospectDate) / (1000 * 60 * 60 * 24));
+            
+            const days = timeRange === 'last_7d' ? 7 : 
+                        timeRange === 'last_14d' ? 14 :
+                        timeRange === 'last_30d' ? 30 :
+                        timeRange === 'last_90d' ? 90 : 365;
+            
+            if (daysDiff <= days) {
+              firebaseProspects++;
+              if (data.status === 'converted') {
+                convertedProspects++;
+              }
+            }
+          } else {
+            firebaseProspects++;
             if (data.status === 'converted') {
-              convertedProspects--;
+              convertedProspects++;
             }
           }
         }
       });
       
-      // Also check aids_prospects collection (old structure)
-      const aidsProspectsQuery = await db.collection('aids_prospects')
-        .where('userId', '==', userId)
-        .get();
+      console.log(`[Combined Insights] Found ${firebaseProspects} prospects`);
       
-      aidsProspectsQuery.forEach(doc => {
-        const data = doc.data();
-        firebaseProspects++;
+      // Also check prospects collection (for sync from Meta)
+      try {
+        const prospectsQuery = await db.collection('prospects')
+          .where('userId', '==', userId)
+          .get();
         
-        if (data.status === 'converted') {
-          convertedProspects++;
-        }
-      });
+        prospectsQuery.forEach(doc => {
+          const data = doc.data();
+          
+          // Filter by time range
+          if (timeRange !== 'lifetime') {
+            const createdAt = new Date(data.createdAt || data.syncedAt);
+            const now = new Date();
+            const daysDiff = Math.floor((now - createdAt) / (1000 * 60 * 60 * 24));
+            
+            const days = timeRange === 'last_7d' ? 7 : 
+                        timeRange === 'last_14d' ? 14 :
+                        timeRange === 'last_30d' ? 30 :
+                        timeRange === 'last_90d' ? 90 : 365;
+            
+            if (daysDiff <= days) {
+              firebaseProspects++;
+              if (data.status === 'converted') {
+                convertedProspects++;
+              }
+            }
+          } else {
+            firebaseProspects++;
+            if (data.status === 'converted') {
+              convertedProspects++;
+            }
+          }
+        });
+      } catch (error) {
+        console.log('[Combined Insights] prospects collection not found or empty');
+      }
       
     } catch (error) {
       console.error('[Combined Insights] Error fetching prospects:', error);
@@ -211,9 +239,11 @@ export async function GET(request) {
     
     // 4. Calculate combined metrics
     const totalLeads = Math.max(metaInsights.metaLeads || 0, firebaseProspects);
-    const conversionRate = totalLeads > 0 ? (convertedProspects / totalLeads * 100) : 0;
+    // Use revenue count as conversions (actual sales) instead of convertedProspects
+    const actualConversions = revenueCount > 0 ? revenueCount : convertedProspects;
+    const conversionRate = totalLeads > 0 ? (actualConversions / totalLeads * 100) : 0;
     const costPerLead = totalLeads > 0 ? (metaInsights.spend / totalLeads) : 0;
-    const costPerConversion = convertedProspects > 0 ? (metaInsights.spend / convertedProspects) : 0;
+    const costPerConversion = actualConversions > 0 ? (metaInsights.spend / actualConversions) : 0;
     const roas = metaInsights.spend > 0 ? (totalRevenue / metaInsights.spend) : 0;
     
     console.log('[Combined Insights] Results:', {
