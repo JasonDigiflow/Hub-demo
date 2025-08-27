@@ -85,7 +85,8 @@ export async function GET(request) {
       }
     }
     
-    console.log(`[Revenues API] Fetching revenues for user ${userId} from ${startDate.toISOString()} to ${endDate.toISOString()}`);\n    console.log(`[Revenues API] Query params:`, { since, until, timeRange, campaignId });
+    console.log(`[Revenues API] Fetching revenues for user ${userId} from ${startDate.toISOString()} to ${endDate.toISOString()}`);
+    console.log(`[Revenues API] Query params:`, { since, until, timeRange, campaignId });
     if (campaignId) {
       console.log(`[Revenues API] Filtering by campaign: ${campaignId}`);
     }

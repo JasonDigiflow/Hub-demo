@@ -45,8 +45,8 @@ export default function AutoSyncManager() {
     // Initial sync check
     checkSyncStatus();
     
-    // Perform initial sync
-    performSync();
+    // Don't perform initial sync immediately to avoid overloading
+    // performSync();
     
     // Set up interval for auto-sync
     intervalRef.current = setInterval(() => {
