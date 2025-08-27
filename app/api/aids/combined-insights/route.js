@@ -134,45 +134,76 @@ export async function GET(request) {
     let totalRevenue = 0;
     let revenueCount = 0;
     try {
-      // Get revenues from meta_ads_conversion source
-      const revenuesQuery = await db.collection('revenues')
-        .where('userId', '==', userId)
-        .where('source', '==', 'meta_ads_conversion')
+      // Get ALL revenues from aids_revenues collection (main collection for revenues)
+      const aidsRevenuesQuery = await db.collection('aids_revenues')
         .get();
       
-      revenuesQuery.forEach(doc => {
+      console.log('[Combined Insights] Checking aids_revenues collection...');
+      
+      aidsRevenuesQuery.forEach(doc => {
         const data = doc.data();
-        totalRevenue += data.amount || 0;
-        revenueCount++;
-        
-        // Filter by time range
-        if (timeRange !== 'lifetime') {
-          const createdAt = new Date(data.createdAt);
-          const now = new Date();
-          const daysDiff = Math.floor((now - createdAt) / (1000 * 60 * 60 * 24));
+        // Check if revenue belongs to this user (if userId exists)
+        if (!data.userId || data.userId === userId) {
+          let amount = parseFloat(data.amount || 0);
           
-          const days = timeRange === 'last_7d' ? 7 : 
-                      timeRange === 'last_14d' ? 14 :
-                      timeRange === 'last_30d' ? 30 :
-                      timeRange === 'last_90d' ? 90 : 365;
-          
-          if (daysDiff > days) {
-            totalRevenue -= data.amount || 0;
-            revenueCount--;
+          // Filter by time range
+          if (timeRange !== 'lifetime') {
+            const revenueDate = data.date ? new Date(data.date) : new Date(data.createdAt);
+            const now = new Date();
+            const daysDiff = Math.floor((now - revenueDate) / (1000 * 60 * 60 * 24));
+            
+            const days = timeRange === 'last_7d' ? 7 : 
+                        timeRange === 'last_14d' ? 14 :
+                        timeRange === 'last_30d' ? 30 :
+                        timeRange === 'last_90d' ? 90 : 365;
+            
+            if (daysDiff <= days) {
+              totalRevenue += amount;
+              revenueCount++;
+            }
+          } else {
+            totalRevenue += amount;
+            revenueCount++;
           }
         }
       });
       
-      // Also check aids_revenues collection
-      const aidsRevenuesQuery = await db.collection('aids_revenues')
-        .where('userId', '==', userId)
-        .get();
+      console.log(`[Combined Insights] Found ${revenueCount} revenues totaling €${totalRevenue}`);
       
-      aidsRevenuesQuery.forEach(doc => {
-        const data = doc.data();
-        totalRevenue += data.amount || 0;
-        revenueCount++;
-      });
+      // Also check revenues collection for conversion tracking
+      try {
+        const revenuesQuery = await db.collection('revenues')
+          .where('userId', '==', userId)
+          .where('source', '==', 'meta_ads_conversion')
+          .get();
+        
+        revenuesQuery.forEach(doc => {
+          const data = doc.data();
+          let amount = parseFloat(data.amount || 0);
+          
+          // Filter by time range
+          if (timeRange !== 'lifetime') {
+            const createdAt = new Date(data.createdAt);
+            const now = new Date();
+            const daysDiff = Math.floor((now - createdAt) / (1000 * 60 * 60 * 24));
+            
+            const days = timeRange === 'last_7d' ? 7 : 
+                        timeRange === 'last_14d' ? 14 :
+                        timeRange === 'last_30d' ? 30 :
+                        timeRange === 'last_90d' ? 90 : 365;
+            
+            if (daysDiff <= days) {
+              totalRevenue += amount;
+              revenueCount++;
+            }
+          } else {
+            totalRevenue += amount;
+            revenueCount++;
+          }
+        });
+      } catch (error) {
+        console.log('[Combined Insights] revenues collection not found or empty');
+      }
       
     } catch (error) {
       console.error('[Combined Insights] Error fetching revenues:', error);
