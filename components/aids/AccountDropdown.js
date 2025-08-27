@@ -87,7 +87,7 @@ export default function AccountDropdown({
             top: `${dropdownPosition.top}px`,
             left: `${dropdownPosition.left}px`,
             width: `${dropdownPosition.width}px`,
-            zIndex: 99999,
+            zIndex: 9999999,
             pointerEvents: 'auto'
           }}
           className="bg-gray-900 border border-gray-700 rounded-lg shadow-2xl max-h-60 overflow-y-auto"

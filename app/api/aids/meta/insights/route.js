@@ -191,32 +191,43 @@ export async function GET(request) {
         reachValues.push(parseInt(item.reach || 0));
         
         // Compter les leads depuis plusieurs sources possibles
-        // 1. D'abord vérifier results (pour les campagnes avec objectif LEAD_GENERATION)
-        if (item.results) {
-          console.log('[Insights API] Found results field:', item.results);
-          totalLeads += parseInt(item.results || 0);
+        // 1. D'abord vérifier results (c'est un tableau d'objets avec indicator et values)
+        if (item.results && Array.isArray(item.results)) {
+          item.results.forEach(result => {
+            if (result.indicator && result.indicator.includes('lead')) {
+              const value = result.values?.[0]?.value || 0;
+              console.log('[Insights API] Found leads in results:', value, 'from', result.indicator);
+              totalLeads += parseInt(value);
+            }
+          });
         }
         
-        // 2. Toujours vérifier aussi les actions car les leads peuvent être là aussi
+        // 2. Si pas de results, chercher dans actions (éviter double comptage)
+        if (!item.results || item.results.length === 0) {
+          if (item.actions) {
+            // Chercher spécifiquement l'action "lead" qui est le total officiel
+            const leadAction = item.actions.find(a => a.action_type === 'lead');
+            if (leadAction) {
+              const leadCount = parseInt(leadAction.value || 0);
+              console.log('[Insights API] Found leads in actions:', leadCount);
+              totalLeads += leadCount;
+            } else {
+              // Fallback: chercher dans d'autres actions de type lead
+              const leadActions = item.actions.filter(a => 
+                a.action_type === 'onsite_conversion.lead_grouped' ||
+                a.action_type === 'offsite_conversion.fb_pixel_lead'
+              );
+              const leadCount = leadActions.reduce((sum, a) => sum + parseInt(a.value || 0), 0);
+              if (leadCount > 0) {
+                console.log('[Insights API] Found leads in other lead actions:', leadCount);
+                totalLeads += leadCount;
+              }
+            }
+          }
+        }
+        
+        // Compter les purchases pour les conversions
         if (item.actions) {
-          const leadActions = item.actions.filter(a => 
-            a.action_type === 'lead' || 
-            a.action_type === 'leadgen_grouped' ||
-            a.action_type === 'offsite_conversion.fb_pixel_lead' ||
-            a.action_type === 'onsite_conversion.lead_grouped' ||
-            a.action_type === 'page_engagement' ||
-            a.action_type === 'post_engagement'
-          );
-          const leadCount = leadActions.reduce((sum, a) => sum + parseInt(a.value || 0), 0);
-          if (leadCount > 0) {
-            console.log('[Insights API] Found leads in actions:', leadCount, leadActions);
-          }
-          // Ne pas ajouter si déjà compté dans results
-          if (!item.results) {
-            totalLeads += leadCount;
-          }
-          
-          // Compter les purchases pour les conversions
           const purchaseActions = item.actions.filter(a => a.action_type === 'purchase');
           const purchaseCount = purchaseActions.reduce((sum, a) => sum + parseInt(a.value || 0), 0);
           totalConversions += purchaseCount;

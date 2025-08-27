@@ -93,10 +93,15 @@ export async function GET(request) {
     
     if (data.data && data.data.length > 0) {
       data.data.forEach(item => {
-        // Check results field
-        if (item.results) {
-          totalLeads += parseInt(item.results || 0);
-          leadSources.results = (leadSources.results || 0) + parseInt(item.results || 0);
+        // Check results field (it's an array of objects)
+        if (item.results && Array.isArray(item.results)) {
+          item.results.forEach(result => {
+            if (result.indicator && result.indicator.includes('lead')) {
+              const value = parseInt(result.values?.[0]?.value || 0);
+              totalLeads += value;
+              leadSources.results = (leadSources.results || 0) + value;
+            }
+          });
         }
         
         // Check actions array
