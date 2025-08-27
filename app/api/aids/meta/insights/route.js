@@ -70,13 +70,17 @@ export async function GET(request) {
     insightsUrl += `access_token=${accessToken}`;
     
     console.log(`[Insights API] Fetching URL: ${insightsUrl.replace(accessToken, 'TOKEN_HIDDEN')}`);
+    console.log(`[Insights API] Date preset: ${datePreset}, Time range: ${timeRange}`);
     
     const response = await fetch(insightsUrl);
     const data = await response.json();
     
     console.log(`[Insights API] Response data length: ${data.data?.length || 0}, Time range: ${timeRange}`);
-    if (data.data && data.data[0]) {
-      console.log(`[Insights API] Date range in response: ${data.data[0].date_start} to ${data.data[0].date_stop}`);
+    if (data.data && data.data.length > 0) {
+      console.log(`[Insights API] Date range in response: ${data.data[0].date_start} to ${data.data[data.data.length - 1].date_stop || data.data[0].date_stop}`);
+      // Log the raw spend to debug the discrepancy
+      const rawTotalSpend = data.data.reduce((sum, item) => sum + parseFloat(item.spend || 0), 0);
+      console.log(`[Insights API] Raw total spend from API: ${rawTotalSpend.toFixed(2)}€`);
     }
     
     if (data.error) {
@@ -177,7 +181,8 @@ export async function GET(request) {
         totalSpend += parseFloat(item.spend || 0);
         totalImpressions += parseInt(item.impressions || 0);
         totalClicks += parseInt(item.clicks || 0);
-        totalReach = Math.max(totalReach, parseInt(item.reach || 0));
+        // Sum reach across all days (not max) for proper aggregation
+        totalReach += parseInt(item.reach || 0);
         
         if (item.actions) {
           // Compter les leads spécifiquement
@@ -209,15 +214,61 @@ export async function GET(request) {
     const costPerConversion = totalConversions > 0 ? (totalSpend / totalConversions) : 0;
     const roas = totalSpend > 0 ? (totalConversionValue / totalSpend) : 0;
     
-    // Get the actual date range from the response
+    // Calculate the date range based on the timeRange parameter
     let actualDateRange = null;
-    if (processedData.length > 0) {
-      const firstItem = processedData[0];
-      const lastItem = processedData[processedData.length - 1];
-      actualDateRange = {
-        start: firstItem.date_start || lastItem.date_start,
-        end: firstItem.date_stop || lastItem.date_stop
-      };
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    
+    switch(timeRange) {
+      case 'today':
+        actualDateRange = {
+          start: today.toISOString().split('T')[0],
+          end: today.toISOString().split('T')[0]
+        };
+        break;
+      case 'yesterday':
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+        actualDateRange = {
+          start: yesterday.toISOString().split('T')[0],
+          end: yesterday.toISOString().split('T')[0]
+        };
+        break;
+      case 'last_7d':
+        const sevenDaysAgo = new Date(today);
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6); // -6 because today is included
+        actualDateRange = {
+          start: sevenDaysAgo.toISOString().split('T')[0],
+          end: today.toISOString().split('T')[0]
+        };
+        break;
+      case 'last_30d':
+        const thirtyDaysAgo = new Date(today);
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 29); // -29 because today is included
+        actualDateRange = {
+          start: thirtyDaysAgo.toISOString().split('T')[0],
+          end: today.toISOString().split('T')[0]
+        };
+        break;
+      case 'last_90d':
+      case 'lifetime':
+        const ninetyDaysAgo = new Date(today);
+        ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 89); // -89 because today is included
+        actualDateRange = {
+          start: ninetyDaysAgo.toISOString().split('T')[0],
+          end: today.toISOString().split('T')[0]
+        };
+        break;
+      default:
+        // Fallback to data from API if available
+        if (processedData.length > 0) {
+          const firstItem = processedData[0];
+          const lastItem = processedData[processedData.length - 1];
+          actualDateRange = {
+            start: firstItem.date_start || lastItem.date_start,
+            end: firstItem.date_stop || lastItem.date_stop
+          };
+        }
     }
     
     const formattedInsights = {

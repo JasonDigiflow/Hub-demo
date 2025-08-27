@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
+import AccountDropdown from '@/components/aids/AccountDropdown';
 
 export default function AIDsDashboard() {
   const router = useRouter();
@@ -195,47 +196,15 @@ export default function AIDsDashboard() {
           </div>
 
           {/* Selected Account with Switcher */}
-          <div className="bg-black/20 rounded-lg p-4 relative">
+          <div className="bg-black/20 rounded-lg p-4">
             <div className="text-sm text-gray-400 mb-1">Compte publicitaire</div>
-            {metaConnected ? (
-              <div>
-                <button
-                  onClick={() => setShowAccountSelector(!showAccountSelector)}
-                  className="w-full text-left flex items-center justify-between hover:bg-white/5 p-2 rounded transition-colors"
-                >
-                  <span className="text-sm font-bold text-white truncate">
-                    {selectedAccount || 'Sélectionner un compte'}
-                  </span>
-                  <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
-                </button>
-                
-                {showAccountSelector && accounts.length > 0 && (
-                  <div className="absolute top-full left-0 right-0 mt-2 bg-gray-900 border border-gray-700 rounded-lg shadow-xl z-[9999] max-h-60 overflow-y-auto">
-                    {accounts.map((account) => (
-                      <button
-                        key={account.id || account}
-                        onClick={() => handleAccountChange(account.id || account)}
-                        disabled={changingAccount}
-                        className={`w-full text-left p-3 hover:bg-white/10 transition-colors text-sm ${
-                          (account.id || account) === selectedAccount 
-                            ? 'bg-purple-600/20 text-purple-400' 
-                            : 'text-white'
-                        } ${changingAccount ? 'opacity-50' : ''}`}
-                      >
-                        <div className="font-medium">{account.name || account}</div>
-                        {account.id && (
-                          <div className="text-xs text-gray-400 mt-1">ID: {account.id}</div>
-                        )}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ) : (
-              <span className="text-gray-500 text-sm">Non connecté</span>
-            )}
+            <AccountDropdown
+              accounts={accounts}
+              selectedAccount={selectedAccount}
+              onAccountChange={handleAccountChange}
+              metaConnected={metaConnected}
+              changingAccount={changingAccount}
+            />
           </div>
 
           {/* Last Sync */}
