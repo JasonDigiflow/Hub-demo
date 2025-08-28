@@ -44,6 +44,9 @@ export async function GET(request) {
       });
     }
     
+    // Désactivé : Le cache Firestore ne prend pas en compte les différentes périodes
+    // et retourne toujours les mêmes données peu importe la période sélectionnée
+    /*
     // Vérifier le cache Firestore
     try {
       const userId = session.userId;
@@ -76,6 +79,7 @@ export async function GET(request) {
     } catch (error) {
       console.error('[Hierarchy] Error reading from Firestore:', error);
     }
+    */
     
     // Si pas de cache valide, récupérer depuis Meta API
     console.log('[Hierarchy] Fetching from Meta API');
@@ -299,6 +303,8 @@ export async function GET(request) {
       timestamp: Date.now()
     });
     
+    // Désactivé : Le cache Firestore ne prend pas en compte les différentes périodes
+    /*
     // Sauvegarder en Firestore si on a un userId
     try {
       const userId = session.userId;
@@ -315,6 +321,7 @@ export async function GET(request) {
     } catch (error) {
       console.error('[Hierarchy] Error saving to Firestore:', error);
     }
+    */
     
     return NextResponse.json({
       success: true,
