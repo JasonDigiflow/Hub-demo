@@ -11,6 +11,7 @@ export default function AIDsLayout({ children }) {
   const [isMenuOpen, setIsMenuOpen] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [realStats, setRealStats] = useState({ roas: 0, totalRevenue: 0, totalLeads: 0 });
 
   useEffect(() => {
     const handleResize = () => {
@@ -22,6 +23,32 @@ export default function AIDsLayout({ children }) {
     handleResize();
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // Fetch real stats
+  useEffect(() => {
+    const fetchRealStats = async () => {
+      try {
+        // Fetch all-time stats (90 days as a proxy for all-time)
+        const response = await fetch('/api/aids/combined-insights-v2?period=last_90d');
+        const data = await response.json();
+        
+        if (data.success && data.current) {
+          setRealStats({
+            roas: parseFloat(data.current.roas) || 0,
+            totalRevenue: data.current.revenues || 0,
+            totalLeads: data.current.leads || 0
+          });
+        }
+      } catch (error) {
+        console.error('Error fetching real stats:', error);
+      }
+    };
+
+    fetchRealStats();
+    // Refresh every 5 minutes
+    const interval = setInterval(fetchRealStats, 5 * 60 * 1000);
+    return () => clearInterval(interval);
   }, []);
 
   const menuItems = [
@@ -132,12 +159,16 @@ export default function AIDsLayout({ children }) {
         <div className="px-6 py-4 border-b border-white/10">
           <div className="grid grid-cols-2 gap-3">
             <div className="bg-purple-600/20 rounded-lg p-3 border border-purple-500/30">
-              <p className="text-xs text-gray-400">ROAS</p>
-              <p className="text-lg font-bold text-white">4.2x</p>
+              <p className="text-xs text-gray-400">ROAS ALL TIME</p>
+              <p className="text-lg font-bold text-white">
+                {realStats.roas > 0 ? `${realStats.roas}x` : '—'}
+              </p>
             </div>
-            <div className="bg-green-600/20 rounded-lg p-3 border border-green-500/30">
-              <p className="text-xs text-gray-400">Revenue</p>
-              <p className="text-lg font-bold text-white">€48.5k</p>
+            <div className="bg-blue-600/20 rounded-lg p-3 border border-blue-500/30">
+              <p className="text-xs text-gray-400">TOTAL LEADS</p>
+              <p className="text-lg font-bold text-white">
+                {realStats.totalLeads > 0 ? realStats.totalLeads.toLocaleString('fr-FR') : '—'}
+              </p>
             </div>
           </div>
         </div>
@@ -247,6 +278,24 @@ export default function AIDsLayout({ children }) {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                     </svg>
                   </button>
+                </div>
+              </div>
+
+              {/* Mobile Quick Stats */}
+              <div className="px-6 py-4 border-b border-white/10">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="bg-purple-600/20 rounded-lg p-3 border border-purple-500/30">
+                    <p className="text-xs text-gray-400">ROAS ALL TIME</p>
+                    <p className="text-lg font-bold text-white">
+                      {realStats.roas > 0 ? `${realStats.roas}x` : '—'}
+                    </p>
+                  </div>
+                  <div className="bg-blue-600/20 rounded-lg p-3 border border-blue-500/30">
+                    <p className="text-xs text-gray-400">TOTAL LEADS</p>
+                    <p className="text-lg font-bold text-white">
+                      {realStats.totalLeads > 0 ? realStats.totalLeads.toLocaleString('fr-FR') : '—'}
+                    </p>
+                  </div>
                 </div>
               </div>
 
