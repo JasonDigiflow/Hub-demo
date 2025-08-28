@@ -456,16 +456,48 @@ export default function ProspectsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-purple-900 relative overflow-hidden">
+      {/* Animated background blobs */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <motion.div
+          animate={{
+            x: [0, 100, 0],
+            y: [0, -100, 0],
+          }}
+          transition={{
+            duration: 20,
+            repeat: Infinity,
+            ease: "linear"
+          }}
+          className="absolute top-1/4 left-1/4 w-96 h-96 bg-purple-600/30 rounded-full blur-3xl"
+        />
+        <motion.div
+          animate={{
+            x: [0, -100, 0],
+            y: [0, 100, 0],
+          }}
+          transition={{
+            duration: 25,
+            repeat: Infinity,
+            ease: "linear"
+          }}
+          className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-pink-600/30 rounded-full blur-3xl"
+        />
+      </div>
+
+      <div className="relative z-10 space-y-6 p-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <motion.div 
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="backdrop-blur-xl bg-white/10 rounded-2xl p-6 border border-white/20 shadow-2xl"
+      >
+        <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-4xl font-bold text-white mb-2">
-            <span className="bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-              Centre de Prospects
-            </span>
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-white to-purple-200 bg-clip-text text-transparent mb-2">
+            Centre de Prospects
           </h1>
-          <p className="text-gray-400 text-lg">
+          <p className="text-gray-300 text-lg">
             Gérez vos prospects issus de vos campagnes publicitaires
           </p>
         </div>
@@ -474,7 +506,7 @@ export default function ProspectsPage() {
           <button
             onClick={() => syncMetaLeads(true, false)}
             disabled={syncLoading}
-            className="px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all font-medium flex items-center gap-2 disabled:opacity-50"
+            className="px-6 py-3 bg-gradient-to-r from-blue-500/20 to-cyan-500/20 backdrop-blur-xl text-white rounded-lg hover:from-blue-500/30 hover:to-cyan-500/30 border border-blue-500/30 transition-all font-medium flex items-center gap-2 disabled:opacity-50 shadow-xl"
           >
             {syncLoading ? (
               <>
@@ -492,14 +524,14 @@ export default function ProspectsPage() {
           <div className="relative">
             <button
               onClick={() => setShowAdvancedOptions(!showAdvancedOptions)}
-              className="px-4 py-3 bg-gray-800 text-gray-300 rounded-lg hover:bg-gray-700 transition-all font-medium flex items-center gap-2"
+              className="px-4 py-3 backdrop-blur-xl bg-white/10 text-gray-300 rounded-lg hover:bg-white/20 border border-white/20 transition-all font-medium flex items-center gap-2 shadow-xl"
             >
               <span className="text-xl">⚙️</span>
               Options
             </button>
             
             {showAdvancedOptions && (
-                  <div className="absolute right-0 top-full mt-2 bg-gray-900 border border-gray-700 rounded-lg shadow-xl p-2 z-10 min-w-[200px]">
+                  <div className="absolute right-0 top-full mt-2 backdrop-blur-xl bg-black/90 border border-white/20 rounded-lg shadow-2xl p-2 z-50 min-w-[200px]">
                     <button
                       onClick={async () => {
                         setShowAdvancedOptions(false);
@@ -524,12 +556,12 @@ export default function ProspectsPage() {
                         }
                       }}
                       disabled={syncLoading}
-                      className="w-full text-left px-3 py-2 text-sm text-blue-400 hover:bg-gray-800 rounded flex items-center gap-2"
+                      className="w-full text-left px-3 py-2 text-sm text-blue-400 hover:bg-white/10 rounded flex items-center gap-2"
                     >
                       <span>🔄</span>
                       Forcer la synchronisation
                     </button>
-                    <div className="border-t border-gray-700 my-2"></div>
+                    <div className="border-t border-white/10 my-2"></div>
                     <button
                       onClick={() => {
                         setShowAdvancedOptions(false);
@@ -537,12 +569,12 @@ export default function ProspectsPage() {
                           clearLocalCache();
                         }
                       }}
-                      className="w-full text-left px-3 py-2 text-sm text-red-400 hover:bg-gray-800 rounded flex items-center gap-2"
+                      className="w-full text-left px-3 py-2 text-sm text-red-400 hover:bg-white/10 rounded flex items-center gap-2"
                     >
                       <span>🗑️</span>
                       Supprimer tous les prospects
                     </button>
-                    <div className="border-t border-gray-700 my-2"></div>
+                    <div className="border-t border-white/10 my-2"></div>
                     <button
                       onClick={async () => {
                         setShowAdvancedOptions(false);
@@ -563,7 +595,7 @@ export default function ProspectsPage() {
                           alert('❌ Erreur lors de la correction');
                         }
                       }}
-                      className="w-full text-left px-3 py-2 text-sm text-blue-400 hover:bg-gray-800 rounded flex items-center gap-2"
+                      className="w-full text-left px-3 py-2 text-sm text-blue-400 hover:bg-white/10 rounded flex items-center gap-2"
                     >
                       <span>🔧</span>
                       Corriger les noms manquants
@@ -590,7 +622,7 @@ export default function ProspectsPage() {
                           }
                         }
                       }}
-                      className="w-full text-left px-3 py-2 text-sm text-purple-400 hover:bg-gray-800 rounded flex items-center gap-2"
+                      className="w-full text-left px-3 py-2 text-sm text-purple-400 hover:bg-white/10 rounded flex items-center gap-2"
                     >
                       <span>🔄</span>
                       Migrer vers IDs Meta
@@ -617,12 +649,12 @@ export default function ProspectsPage() {
                           }
                         }
                       }}
-                      className="w-full text-left px-3 py-2 text-sm text-orange-400 hover:bg-gray-800 rounded flex items-center gap-2"
+                      className="w-full text-left px-3 py-2 text-sm text-orange-400 hover:bg-white/10 rounded flex items-center gap-2"
                     >
                       <span>🧹</span>
                       Nettoyer les doublons
                     </button>
-                    <div className="border-t border-gray-700 my-2"></div>
+                    <div className="border-t border-white/10 my-2"></div>
                     <button
                       onClick={async () => {
                         setShowAdvancedOptions(false);
@@ -681,7 +713,7 @@ export default function ProspectsPage() {
                           console.error('Error fetching logs:', error);
                         }
                       }}
-                      className="w-full text-left px-3 py-2 text-sm text-gray-400 hover:bg-gray-800 rounded flex items-center gap-2"
+                      className="w-full text-left px-3 py-2 text-sm text-gray-400 hover:bg-white/10 rounded flex items-center gap-2"
                     >
                       <span>📄</span>
                       Voir les logs
@@ -695,20 +727,26 @@ export default function ProspectsPage() {
           
           <button
             onClick={() => setShowAddModal(true)}
-            className="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all font-medium flex items-center gap-2"
+            className="px-6 py-3 bg-gradient-to-r from-purple-500/20 to-pink-500/20 backdrop-blur-xl text-white rounded-lg hover:from-purple-500/30 hover:to-pink-500/30 border border-purple-500/30 transition-all font-medium flex items-center gap-2 shadow-xl"
           >
             <span className="text-xl">+</span>
             Ajouter un prospect
           </button>
         </div>
-      </div>
+      </motion.div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+      <motion.div 
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.2 }}
+        className="grid grid-cols-1 md:grid-cols-5 gap-4"
+      >
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-gradient-to-br from-blue-600/20 to-blue-600/10 rounded-xl p-4 border border-blue-600/20"
+          whileHover={{ scale: 1.05 }}
+          className="backdrop-blur-xl bg-gradient-to-br from-blue-600/20 to-blue-600/10 rounded-xl p-4 border border-blue-600/30 shadow-xl"
         >
           <div className="text-gray-400 text-sm mb-1">Total prospects</div>
           <div className="text-2xl font-bold text-white">{stats.total}</div>
@@ -718,7 +756,8 @@ export default function ProspectsPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="bg-gradient-to-br from-cyan-600/20 to-cyan-600/10 rounded-xl p-4 border border-cyan-600/20"
+          whileHover={{ scale: 1.05 }}
+          className="backdrop-blur-xl bg-gradient-to-br from-cyan-600/20 to-cyan-600/10 rounded-xl p-4 border border-cyan-600/30 shadow-xl"
         >
           <div className="text-gray-400 text-sm mb-1">Nouveaux</div>
           <div className="text-2xl font-bold text-cyan-400">{stats.new}</div>
@@ -728,7 +767,8 @@ export default function ProspectsPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
-          className="bg-gradient-to-br from-purple-600/20 to-purple-600/10 rounded-xl p-4 border border-purple-600/20"
+          whileHover={{ scale: 1.05 }}
+          className="backdrop-blur-xl bg-gradient-to-br from-purple-600/20 to-purple-600/10 rounded-xl p-4 border border-purple-600/30 shadow-xl"
         >
           <div className="text-gray-400 text-sm mb-1">Qualifiés</div>
           <div className="text-2xl font-bold text-purple-400">{stats.qualified}</div>
@@ -738,7 +778,8 @@ export default function ProspectsPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
-          className="bg-gradient-to-br from-green-600/20 to-green-600/10 rounded-xl p-4 border border-green-600/20"
+          whileHover={{ scale: 1.05 }}
+          className="backdrop-blur-xl bg-gradient-to-br from-green-600/20 to-green-600/10 rounded-xl p-4 border border-green-600/30 shadow-xl"
         >
           <div className="text-gray-400 text-sm mb-1">Convertis</div>
           <div className="text-2xl font-bold text-green-400">{stats.converted}</div>
@@ -753,15 +794,21 @@ export default function ProspectsPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4 }}
-          className="bg-gradient-to-br from-orange-600/20 to-orange-600/10 rounded-xl p-4 border border-orange-600/20"
+          whileHover={{ scale: 1.05 }}
+          className="backdrop-blur-xl bg-gradient-to-br from-orange-600/20 to-orange-600/10 rounded-xl p-4 border border-orange-600/30 shadow-xl"
         >
           <div className="text-gray-400 text-sm mb-1">Taux conversion</div>
           <div className="text-2xl font-bold text-orange-400">{stats.conversionRate}%</div>
         </motion.div>
-      </div>
+      </motion.div>
 
       {/* Prospects Table */}
-      <div className="bg-white/5 rounded-xl border border-white/10 overflow-hidden">
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.3 }}
+        className="backdrop-blur-xl bg-white/10 rounded-xl border border-white/20 overflow-hidden shadow-2xl"
+      >
         <div className="p-6 border-b border-white/10">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold text-white">Liste des prospects</h2>
@@ -1198,6 +1245,8 @@ export default function ProspectsPage() {
           </motion.div>
         )}
       </AnimatePresence>
+      </motion.div>
+    </div>
     </div>
   );
 }

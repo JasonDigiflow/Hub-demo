@@ -368,14 +368,48 @@ export default function RevenuesPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-green-900 relative overflow-hidden">
+      {/* Animated background blobs */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <motion.div
+          animate={{
+            x: [0, 100, 0],
+            y: [0, -100, 0],
+          }}
+          transition={{
+            duration: 20,
+            repeat: Infinity,
+            ease: "linear"
+          }}
+          className="absolute top-1/4 left-1/4 w-96 h-96 bg-green-600/30 rounded-full blur-3xl"
+        />
+        <motion.div
+          animate={{
+            x: [0, -100, 0],
+            y: [0, 100, 0],
+          }}
+          transition={{
+            duration: 25,
+            repeat: Infinity,
+            ease: "linear"
+          }}
+          className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-emerald-600/30 rounded-full blur-3xl"
+        />
+      </div>
+
+      <div className="relative z-10 space-y-6 p-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <motion.div 
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="backdrop-blur-xl bg-white/10 rounded-2xl p-6 border border-white/20 shadow-2xl"
+      >
+        <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-4xl font-bold text-white mb-2">
-            <span className="bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">Gestion des Revenus</span>
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-green-400 to-emerald-400 bg-clip-text text-transparent mb-2">
+            Gestion des Revenus
           </h1>
-          <p className="text-gray-400 text-lg">
+          <p className="text-gray-300 text-lg">
             Suivez les revenus générés par vos campagnes publicitaires
           </p>
         </div>
@@ -413,7 +447,7 @@ export default function RevenuesPage() {
                   }
                 }
               }}
-              className="px-4 py-3 bg-red-600/20 text-red-400 border border-red-600/30 rounded-lg hover:bg-red-600/30 transition-all font-medium flex items-center gap-2"
+              className="px-4 py-3 backdrop-blur-xl bg-red-600/20 text-red-400 border border-red-600/30 rounded-lg hover:bg-red-600/30 transition-all font-medium flex items-center gap-2 shadow-xl"
             >
               <span>🗑️</span>
               Tout supprimer ({revenues.length})
@@ -421,24 +455,30 @@ export default function RevenuesPage() {
           )}
           <button
             onClick={() => setShowAddModal(true)}
-            className="px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg hover:from-green-700 hover:to-emerald-700 transition-all font-medium flex items-center gap-2"
+            className="px-6 py-3 bg-gradient-to-r from-green-500/20 to-emerald-500/20 backdrop-blur-xl text-white rounded-lg hover:from-green-500/30 hover:to-emerald-500/30 border border-green-500/30 transition-all font-medium flex items-center gap-2 shadow-xl"
           >
             <span className="text-xl">+</span>
             Ajouter un revenu
           </button>
         </div>
-      </div>
+      </motion.div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <motion.div 
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.2 }}
+        className="grid grid-cols-1 md:grid-cols-4 gap-4"
+      >
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="bg-gradient-to-br from-green-600/20 to-green-600/10 rounded-xl p-6 border border-green-600/20"
+          whileHover={{ scale: 1.05 }}
+          className="backdrop-blur-xl bg-gradient-to-br from-green-600/20 to-green-600/10 rounded-xl p-6 border border-green-600/30 shadow-xl"
         >
           <div className="flex items-center justify-between mb-2">
-            <span className="text-gray-400 text-sm">Revenus totaux HT</span>
+            <span className="text-gray-300 text-sm">Revenus totaux HT</span>
             <span className="text-2xl">💰</span>
           </div>
           <div className="text-2xl font-bold text-white">
@@ -453,42 +493,45 @@ export default function RevenuesPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
-          className="bg-gradient-to-br from-blue-600/20 to-blue-600/10 rounded-xl p-6 border border-blue-600/20"
+          whileHover={{ scale: 1.05 }}
+          className="backdrop-blur-xl bg-gradient-to-br from-blue-600/20 to-blue-600/10 rounded-xl p-6 border border-blue-600/30 shadow-xl"
         >
           <div className="flex items-center justify-between mb-2">
-            <span className="text-gray-400 text-sm">Clients signés</span>
+            <span className="text-gray-300 text-sm">Clients signés</span>
             <span className="text-2xl">👥</span>
           </div>
           <div className="text-2xl font-bold text-white">
             {stats.totalClients}
           </div>
-          <div className="text-xs text-gray-400 mt-1">Via les campagnes</div>
+          <div className="text-xs text-gray-300 mt-1">Via les campagnes</div>
         </motion.div>
 
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
-          className="bg-gradient-to-br from-purple-600/20 to-purple-600/10 rounded-xl p-6 border border-purple-600/20"
+          whileHover={{ scale: 1.05 }}
+          className="backdrop-blur-xl bg-gradient-to-br from-purple-600/20 to-purple-600/10 rounded-xl p-6 border border-purple-600/30 shadow-xl"
         >
           <div className="flex items-center justify-between mb-2">
-            <span className="text-gray-400 text-sm">Panier moyen HT</span>
+            <span className="text-gray-300 text-sm">Panier moyen HT</span>
             <span className="text-2xl">🛒</span>
           </div>
           <div className="text-2xl font-bold text-white">
             {stats.averageTicket.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })}
           </div>
-          <div className="text-xs text-gray-400 mt-1">Par client</div>
+          <div className="text-xs text-gray-300 mt-1">Par client</div>
         </motion.div>
 
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4 }}
-          className="bg-gradient-to-br from-orange-600/20 to-orange-600/10 rounded-xl p-6 border border-orange-600/20"
+          whileHover={{ scale: 1.05 }}
+          className="backdrop-blur-xl bg-gradient-to-br from-orange-600/20 to-orange-600/10 rounded-xl p-6 border border-orange-600/30 shadow-xl"
         >
           <div className="flex items-center justify-between mb-2">
-            <span className="text-gray-400 text-sm">ROAS réel</span>
+            <span className="text-gray-300 text-sm">ROAS réel</span>
             <span className="text-2xl">📈</span>
           </div>
           <div className="text-2xl font-bold text-white">
@@ -496,10 +539,15 @@ export default function RevenuesPage() {
           </div>
           <div className="text-xs text-green-400 mt-1">Basé sur vos données</div>
         </motion.div>
-      </div>
+      </motion.div>
 
       {/* Revenue Table */}
-      <div className="bg-white/5 rounded-xl border border-white/10 overflow-hidden">
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.3 }}
+        className="backdrop-blur-xl bg-white/10 rounded-xl border border-white/20 overflow-hidden shadow-2xl"
+      >
         <div className="p-6 border-b border-white/10">
           <h2 className="text-lg font-semibold text-white">Historique des revenus</h2>
         </div>
@@ -831,6 +879,8 @@ export default function RevenuesPage() {
           </motion.div>
         )}
       </AnimatePresence>
+      </motion.div>
+    </div>
     </div>
   );
 }
