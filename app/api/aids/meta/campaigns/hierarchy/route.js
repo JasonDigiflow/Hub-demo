@@ -6,6 +6,48 @@ import { db } from '@/lib/firebase-admin';
 const hierarchyCache = new Map();
 const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes
 
+// Helper pour calculer les dates selon la période (exclut aujourd'hui)
+function parsePeriod(period) {
+  const now = new Date();
+  const yesterday = new Date(now);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const yesterdayStr = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')}`;
+  
+  switch(period) {
+    case 'today':
+      const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+      return { startDate: todayStr, endDate: todayStr };
+    
+    case 'yesterday':
+      return { startDate: yesterdayStr, endDate: yesterdayStr };
+    
+    case 'last_7d':
+      const week = new Date(now);
+      week.setDate(week.getDate() - 7);
+      const weekStr = `${week.getFullYear()}-${String(week.getMonth() + 1).padStart(2, '0')}-${String(week.getDate()).padStart(2, '0')}`;
+      return { startDate: weekStr, endDate: yesterdayStr };
+    
+    case 'last_30d':
+      const thirtyDays = new Date(now);
+      thirtyDays.setDate(thirtyDays.getDate() - 30);
+      const thirtyDaysStr = `${thirtyDays.getFullYear()}-${String(thirtyDays.getMonth() + 1).padStart(2, '0')}-${String(thirtyDays.getDate()).padStart(2, '0')}`;
+      return { startDate: thirtyDaysStr, endDate: yesterdayStr };
+    
+    case 'last_90d':
+      const ninetyDays = new Date(now);
+      ninetyDays.setDate(ninetyDays.getDate() - 90);
+      const ninetyDaysStr = `${ninetyDays.getFullYear()}-${String(ninetyDays.getMonth() + 1).padStart(2, '0')}-${String(ninetyDays.getDate()).padStart(2, '0')}`;
+      return { startDate: ninetyDaysStr, endDate: yesterdayStr };
+    
+    default:
+      // Par défaut: last_30d
+      const defaultDays = new Date(now);
+      defaultDays.setDate(defaultDays.getDate() - 30);
+      const defaultStr = `${defaultDays.getFullYear()}-${String(defaultDays.getMonth() + 1).padStart(2, '0')}-${String(defaultDays.getDate()).padStart(2, '0')}`;
+      return { startDate: defaultStr, endDate: yesterdayStr };
+  }
+}
+
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -28,10 +70,23 @@ export async function GET(request) {
     const accountId = selectedAccountCookie.value;
     const accessToken = session.accessToken;
     
-    // Vérifier le cache mémoire
-    const cacheKey = startDate && endDate 
-      ? `${accountId}_${startDate}_${endDate}`
-      : `${accountId}_${timeRange}`;
+    // Calculer les dates réelles à utiliser
+    let actualStartDate, actualEndDate;
+    if (startDate && endDate) {
+      actualStartDate = startDate;
+      actualEndDate = endDate;
+    } else if (timeRange) {
+      const periodDates = parsePeriod(timeRange);
+      actualStartDate = periodDates.startDate;
+      actualEndDate = periodDates.endDate;
+    } else {
+      const periodDates = parsePeriod('last_30d');
+      actualStartDate = periodDates.startDate;
+      actualEndDate = periodDates.endDate;
+    }
+    
+    // Vérifier le cache mémoire avec les dates réelles
+    const cacheKey = `${accountId}_${actualStartDate}_${actualEndDate}`;
     const cached = hierarchyCache.get(cacheKey);
     
     if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
@@ -84,28 +139,12 @@ export async function GET(request) {
     // Si pas de cache valide, récupérer depuis Meta API
     console.log('[Hierarchy] Fetching from Meta API');
     
-    // Déterminer le paramètre de date à utiliser
-    let dateParam = '';
-    let dateForInsights = '';
-    if (startDate && endDate) {
-      console.log(`[Hierarchy] Using custom date range: ${startDate} to ${endDate}`);
-      dateParam = `time_range={'since':'${startDate}','until':'${endDate}'}`;
-      dateForInsights = dateParam;
-    } else {
-      // Mapper les time ranges
-      const datePresetMap = {
-        'today': 'today',
-        'yesterday': 'yesterday',
-        'last_7d': 'last_7d',
-        'last_30d': 'last_30d',
-        'last_90d': 'last_90d',
-        'lifetime': 'maximum'  // Use maximum for lifetime
-      };
-      const datePreset = datePresetMap[timeRange] || 'last_30d';
-      console.log('[Hierarchy] Using date_preset:', datePreset);
-      dateParam = `date_preset=${datePreset}`;
-      dateForInsights = dateParam;
-    }
+    // Utiliser les dates calculées plus haut
+    console.log(`[Hierarchy] Using date range: ${actualStartDate} to ${actualEndDate}`);
+    
+    // Toujours utiliser des dates explicites pour un contrôle total
+    const dateParam = `time_range={'since':'${actualStartDate}','until':'${actualEndDate}'}`;
+    const dateForInsights = dateParam;
     
     // Récupérer les campagnes
     const campaignsUrl = `https://graph.facebook.com/v18.0/${accountId}/campaigns?` +

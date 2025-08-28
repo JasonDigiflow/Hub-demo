@@ -29,6 +29,11 @@ function parsePeriod(period) {
   const day = now.getDate();
   const todayStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
   
+  // Calculer hier (pour utiliser comme date de fin par défaut)
+  const yesterday = new Date(now);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const yesterdayStr = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')}`;
+  
   switch(period) {
     case 'today':
       return {
@@ -37,55 +42,57 @@ function parsePeriod(period) {
       };
     
     case 'yesterday':
-      const yesterday = new Date(now);
-      yesterday.setDate(yesterday.getDate() - 1);
-      const yesterdayStr = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')}`;
       return {
         startDate: yesterdayStr,
         endDate: yesterdayStr
       };
     
     case 'last_7d':
+      // De jour-7 à hier (7 jours complets sans aujourd'hui)
       const week = new Date(now);
-      week.setDate(week.getDate() - 6);
+      week.setDate(week.getDate() - 7);
       const weekStr = `${week.getFullYear()}-${String(week.getMonth() + 1).padStart(2, '0')}-${String(week.getDate()).padStart(2, '0')}`;
       return {
         startDate: weekStr,
-        endDate: todayStr
+        endDate: yesterdayStr
       };
     
     case 'last_15d':
+      // De jour-15 à hier (15 jours complets sans aujourd'hui)
       const twoWeeks = new Date(now);
-      twoWeeks.setDate(twoWeeks.getDate() - 14);
+      twoWeeks.setDate(twoWeeks.getDate() - 15);
       const twoWeeksStr = `${twoWeeks.getFullYear()}-${String(twoWeeks.getMonth() + 1).padStart(2, '0')}-${String(twoWeeks.getDate()).padStart(2, '0')}`;
       return {
         startDate: twoWeeksStr,
-        endDate: todayStr
+        endDate: yesterdayStr
       };
     
     case 'last_30d':
+      // De jour-30 à hier (30 jours complets sans aujourd'hui)
       const thirtyDays = new Date(now);
-      thirtyDays.setDate(thirtyDays.getDate() - 29);
+      thirtyDays.setDate(thirtyDays.getDate() - 30);
       const thirtyDaysStr = `${thirtyDays.getFullYear()}-${String(thirtyDays.getMonth() + 1).padStart(2, '0')}-${String(thirtyDays.getDate()).padStart(2, '0')}`;
       return {
         startDate: thirtyDaysStr,
-        endDate: todayStr
+        endDate: yesterdayStr
       };
     
     case 'last_90d':
+      // De jour-90 à hier (90 jours complets sans aujourd'hui)
       const ninetyDays = new Date(now);
-      ninetyDays.setDate(ninetyDays.getDate() - 89);
+      ninetyDays.setDate(ninetyDays.getDate() - 90);
       const ninetyDaysStr = `${ninetyDays.getFullYear()}-${String(ninetyDays.getMonth() + 1).padStart(2, '0')}-${String(ninetyDays.getDate()).padStart(2, '0')}`;
       return {
         startDate: ninetyDaysStr,
-        endDate: todayStr
+        endDate: yesterdayStr
       };
     
     case 'current_month':
+      // Du 1er du mois à hier
       const monthStartStr = `${year}-${String(month + 1).padStart(2, '0')}-01`;
       return {
         startDate: monthStartStr,
-        endDate: todayStr
+        endDate: yesterdayStr
       };
     
     case 'last_month':
