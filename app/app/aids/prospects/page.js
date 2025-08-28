@@ -457,78 +457,45 @@ export default function ProspectsPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-purple-900 relative overflow-hidden">
-      {/* Animated background blobs */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <motion.div
-          animate={{
-            x: [0, 100, 0],
-            y: [0, -100, 0],
-          }}
-          transition={{
-            duration: 20,
-            repeat: Infinity,
-            ease: "linear"
-          }}
-          className="absolute top-1/4 left-1/4 w-96 h-96 bg-purple-600/30 rounded-full blur-3xl"
-        />
-        <motion.div
-          animate={{
-            x: [0, -100, 0],
-            y: [0, 100, 0],
-          }}
-          transition={{
-            duration: 25,
-            repeat: Infinity,
-            ease: "linear"
-          }}
-          className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-pink-600/30 rounded-full blur-3xl"
-        />
-      </div>
-
       <div className="relative z-10 space-y-6 p-6">
-      {/* Header */}
-      <motion.div 
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="backdrop-blur-xl bg-white/10 rounded-2xl p-6 border border-white/20 shadow-2xl"
-      >
-        <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-white to-purple-200 bg-clip-text text-transparent mb-2">
-            Centre de Prospects
-          </h1>
-          <p className="text-gray-300 text-lg">
-            Gérez vos prospects issus de vos campagnes publicitaires
-          </p>
-        </div>
-        
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => syncMetaLeads(true, false)}
-            disabled={syncLoading}
-            className="px-6 py-3 bg-gradient-to-r from-blue-500/20 to-cyan-500/20 backdrop-blur-xl text-white rounded-lg hover:from-blue-500/30 hover:to-cyan-500/30 border border-blue-500/30 transition-all font-medium flex items-center gap-2 disabled:opacity-50 shadow-xl"
-          >
-            {syncLoading ? (
-              <>
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                Synchronisation...
-              </>
-            ) : (
-              <>
-                <span className="text-xl">🔄</span>
-                Synchroniser Meta Ads
-              </>
-            )}
-          </button>
-          
-          <div className="relative">
-            <button
-              onClick={() => setShowAdvancedOptions(!showAdvancedOptions)}
-              className="px-4 py-3 backdrop-blur-xl bg-white/10 text-gray-300 rounded-lg hover:bg-white/20 border border-white/20 transition-all font-medium flex items-center gap-2 shadow-xl"
-            >
-              <span className="text-xl">⚙️</span>
-              Options
-            </button>
+        <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="backdrop-blur-xl bg-white/10 rounded-2xl p-6 border border-white/20 shadow-2xl">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-4xl font-bold bg-gradient-to-r from-white to-purple-200 bg-clip-text text-transparent mb-2">
+                Centre de Prospects
+              </h1>
+              <p className="text-gray-300 text-lg">
+                Gérez vos prospects issus de vos campagnes publicitaires
+              </p>
+            </div>
+            
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => syncMetaLeads(true, false)}
+                disabled={syncLoading}
+                className="px-6 py-3 bg-gradient-to-r from-blue-500/20 to-cyan-500/20 backdrop-blur-xl text-white rounded-lg hover:from-blue-500/30 hover:to-cyan-500/30 border border-blue-500/30 transition-all font-medium flex items-center gap-2 disabled:opacity-50 shadow-xl"
+              >
+                {syncLoading ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    Synchronisation...
+                  </>
+                ) : (
+                  <>
+                    <span className="text-xl">🔄</span>
+                    Synchroniser Meta Ads
+                  </>
+                )}
+              </button>
+              
+              <div className="relative">
+                <button
+                  onClick={() => setShowAdvancedOptions(!showAdvancedOptions)}
+                  className="px-4 py-3 backdrop-blur-xl bg-white/10 text-gray-300 rounded-lg hover:bg-white/20 border border-white/20 transition-all font-medium flex items-center gap-2 shadow-xl"
+                >
+                  <span className="text-xl">⚙️</span>
+                  Options
+                </button>
             
             {showAdvancedOptions && (
                   <div className="absolute right-0 top-full mt-2 backdrop-blur-xl bg-black/90 border border-white/20 rounded-lg shadow-2xl p-2 z-50 min-w-[200px]">
@@ -724,24 +691,19 @@ export default function ProspectsPage() {
                   </div>
                 )}
               </div>
-          
-          <button
-            onClick={() => setShowAddModal(true)}
-            className="px-6 py-3 bg-gradient-to-r from-purple-500/20 to-pink-500/20 backdrop-blur-xl text-white rounded-lg hover:from-purple-500/30 hover:to-pink-500/30 border border-purple-500/30 transition-all font-medium flex items-center gap-2 shadow-xl"
-          >
-            <span className="text-xl">+</span>
-            Ajouter un prospect
-          </button>
-        </div>
-      </motion.div>
+              
+              <button
+                onClick={() => setShowAddModal(true)}
+                className="px-6 py-3 bg-gradient-to-r from-purple-500/20 to-pink-500/20 backdrop-blur-xl text-white rounded-lg hover:from-purple-500/30 hover:to-pink-500/30 border border-purple-500/30 transition-all font-medium flex items-center gap-2 shadow-xl"
+              >
+                <span className="text-xl">+</span>
+                Ajouter un prospect
+              </button>
+            </div>
+          </div>
+        </motion.div>
 
-      {/* Stats Cards */}
-      <motion.div 
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.2 }}
-        className="grid grid-cols-1 md:grid-cols-5 gap-4"
-      >
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }} className="grid grid-cols-1 md:grid-cols-5 gap-4">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -802,13 +764,7 @@ export default function ProspectsPage() {
         </motion.div>
       </motion.div>
 
-      {/* Prospects Table */}
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.3 }}
-        className="backdrop-blur-xl bg-white/10 rounded-xl border border-white/20 overflow-hidden shadow-2xl"
-      >
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="backdrop-blur-xl bg-white/10 rounded-xl border border-white/20 overflow-hidden shadow-2xl">
         <div className="p-6 border-b border-white/10">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold text-white">Liste des prospects</h2>
@@ -946,9 +902,8 @@ export default function ProspectsPage() {
             </div>
           )}
         </div>
-      </div>
+      </motion.div>
 
-      {/* Add/Edit Modal */}
       <AnimatePresence>
         {showAddModal && (
           <motion.div
@@ -1162,7 +1117,6 @@ export default function ProspectsPage() {
         )}
       </AnimatePresence>
 
-      {/* Raw Data Modal */}
       <AnimatePresence>
         {showRawData && selectedProspect && (
           <motion.div
@@ -1245,8 +1199,7 @@ export default function ProspectsPage() {
           </motion.div>
         )}
       </AnimatePresence>
-      </motion.div>
-    </div>
+      </div>
     </div>
   );
 }

@@ -369,114 +369,70 @@ export default function RevenuesPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-green-900 relative overflow-hidden">
-      {/* Animated background blobs */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <motion.div
-          animate={{
-            x: [0, 100, 0],
-            y: [0, -100, 0],
-          }}
-          transition={{
-            duration: 20,
-            repeat: Infinity,
-            ease: "linear"
-          }}
-          className="absolute top-1/4 left-1/4 w-96 h-96 bg-green-600/30 rounded-full blur-3xl"
-        />
-        <motion.div
-          animate={{
-            x: [0, -100, 0],
-            y: [0, 100, 0],
-          }}
-          transition={{
-            duration: 25,
-            repeat: Infinity,
-            ease: "linear"
-          }}
-          className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-emerald-600/30 rounded-full blur-3xl"
-        />
-      </div>
-
       <div className="relative z-10 space-y-6 p-6">
-      {/* Header */}
-      <motion.div 
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="backdrop-blur-xl bg-white/10 rounded-2xl p-6 border border-white/20 shadow-2xl"
-      >
-        <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-green-400 to-emerald-400 bg-clip-text text-transparent mb-2">
-            Gestion des Revenus
-          </h1>
-          <p className="text-gray-300 text-lg">
-            Suivez les revenus générés par vos campagnes publicitaires
-          </p>
-        </div>
-        
-        <div className="flex gap-3">
-          {revenues.length > 0 && (
-            <button
-              onClick={async () => {
-                if (confirm(`⚠️ Voulez-vous vraiment supprimer TOUS les ${revenues.length} revenus ?\n\nCette action est irréversible.`)) {
-                  try {
-                    // Utiliser l'API de suppression en masse
-                    const response = await fetch('/api/aids/revenues/clear', { 
-                      method: 'DELETE' 
-                    });
-                    const result = await response.json();
-                    
-                    if (result.success) {
-                      loadRevenues();
-                      alert(`✅ ${result.message}`);
-                    } else {
-                      // Fallback: supprimer un par un
-                      const deletePromises = revenues.map(revenue => 
-                        fetch(`/api/aids/revenues/${revenue.id}`, { method: 'DELETE' })
-                      );
-                      await Promise.all(deletePromises);
-                      loadRevenues();
-                      alert('✅ Tous les revenus ont été supprimés');
+        <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="backdrop-blur-xl bg-white/10 rounded-2xl p-6 border border-white/20 shadow-2xl">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-4xl font-bold bg-gradient-to-r from-green-400 to-emerald-400 bg-clip-text text-transparent mb-2">
+                Gestion des Revenus
+              </h1>
+              <p className="text-gray-300 text-lg">
+                Suivez les revenus générés par vos campagnes publicitaires
+              </p>
+            </div>
+            
+            <div className="flex gap-3">
+              {revenues.length > 0 && (
+                <button
+                  onClick={async () => {
+                    if (confirm(`⚠️ Voulez-vous vraiment supprimer TOUS les ${revenues.length} revenus ?\n\nCette action est irréversible.`)) {
+                      try {
+                        // Utiliser l'API de suppression en masse
+                        const response = await fetch('/api/aids/revenues/clear', { 
+                          method: 'DELETE' 
+                        });
+                        const result = await response.json();
+                        
+                        if (result.success) {
+                          loadRevenues();
+                          alert(`✅ ${result.message}`);
+                        } else {
+                          // Fallback: supprimer un par un
+                          const deletePromises = revenues.map(revenue => 
+                            fetch(`/api/aids/revenues/${revenue.id}`, { method: 'DELETE' })
+                          );
+                          await Promise.all(deletePromises);
+                          loadRevenues();
+                          alert('✅ Tous les revenus ont été supprimés');
+                        }
+                      } catch (error) {
+                        console.error('Error deleting all revenues:', error);
+                        // En cas d'erreur, vider localement pour le mode démo
+                        setRevenues([]);
+                        calculateStats([]);
+                        alert('✅ Revenus supprimés (mode local)');
+                      }
                     }
-                  } catch (error) {
-                    console.error('Error deleting all revenues:', error);
-                    // En cas d'erreur, vider localement pour le mode démo
-                    setRevenues([]);
-                    calculateStats([]);
-                    alert('✅ Revenus supprimés (mode local)');
-                  }
-                }
-              }}
-              className="px-4 py-3 backdrop-blur-xl bg-red-600/20 text-red-400 border border-red-600/30 rounded-lg hover:bg-red-600/30 transition-all font-medium flex items-center gap-2 shadow-xl"
-            >
-              <span>🗑️</span>
-              Tout supprimer ({revenues.length})
-            </button>
-          )}
-          <button
-            onClick={() => setShowAddModal(true)}
-            className="px-6 py-3 bg-gradient-to-r from-green-500/20 to-emerald-500/20 backdrop-blur-xl text-white rounded-lg hover:from-green-500/30 hover:to-emerald-500/30 border border-green-500/30 transition-all font-medium flex items-center gap-2 shadow-xl"
-          >
-            <span className="text-xl">+</span>
-            Ajouter un revenu
-          </button>
-        </div>
-      </motion.div>
+                  }}
+                  className="px-4 py-3 backdrop-blur-xl bg-red-600/20 text-red-400 border border-red-600/30 rounded-lg hover:bg-red-600/30 transition-all font-medium flex items-center gap-2 shadow-xl"
+                >
+                  <span>🗑️</span>
+                  Tout supprimer ({revenues.length})
+                </button>
+              )}
+              <button
+                onClick={() => setShowAddModal(true)}
+                className="px-6 py-3 bg-gradient-to-r from-green-500/20 to-emerald-500/20 backdrop-blur-xl text-white rounded-lg hover:from-green-500/30 hover:to-emerald-500/30 border border-green-500/30 transition-all font-medium flex items-center gap-2 shadow-xl"
+              >
+                <span className="text-xl">+</span>
+                Ajouter un revenu
+              </button>
+            </div>
+          </div>
+        </motion.div>
 
-      {/* Stats Cards */}
-      <motion.div 
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.2 }}
-        className="grid grid-cols-1 md:grid-cols-4 gap-4"
-      >
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          whileHover={{ scale: 1.05 }}
-          className="backdrop-blur-xl bg-gradient-to-br from-green-600/20 to-green-600/10 rounded-xl p-6 border border-green-600/30 shadow-xl"
-        >
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }} className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} whileHover={{ scale: 1.05 }} className="backdrop-blur-xl bg-gradient-to-br from-green-600/20 to-green-600/10 rounded-xl p-6 border border-green-600/30 shadow-xl">
           <div className="flex items-center justify-between mb-2">
             <span className="text-gray-300 text-sm">Revenus totaux HT</span>
             <span className="text-2xl">💰</span>
@@ -541,13 +497,7 @@ export default function RevenuesPage() {
         </motion.div>
       </motion.div>
 
-      {/* Revenue Table */}
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.3 }}
-        className="backdrop-blur-xl bg-white/10 rounded-xl border border-white/20 overflow-hidden shadow-2xl"
-      >
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="backdrop-blur-xl bg-white/10 rounded-xl border border-white/20 overflow-hidden shadow-2xl">
         <div className="p-6 border-b border-white/10">
           <h2 className="text-lg font-semibold text-white">Historique des revenus</h2>
         </div>
@@ -632,9 +582,8 @@ export default function RevenuesPage() {
             </div>
           )}
         </div>
-      </div>
+      </motion.div>
 
-      {/* Add/Edit Modal */}
       <AnimatePresence>
         {showAddModal && (
           <motion.div
@@ -656,7 +605,6 @@ export default function RevenuesPage() {
               </h2>
 
               <form onSubmit={handleSubmit} className="space-y-4">
-                {/* Sélecteur de prospect avec recherche */}
                 <div className="relative">
                   <label className="block text-sm font-medium text-gray-400 mb-1">
                     Rechercher un prospect (optionnel)
@@ -697,7 +645,6 @@ export default function RevenuesPage() {
                     </div>
                   )}
                   
-                  {/* Dropdown des résultats */}
                   {showProspectDropdown && filteredProspects.length > 0 && !formData.prospectId && (
                     <div className="absolute z-50 w-full mt-1 bg-gray-900 border border-white/20 rounded-lg shadow-xl max-h-60 overflow-y-auto">
                       <div className="p-2 text-xs text-gray-400 border-b border-white/10 sticky top-0 bg-gray-900">
@@ -879,8 +826,7 @@ export default function RevenuesPage() {
           </motion.div>
         )}
       </AnimatePresence>
-      </motion.div>
-    </div>
+      </div>
     </div>
   );
 }
