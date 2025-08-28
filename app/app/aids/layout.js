@@ -116,6 +116,13 @@ export default function AIDsLayout({ children }) {
       path: '/app/aids/debug-leads',
       gradient: 'from-red-600 to-pink-600',
       badge: 'DEBUG'
+    },
+    { 
+      id: 'test-tokens', 
+      name: '🔑 Test Tokens', 
+      path: '/app/aids/test-tokens',
+      gradient: 'from-yellow-600 to-orange-600',
+      badge: 'TEST'
     }
   ];
 
