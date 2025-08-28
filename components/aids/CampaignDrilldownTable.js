@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-export default function CampaignDrilldownTable({ timeRange = 'last_30d', startDate, endDate }) {
+export default function CampaignDrilldownTable({ timeRange, startDate, endDate }) {
   const [campaigns, setCampaigns] = useState([]);
   const [loading, setLoading] = useState(true);
   const [expandedCampaigns, setExpandedCampaigns] = useState({});
@@ -22,8 +22,11 @@ export default function CampaignDrilldownTable({ timeRange = 'last_30d', startDa
       let url = '/api/aids/meta/campaigns/hierarchy?';
       if (startDate && endDate) {
         url += `start_date=${startDate}&end_date=${endDate}`;
-      } else {
+      } else if (timeRange) {
         url += `time_range=${timeRange}`;
+      } else {
+        // Default to last_30d if no period specified
+        url += `time_range=last_30d`;
       }
       
       const response = await fetch(url);
