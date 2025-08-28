@@ -406,7 +406,7 @@ export default function AIDsInsights() {
       <motion.div 
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="backdrop-blur-xl bg-white/10 rounded-2xl p-6 border border-white/20 shadow-2xl mb-8"
+        className="backdrop-blur-xl bg-white/10 rounded-2xl p-6 border border-white/20 shadow-2xl mb-8 relative z-50"
       >
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
@@ -897,7 +897,7 @@ export default function AIDsInsights() {
         className="mb-8"
       >
         <CampaignDrilldownTable 
-          timeRange={period.type === 'predefined' ? period.period : 'last_30d'}
+          timeRange={period.type === 'predefined' ? period.period : null}
           startDate={getPeriodDates().startDate}
           endDate={getPeriodDates().endDate}
         />
