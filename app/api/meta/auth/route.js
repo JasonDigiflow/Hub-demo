@@ -5,8 +5,8 @@ export async function GET() {
     // Meta OAuth configuration
     const FACEBOOK_APP_ID = process.env.NEXT_PUBLIC_META_APP_ID || process.env.META_APP_ID || '1234567890';
     const REDIRECT_URI = process.env.NEXT_PUBLIC_URL 
-      ? `${process.env.NEXT_PUBLIC_URL}/api/meta/callback`
-      : 'https://digiflow-hub.com/api/meta/callback';
+      ? `${process.env.NEXT_PUBLIC_URL}/api/meta/auth/callback`
+      : 'https://digiflow-hub.com/api/meta/auth/callback';
     
     // Permissions nécessaires pour la gestion des publicités
     const PERMISSIONS = [
