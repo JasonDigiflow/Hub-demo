@@ -1,38 +1,18 @@
 import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
-import jwt from 'jsonwebtoken';
+import { getMetaAuth } from '@/lib/meta-auth-helper';
 import { db } from '@/lib/firebase-admin';
 
 export async function GET(request) {
   try {
-    // Get user authentication
-    const cookieStore = cookies();
-    const authCookie = cookieStore.get('auth-token') || cookieStore.get('auth_token');
-    const metaSession = cookieStore.get('meta_session');
+    // Get user authentication using the new helper
+    const auth = await getMetaAuth();
     
-    let userId = null;
-    
-    if (authCookie) {
-      try {
-        const decoded = jwt.verify(authCookie.value, process.env.JWT_SECRET || 'default-secret-key');
-        userId = decoded.uid || decoded.userId || decoded.id;
-      } catch (e) {
-        console.error('JWT verification failed:', e.message);
-      }
-    }
-    
-    if (!userId && metaSession) {
-      try {
-        const session = JSON.parse(metaSession.value);
-        userId = session.userID || session.userId;
-      } catch (e) {
-        console.error('Meta session parse error:', e);
-      }
-    }
-    
-    if (!userId) {
+    if (!auth.authenticated || !auth.userId) {
+      console.log('[Dashboard Stats] Authentication failed:', auth);
       return NextResponse.json({ error: 'Non authentifié' }, { status: 401 });
     }
+    
+    const userId = auth.userId;
     
     console.log('=== DASHBOARD STATS FOR USER ===');
     console.log('User ID:', userId);

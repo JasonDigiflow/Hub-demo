@@ -16,19 +16,22 @@ export async function GET(request) {
     
     // Vérifier l'authentification Meta
     const cookieStore = await cookies();
-    const sessionCookie = cookieStore.get('meta_session');
+    const metaTokenCookie = cookieStore.get('meta_access_token');
     const selectedAccountCookie = cookieStore.get('selected_ad_account');
     
-    if (!sessionCookie || !selectedAccountCookie) {
+    if (!metaTokenCookie || !selectedAccountCookie) {
+      console.log('[Campaigns API] Missing cookies:', {
+        hasMetaToken: !!metaTokenCookie,
+        hasSelectedAccount: !!selectedAccountCookie
+      });
       return NextResponse.json({ 
         error: 'Not authenticated or no account selected',
         campaigns: []
       }, { status: 401 });
     }
     
-    const session = JSON.parse(sessionCookie.value);
     const accountId = selectedAccountCookie.value;
-    const accessToken = session.accessToken;
+    const accessToken = metaTokenCookie.value;
     
     // Vérifier le cache
     const cacheKey = startDate && endDate 

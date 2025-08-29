@@ -18,20 +18,23 @@ export async function GET(request) {
     aidsLogger.info(LogCategories.ANALYTICS, `Récupération insights Meta: ${timeRange}`);
     
     const cookieStore = await cookies();
-    const sessionCookie = cookieStore.get('meta_session');
+    const metaTokenCookie = cookieStore.get('meta_access_token');
     const selectedAccountCookie = cookieStore.get('selected_ad_account');
     
-    if (!sessionCookie || !selectedAccountCookie) {
-      aidsLogger.error(LogCategories.AUTH, 'Session Meta ou compte manquant pour insights');
+    if (!metaTokenCookie || !selectedAccountCookie) {
+      aidsLogger.error(LogCategories.AUTH, 'Token Meta ou compte manquant pour insights');
+      console.log('[Insights API] Missing cookies:', {
+        hasMetaToken: !!metaTokenCookie,
+        hasSelectedAccount: !!selectedAccountCookie
+      });
       return NextResponse.json({ 
         error: 'Not authenticated or no account selected',
         insights: null
       }, { status: 401 });
     }
     
-    const session = JSON.parse(sessionCookie.value);
     const accountId = selectedAccountCookie.value;
-    const accessToken = session.accessToken;
+    const accessToken = metaTokenCookie.value;
     
     // Déterminer le paramètre de date à utiliser
     let dateParam = '';
