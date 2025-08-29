@@ -13,14 +13,17 @@ export async function GET(request) {
     // Stocker le state dans un cookie temporaire
     const response = NextResponse.json({ success: false });
     
-    // Scopes nécessaires pour l'accès Meta Ads
+    // Scopes correspondant à vos permissions Meta approuvées
     const scopes = [
       'ads_read',
       'ads_management', 
       'business_management',
       'read_insights',
       'pages_read_engagement',
-      'leads_retrieval'
+      'pages_manage_ads',
+      'pages_show_list',
+      'page_events',
+      'attribution_read'
     ].join(',');
     
     const metaAppId = process.env.META_APP_ID || process.env.NEXT_PUBLIC_META_APP_ID;
