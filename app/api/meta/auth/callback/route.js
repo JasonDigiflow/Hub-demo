@@ -1,20 +1,25 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { db } from '@/lib/firebase-admin';
+import jwt from 'jsonwebtoken';
 
 export async function GET(request) {
   try {
+    console.log('Meta OAuth callback started');
+    
     const { searchParams } = new URL(request.url);
     const code = searchParams.get('code');
     const state = searchParams.get('state');
     const error = searchParams.get('error');
     const errorDescription = searchParams.get('error_description');
+    
+    console.log('Callback params:', { code: code?.substring(0, 20) + '...', state, error });
 
     // Si l'utilisateur a refusé les permissions
     if (error) {
       console.error('Meta OAuth error:', error, errorDescription);
       return NextResponse.redirect(
-        `/app/aids?error=${encodeURIComponent(errorDescription || 'Authentification refusée')}`
+        new URL(`/app/aids?error=${encodeURIComponent(errorDescription || 'Authentification refusée')}`, request.url)
       );
     }
 
@@ -24,7 +29,7 @@ export async function GET(request) {
     
     if (!savedState || savedState.value !== state) {
       console.error('Invalid state parameter');
-      return NextResponse.redirect('/app/aids?error=Invalid+state');
+      return NextResponse.redirect(new URL('/app/aids?error=Invalid+state', request.url));
     }
 
     // Échanger le code contre un access token
@@ -38,6 +43,10 @@ export async function GET(request) {
     }
     const REDIRECT_URI = `${baseUrl}/api/meta/auth/callback`;
 
+    console.log('Exchanging code for token...');
+    console.log('App ID:', FACEBOOK_APP_ID);
+    console.log('Redirect URI:', REDIRECT_URI);
+    
     const tokenResponse = await fetch(
       `https://graph.facebook.com/v18.0/oauth/access_token?` +
       `client_id=${FACEBOOK_APP_ID}` +
@@ -47,10 +56,11 @@ export async function GET(request) {
     );
 
     const tokenData = await tokenResponse.json();
+    console.log('Token response:', tokenData.error ? tokenData.error : 'Success');
 
     if (tokenData.error) {
       console.error('Token exchange error:', tokenData.error);
-      return NextResponse.redirect('/app/aids?error=Token+exchange+failed');
+      return NextResponse.redirect(new URL('/app/aids?error=Token+exchange+failed', request.url));
     }
 
     const accessToken = tokenData.access_token;
@@ -109,7 +119,6 @@ export async function GET(request) {
     if (authToken) {
       try {
         // Décoder le JWT pour obtenir l'ID utilisateur
-        const jwt = require('jsonwebtoken');
         const decoded = jwt.verify(authToken.value, process.env.JWT_SECRET || 'your-secret-key-2024');
         
         // Mettre à jour l'organisation avec les informations Meta
@@ -136,7 +145,7 @@ export async function GET(request) {
     }
 
     // Créer la réponse avec redirection
-    const response = NextResponse.redirect('/app/aids?meta_connected=true');
+    const response = NextResponse.redirect(new URL('/app/aids?meta_connected=true', request.url));
     
     // Stocker les données dans des cookies pour le client
     response.cookies.set('meta_access_token', accessToken, {
@@ -166,9 +175,17 @@ export async function GET(request) {
     // Supprimer le cookie de state
     response.cookies.delete('meta_auth_state');
 
+    console.log('Meta OAuth callback completed successfully');
     return response;
   } catch (error) {
     console.error('Meta callback error:', error);
-    return NextResponse.redirect('/app/aids?error=Callback+failed');
+    console.error('Error stack:', error.stack);
+    
+    // Retourner une erreur plus détaillée pour debug
+    return NextResponse.json({
+      error: 'Callback failed',
+      message: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    }, { status: 500 });
   }
 }
