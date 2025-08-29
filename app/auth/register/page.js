@@ -1,3 +1,11 @@
+import RegisterWithSiret from '@/components/auth/RegisterWithSiret';
+
+export default function RegisterPage() {
+  return <RegisterWithSiret />;
+}
+
+// Ancien code conservé pour référence (à supprimer plus tard)
+/*
 'use client';
 
 import { useState } from 'react';
@@ -8,7 +16,7 @@ import Input from '@/components/ui/Input';
 import GlassCard from '@/components/ui/GlassCard';
 import { registerWithEmail } from '@/lib/firebase-auth';
 
-export default function RegisterPage() {
+export default function RegisterPageOld() {
   const router = useRouter();
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
