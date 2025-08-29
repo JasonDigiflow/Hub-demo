@@ -4,6 +4,9 @@ import { useState, useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
+import { AdAccountProvider } from '@/lib/contexts/AdAccountContext';
+import AdAccountSelector from '@/components/aids/AdAccountSelector';
+import LanguageSwitcher from '@/components/LanguageSwitcher';
 
 export default function AIDsLayout({ children }) {
   const pathname = usePathname();
@@ -140,7 +143,8 @@ export default function AIDsLayout({ children }) {
   };
 
   return (
-    <div className="flex min-h-screen bg-gradient-to-br from-gray-950 via-purple-950/20 to-gray-950">
+    <AdAccountProvider>
+      <div className="flex min-h-screen bg-gradient-to-br from-gray-950 via-purple-950/20 to-gray-950">
       {/* Desktop Sidebar - Always visible */}
       <aside className={`
         hidden lg:flex flex-col
@@ -155,11 +159,17 @@ export default function AIDsLayout({ children }) {
             <div className="w-12 h-12 bg-gradient-to-br from-purple-600 to-pink-600 rounded-xl flex items-center justify-center shadow-lg">
               <span className="text-2xl">🚀</span>
             </div>
-            <div>
+            <div className="flex-1">
               <h2 className="text-xl font-bold text-white">AIDs</h2>
               <p className="text-xs text-gray-400">Powered by Octavia AI</p>
             </div>
+            <LanguageSwitcher />
           </div>
+        </div>
+        
+        {/* Ad Account Selector */}
+        <div className="px-6 py-3 border-b border-white/10">
+          <AdAccountSelector />
         </div>
 
         {/* Quick Stats */}
@@ -366,5 +376,6 @@ export default function AIDsLayout({ children }) {
         {children}
       </main>
     </div>
+    </AdAccountProvider>
   );
 }
