@@ -1,24 +1,8 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { loginWithEmail } from '@/lib/firebase-auth';
-import { auth } from '@/lib/firebase';
-
-// Compte démo pour développement local
-const DEMO_ACCOUNT = {
-  email: 'jason@behype-app.com',
-  password: 'Demo123',
-  user: {
-    id: 'demo_user',
-    email: 'jason@behype-app.com',
-    name: 'Jason Sotoca',
-    organization: {
-      name: 'Behype',
-      id: 'demo_org',
-      role: 'owner',
-      members: 1
-    }
-  }
-};
+import { db } from '@/lib/firebase-admin';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
 
 export async function POST(request) {
   try {
@@ -31,83 +15,106 @@ export async function POST(request) {
       );
     }
 
-    // Log for debugging
     console.log('Login attempt for:', email);
-    console.log('Firebase auth available:', !!auth);
 
-    // Check if Firebase is configured
-    if (!auth) {
-      console.warn('Firebase not configured, using demo mode');
-      // Fallback to demo mode for local development
-      if (email === DEMO_ACCOUNT.email && password === DEMO_ACCOUNT.password) {
-        const response = NextResponse.json({
-          success: true,
-          user: DEMO_ACCOUNT.user
-        });
+    // Chercher l'utilisateur dans Firestore
+    const usersSnapshot = await db.collection('users')
+      .where('email', '==', email.toLowerCase())
+      .limit(1)
+      .get();
 
-        // Set demo cookie
-        response.cookies.set('auth_token', 'demo_token', {
-          httpOnly: true,
-          secure: process.env.NODE_ENV === 'production',
-          sameSite: 'strict',
-          maxAge: 60 * 60 * 24 * 7 // 7 days
-        });
-
-        return response;
-      } else {
-        return NextResponse.json(
-          { error: 'Email ou mot de passe incorrect (Mode démo)' },
-          { status: 401 }
-        );
-      }
+    if (usersSnapshot.empty) {
+      console.log('User not found:', email);
+      return NextResponse.json(
+        { error: 'Email ou mot de passe incorrect' },
+        { status: 401 }
+      );
     }
 
-    console.log('Attempting Firebase login...');
+    const userDoc = usersSnapshot.docs[0];
+    const userData = userDoc.data();
     
-    // Use Firebase Auth
-    const result = await loginWithEmail(email, password);
+    console.log('User found:', userData.uid);
 
-    if (result.success) {
-      try {
-        // Get the ID token from the returned user object
-        const idToken = await result.firebaseUser.getIdToken();
-        
-        console.log('Login successful, token generated');
+    // Vérifier le mot de passe
+    const passwordMatch = await bcrypt.compare(password, userData.password);
+    
+    if (!passwordMatch) {
+      console.log('Invalid password for user:', userData.uid);
+      return NextResponse.json(
+        { error: 'Email ou mot de passe incorrect' },
+        { status: 401 }
+      );
+    }
 
-        const response = NextResponse.json({
-          success: true,
-          user: result.user
-        });
+    console.log('Password verified, creating session');
 
-        // Set secure httpOnly cookie with Firebase ID token
-        response.cookies.set('auth_token', idToken, {
-          httpOnly: true,
-          secure: process.env.NODE_ENV === 'production',
-          sameSite: 'strict',
-          maxAge: 60 * 60 * 24 * 7 // 7 days
-        });
-
-        return response;
-      } catch (tokenError) {
-        console.error('Error getting ID token:', tokenError);
-        // Even if token fails, login succeeded
-        return NextResponse.json({
-          success: true,
-          user: result.user,
-          message: 'Connexion réussie'
-        });
+    // Récupérer l'organisation si elle existe
+    let organization = null;
+    if (userData.primaryOrgId) {
+      const orgDoc = await db.collection('organizations').doc(userData.primaryOrgId).get();
+      if (orgDoc.exists) {
+        const orgData = orgDoc.data();
+        organization = {
+          id: orgData.id,
+          name: orgData.name,
+          siret: orgData.siret,
+          role: userData.role || 'member'
+        };
       }
     }
 
-    return NextResponse.json(
-      { error: 'Email ou mot de passe incorrect' },
-      { status: 401 }
+    // Créer le token JWT
+    const jwtSecret = process.env.JWT_SECRET || 'default-secret-key';
+    const token = jwt.sign(
+      {
+        uid: userData.uid,
+        email: userData.email,
+        name: userData.name,
+        orgId: userData.primaryOrgId,
+        role: userData.role
+      },
+      jwtSecret,
+      { expiresIn: '30d' }
     );
+
+    // Créer la réponse avec le cookie
+    const response = NextResponse.json({
+      success: true,
+      user: {
+        id: userData.uid,
+        email: userData.email,
+        name: userData.name,
+        organization: organization
+      }
+    });
+
+    // Définir le cookie d'authentification
+    const cookieStore = await cookies();
+    cookieStore.set('auth-token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 60 * 60 * 24 * 30 // 30 jours
+    });
+
+    // Log de connexion
+    await db.collection('audit_logs').add({
+      action: 'user_login',
+      userId: userData.uid,
+      email: userData.email,
+      timestamp: new Date().toISOString(),
+      ip: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip')
+    });
+
+    console.log('Login successful for:', userData.email);
+    return response;
+
   } catch (error) {
     console.error('Login error:', error);
     return NextResponse.json(
-      { error: error.message || 'Erreur lors de la connexion' },
-      { status: 401 }
+      { error: 'Erreur lors de la connexion', details: error.message },
+      { status: 500 }
     );
   }
 }
