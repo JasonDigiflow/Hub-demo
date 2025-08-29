@@ -126,6 +126,13 @@ export default function AIDsLayout({ children }) {
       path: '/app/aids/test-tokens',
       gradient: 'from-yellow-600 to-orange-600',
       badge: 'TEST'
+    },
+    { 
+      id: 'account', 
+      name: '👤 Mon Compte', 
+      path: '/app/aids/account',
+      gradient: 'from-gray-600 to-gray-700',
+      important: true
     }
   ];
 
@@ -223,6 +230,9 @@ export default function AIDsLayout({ children }) {
               </span>
               {item.premium && (
                 <span className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse" />
+              )}
+              {item.important && (
+                <span className="w-2 h-2 bg-blue-400 rounded-full" />
               )}
             </motion.button>
           ))}
