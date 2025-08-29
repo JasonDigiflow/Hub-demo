@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { db, admin } from '@/lib/firebase-admin';
+import { db } from '@/lib/firebase-admin';
+import jwt from 'jsonwebtoken';
 
 // Cache pour stocker les données synchronisées
 const syncCache = new Map();

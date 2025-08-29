@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { db, admin } from '@/lib/firebase-admin';
+import { db } from '@/lib/firebase-admin';
 
 export async function GET(request) {
   try {
@@ -26,7 +26,9 @@ export async function GET(request) {
     let userId;
     if (authCookie) {
       try {
-        const decoded = await admin.auth().verifyIdToken(authCookie.value);
+        // JWT verification without Firebase Admin
+        const jwt = require('jsonwebtoken');
+        const decoded = jwt.verify(authCookie.value, process.env.JWT_SECRET || 'default-secret-key');
         userId = decoded.uid;
       } catch (error) {
         console.error('Error verifying auth token:', error);
