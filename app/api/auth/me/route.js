@@ -1,95 +1,98 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { auth, db } from '@/lib/firebase';
-import { getDoc, doc } from 'firebase/firestore';
-
-// Données utilisateur complètes pour la démo
-const DEMO_USER = {
-  id: '1',
-  email: 'jason@behype-app.com',
-  name: 'Jason Sotoca',
-  avatar: '👨‍💼',
-  organizationName: 'DigiFlow', // Nom de l'organisation pour affichage
-  organization: {
-    name: 'DigiFlow',
-    id: 'org_001',
-    role: 'owner',
-    members: 1,
-    plan: 'premium',
-    usage: {
-      reviews: 127,
-      posts: 42,
-      responses: 456,
-      apiCalls: 12847
-    }
-  },
-  apps: {
-    fidalyz: {
-      active: true,
-      onboarded: true,
-      stats: {
-        reviews: 127,
-        avgRating: 4.7,
-        responseRate: 95,
-        googlePosts: 42,
-        monthlyGrowth: 23.5
-      },
-      businesses: [
-        {
-          id: 'biz_1',
-          name: 'Behype Agency',
-          googleId: 'ChIJN1t_tDeuEmsRUsoyG83frY4',
-          address: '123 rue de la Paix, 75001 Paris',
-          rating: 4.7,
-          reviewCount: 127
-        }
-      ]
-    },
-    aids: { active: false },
-    seoly: { active: false },
-    supportia: { active: false },
-    salesia: { active: false },
-    lexa: { active: false },
-    cashflow: { active: false },
-    eden: { active: false }
-  }
-};
+import jwt from 'jsonwebtoken';
+import { db } from '@/lib/firebase-admin';
 
 export async function GET(request) {
   try {
     const cookieStore = await cookies();
-    const token = cookieStore.get('auth_token');
+    // Chercher le bon cookie (auth-token avec tiret)
+    const token = cookieStore.get('auth-token') || cookieStore.get('auth_token');
 
     if (!token) {
+      console.log('No auth token found in cookies');
       return NextResponse.json(
         { error: 'Non authentifié' },
         { status: 401 }
       );
     }
 
-    // Demo mode
-    if (token.value === 'demo_token') {
-      return NextResponse.json(DEMO_USER);
-    }
-
-    // Firebase mode - For now, return demo user if Firebase not configured
-    // TODO: Implement Firebase Admin SDK for token verification
-    if (!auth || !db) {
-      return NextResponse.json(DEMO_USER);
-    }
-
-    // Try to decode as Firebase token (basic check)
-    // In production, you'd use Firebase Admin SDK to verify the token
+    // Vérifier et décoder le token JWT
+    const jwtSecret = process.env.JWT_SECRET || 'default-secret-key';
+    
     try {
-      // For now, return demo user
-      // This would be replaced with actual Firebase token verification
-      return NextResponse.json(DEMO_USER);
-    } catch (error) {
+      const decoded = jwt.verify(token.value, jwtSecret);
+      console.log('Token decoded:', decoded.uid);
+      
+      // Récupérer les données utilisateur depuis Firestore
+      const userDoc = await db.collection('users').doc(decoded.uid).get();
+      
+      if (!userDoc.exists) {
+        console.log('User not found in Firestore:', decoded.uid);
+        return NextResponse.json(
+          { error: 'Utilisateur non trouvé' },
+          { status: 404 }
+        );
+      }
+      
+      const userData = userDoc.data();
+      
+      // Récupérer l'organisation si elle existe
+      let organization = null;
+      if (userData.primaryOrgId) {
+        const orgDoc = await db.collection('organizations').doc(userData.primaryOrgId).get();
+        if (orgDoc.exists) {
+          const orgData = orgDoc.data();
+          organization = {
+            id: orgData.id,
+            name: orgData.name,
+            siret: orgData.siret,
+            role: userData.role || 'member',
+            plan: 'premium',
+            members: orgData.members ? orgData.members.length : 1
+          };
+        }
+      }
+      
+      // Construire la réponse utilisateur
+      const userResponse = {
+        id: userData.uid,
+        email: userData.email,
+        name: userData.name,
+        avatar: '👤',
+        organizationName: organization?.name || 'Sans organisation',
+        organization: organization,
+        apps: {
+          fidalyz: { active: false },
+          aids: { active: true }, // AIDs est actif par défaut
+          seoly: { active: false },
+          supportia: { active: false },
+          salesia: { active: false },
+          lexa: { active: false },
+          cashflow: { active: false },
+          eden: { active: false }
+        }
+      };
+      
+      return NextResponse.json(userResponse);
+      
+    } catch (jwtError) {
+      console.error('JWT verification error:', jwtError);
+      
+      // Token expiré ou invalide
+      if (jwtError.name === 'TokenExpiredError') {
+        return NextResponse.json(
+          { error: 'Session expirée' },
+          { status: 401 }
+        );
+      }
+      
       return NextResponse.json(
         { error: 'Token invalide' },
         { status: 401 }
       );
     }
+    
   } catch (error) {
     console.error('Get user error:', error);
     return NextResponse.json(
