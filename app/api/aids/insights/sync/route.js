@@ -217,11 +217,11 @@ async function performSync(accountId, accessToken, userId) {
 // GET endpoint pour récupérer le statut de synchronisation
 export async function GET(request) {
   try {
-    const cookieStore = cookies();
-    const sessionCookie = cookieStore.get('meta_session');
+    const cookieStore = await cookies();
+    const metaTokenCookie = cookieStore.get('meta_access_token');
     const selectedAccountCookie = cookieStore.get('selected_ad_account');
     
-    if (!sessionCookie || !selectedAccountCookie) {
+    if (!metaTokenCookie || !selectedAccountCookie) {
       return NextResponse.json({ 
         error: 'Not authenticated or no account selected'
       }, { status: 401 });
@@ -252,26 +252,29 @@ export async function GET(request) {
 // POST endpoint pour déclencher une synchronisation manuelle
 export async function POST(request) {
   try {
-    const cookieStore = cookies();
-    const sessionCookie = cookieStore.get('meta_session');
+    const cookieStore = await cookies();
+    const metaTokenCookie = cookieStore.get('meta_access_token');
     const selectedAccountCookie = cookieStore.get('selected_ad_account');
     const authCookie = cookieStore.get('auth-token') || cookieStore.get('auth_token');
     
-    if (!sessionCookie || !selectedAccountCookie) {
+    if (!metaTokenCookie || !selectedAccountCookie) {
+      console.log('[Sync] Missing cookies:', {
+        hasMetaToken: !!metaTokenCookie,
+        hasSelectedAccount: !!selectedAccountCookie
+      });
       return NextResponse.json({ 
         error: 'Not authenticated or no account selected'
       }, { status: 401 });
     }
     
-    const session = JSON.parse(sessionCookie.value);
     const accountId = selectedAccountCookie.value;
-    const accessToken = session.accessToken;
+    const accessToken = metaTokenCookie.value;
     
-    // Récupérer le userId si possible
-    let userId = session.userId;
-    if (!userId && authCookie) {
+    // Récupérer le userId depuis le JWT auth token
+    let userId = null;
+    if (authCookie) {
       try {
-        const decoded = await admin.auth().verifyIdToken(authCookie.value);
+        const decoded = jwt.verify(authCookie.value, process.env.JWT_SECRET || 'your-secret-key-2024');
         userId = decoded.uid;
       } catch (error) {
         console.error('Error decoding auth token:', error);

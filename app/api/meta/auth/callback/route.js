@@ -152,10 +152,10 @@ export async function GET(request) {
       }
     }
 
-    // Créer la réponse avec redirection - utiliser la même URL de base
-    const response = NextResponse.redirect(new URL('/app/aids?meta_connected=true', baseRedirectUrl));
+    // Créer la réponse avec redirection vers la page de callback pour gérer le localStorage
+    const response = NextResponse.redirect(new URL('/app/aids/meta-callback?meta_connected=true', baseRedirectUrl));
     
-    // Stocker les données dans des cookies pour le client
+    // Stocker les données dans des cookies pour le serveur
     response.cookies.set('meta_access_token', accessToken, {
       httpOnly: true,
       secure: true,
@@ -163,7 +163,16 @@ export async function GET(request) {
       maxAge: 60 * 60 * 24 * 60 // 60 jours
     });
     
+    // Cookies accessibles côté client pour l'UI
     response.cookies.set('meta_user_id', userData.id, {
+      httpOnly: false,
+      secure: true,
+      sameSite: 'lax',
+      maxAge: 60 * 60 * 24 * 60
+    });
+    
+    // Cookie pour indiquer que Meta est connecté (accessible côté client)
+    response.cookies.set('meta_connected', 'true', {
       httpOnly: false,
       secure: true,
       sameSite: 'lax',

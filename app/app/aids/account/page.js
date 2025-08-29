@@ -36,8 +36,17 @@ export default function AccountPage() {
   };
 
   const checkMetaConnection = () => {
+    // Vérifier le cookie meta_connected ou le localStorage
+    const getCookie = (name) => {
+      const value = `; ${document.cookie}`;
+      const parts = value.split(`; ${name}=`);
+      if (parts.length === 2) return parts.pop().split(';').shift();
+      return null;
+    };
+    
+    const metaCookie = getCookie('meta_connected');
     const metaToken = localStorage.getItem('meta_access_token');
-    setMetaConnected(!!metaToken);
+    setMetaConnected(metaCookie === 'true' || !!metaToken);
   };
 
   const handleMetaDisconnect = async () => {
