@@ -160,14 +160,16 @@ export async function GET(request) {
       httpOnly: true,
       secure: true,
       sameSite: 'lax',
+      path: '/',
       maxAge: 60 * 60 * 24 * 60 // 60 jours
     });
     
-    // Cookies accessibles côté client pour l'UI
+    // Cookies accessibles côté client pour l'UI (avec path explicite)
     response.cookies.set('meta_user_id', userData.id, {
       httpOnly: false,
       secure: true,
       sameSite: 'lax',
+      path: '/',
       maxAge: 60 * 60 * 24 * 60
     });
     
@@ -176,6 +178,7 @@ export async function GET(request) {
       httpOnly: false,
       secure: true,
       sameSite: 'lax',
+      path: '/',
       maxAge: 60 * 60 * 24 * 60
     });
 
@@ -185,6 +188,7 @@ export async function GET(request) {
         httpOnly: false,
         secure: true,
         sameSite: 'lax',
+        path: '/',
         maxAge: 60 * 60 * 24 * 60
       });
     }

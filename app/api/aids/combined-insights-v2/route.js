@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { db } from '@/lib/firebase-admin';
+import jwt from 'jsonwebtoken';
 
 // Helper pour calculer les dates de comparaison
 function getComparisonDates(startDate, endDate) {
@@ -272,20 +273,34 @@ export async function GET(request) {
     const compare = searchParams.get('compare') === 'true';
     
     const cookieStore = await cookies();
-    const metaSession = cookieStore.get('meta_session');
+    const metaToken = cookieStore.get('meta_access_token');
     const selectedAccount = cookieStore.get('selected_ad_account');
+    const authToken = cookieStore.get('auth-token') || cookieStore.get('auth_token');
     
-    if (!metaSession || !selectedAccount) {
+    if (!metaToken || !selectedAccount) {
+      console.log('[Combined Insights] Missing cookies:', {
+        hasMetaToken: !!metaToken,
+        hasSelectedAccount: !!selectedAccount
+      });
       return NextResponse.json({ 
         error: 'Not authenticated or no account selected',
         requiresAuth: true 
       }, { status: 401 });
     }
     
-    const session = JSON.parse(metaSession.value);
     const accountId = selectedAccount.value;
-    const accessToken = session.accessToken;
-    const userId = session.userId;
+    const accessToken = metaToken.value;
+    
+    // Get userId from JWT token
+    let userId = null;
+    if (authToken) {
+      try {
+        const decoded = jwt.verify(authToken.value, process.env.JWT_SECRET || 'your-secret-key-2024');
+        userId = decoded.uid;
+      } catch (error) {
+        console.error('Error decoding auth token:', error);
+      }
+    }
     
     // Determine date range
     let currentStart, currentEnd;
