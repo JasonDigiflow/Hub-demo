@@ -26,8 +26,8 @@ export function middleware(request) {
   );
   
   if (isProtectedRoute) {
-    // Check for auth token in cookies
-    const token = request.cookies.get('auth_token');
+    // Check for auth token in cookies (auth-token avec tiret)
+    const token = request.cookies.get('auth-token') || request.cookies.get('auth_token');
     
     if (!token) {
       // Redirect to login with return URL
