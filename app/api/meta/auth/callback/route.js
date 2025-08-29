@@ -30,9 +30,13 @@ export async function GET(request) {
     // Échanger le code contre un access token
     const FACEBOOK_APP_ID = process.env.NEXT_PUBLIC_META_APP_ID || process.env.META_APP_ID || '1234567890';
     const FACEBOOK_APP_SECRET = process.env.META_APP_SECRET || 'your-app-secret';
-    const REDIRECT_URI = process.env.NEXT_PUBLIC_URL 
-      ? `${process.env.NEXT_PUBLIC_URL}/api/meta/auth/callback`
-      : 'https://digiflow-hub.com/api/meta/auth/callback';
+    
+    // Ensure URL has https://
+    let baseUrl = process.env.NEXT_PUBLIC_URL || 'https://digiflow-hub.com';
+    if (!baseUrl.startsWith('http://') && !baseUrl.startsWith('https://')) {
+      baseUrl = `https://${baseUrl}`;
+    }
+    const REDIRECT_URI = `${baseUrl}/api/meta/auth/callback`;
 
     const tokenResponse = await fetch(
       `https://graph.facebook.com/v18.0/oauth/access_token?` +

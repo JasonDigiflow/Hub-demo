@@ -4,9 +4,13 @@ export async function GET() {
   try {
     // Meta OAuth configuration
     const FACEBOOK_APP_ID = process.env.NEXT_PUBLIC_META_APP_ID || process.env.META_APP_ID || '1234567890';
-    const REDIRECT_URI = process.env.NEXT_PUBLIC_URL 
-      ? `${process.env.NEXT_PUBLIC_URL}/api/meta/auth/callback`
-      : 'https://digiflow-hub.com/api/meta/auth/callback';
+    
+    // Ensure URL has https://
+    let baseUrl = process.env.NEXT_PUBLIC_URL || 'https://digiflow-hub.com';
+    if (!baseUrl.startsWith('http://') && !baseUrl.startsWith('https://')) {
+      baseUrl = `https://${baseUrl}`;
+    }
+    const REDIRECT_URI = `${baseUrl}/api/meta/auth/callback`;
     
     // Permissions nécessaires pour la gestion des publicités
     const PERMISSIONS = [
@@ -22,6 +26,10 @@ export async function GET() {
 
     // Générer un state unique pour la sécurité CSRF
     const state = Math.random().toString(36).substring(7);
+    
+    // Log pour debug
+    console.log('Meta OAuth - Redirect URI:', REDIRECT_URI);
+    console.log('Meta OAuth - App ID:', FACEBOOK_APP_ID);
     
     // Stocker le state dans un cookie pour validation au retour
     const response = NextResponse.redirect(
