@@ -49,29 +49,41 @@ export async function POST(request) {
     const userId = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     const orgId = `org_${organization.siret}`;
     
-    // Créer l'organisation
-    await db.collection('organizations').doc(orgId).set({
+    // Créer l'organisation (filtrer les undefined)
+    const orgData = {
       id: orgId,
       siret: organization.siret,
       siren: organization.siren,
       name: organization.nom,
-      commercialName: organization.nomCommercial,
       address: organization.adresse,
       postalCode: organization.codePostal,
       city: organization.ville,
-      country: organization.pays,
-      nafCode: organization.codeNaf,
-      nafLabel: organization.libelleNaf,
-      legalForm: organization.formeJuridique,
-      workforce: organization.effectif,
-      creationDate: organization.dateCreation,
-      status: organization.status,
+      country: organization.pays || 'France',
+      status: organization.status || 'Actif',
       owner: userId,
       members: [userId],
       adAccounts: [], // Sera rempli lors de la connexion Meta
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
-    });
+    };
+    
+    // Ajouter les champs optionnels s'ils existent
+    if (organization.nomCommercial) orgData.commercialName = organization.nomCommercial;
+    if (organization.codeNaf) orgData.nafCode = organization.codeNaf;
+    if (organization.libelleNaf) orgData.nafLabel = organization.libelleNaf;
+    if (organization.formeJuridique) orgData.legalForm = organization.formeJuridique;
+    if (organization.effectif) orgData.workforce = organization.effectif;
+    if (organization.dateCreation) orgData.creationDate = organization.dateCreation;
+    
+    console.log('Creating organization:', orgData);
+    
+    try {
+      await db.collection('organizations').doc(orgId).set(orgData);
+      console.log('Organization created successfully');
+    } catch (error) {
+      console.error('Error creating organization:', error);
+      throw error;
+    }
     
     // Créer l'utilisateur
     const userData = {
@@ -87,7 +99,22 @@ export async function POST(request) {
       updatedAt: new Date().toISOString()
     };
     
-    await db.collection('users').doc(userId).set(userData);
+    console.log('Creating user:', { ...userData, password: '***' });
+    
+    try {
+      await db.collection('users').doc(userId).set(userData);
+      console.log('User created successfully');
+    } catch (error) {
+      console.error('Error creating user:', error);
+      // Rollback: supprimer l'organisation si l'utilisateur n'a pas pu être créé
+      try {
+        await db.collection('organizations').doc(orgId).delete();
+        console.log('Rolled back organization creation');
+      } catch (rollbackError) {
+        console.error('Error rolling back:', rollbackError);
+      }
+      throw error;
+    }
     
     // Créer le token JWT
     const jwtSecret = process.env.JWT_SECRET || 'default-secret-key';

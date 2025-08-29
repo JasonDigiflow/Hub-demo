@@ -126,9 +126,13 @@ export default function RegisterWithSiret() {
       const data = await response.json();
       
       if (data.success) {
-        // Rediriger vers le dashboard
-        router.push('/app/aids');
+        console.log('Registration successful, redirecting...');
+        // Ajouter un petit délai pour s'assurer que le cookie est défini
+        setTimeout(() => {
+          router.push('/app/aids');
+        }, 500);
       } else {
+        console.error('Registration failed:', data);
         setErrors({ submit: data.error || 'Erreur lors de l\'inscription' });
       }
     } catch (error) {
