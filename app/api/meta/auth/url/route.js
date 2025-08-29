@@ -23,7 +23,8 @@ export async function GET(request) {
       'pages_manage_ads',
       'pages_show_list',
       'page_events',
-      'attribution_read'
+      'attribution_read',
+      'leads_retrieval'  // Permission Advanced pour l'import des leads
     ].join(',');
     
     const metaAppId = process.env.META_APP_ID || process.env.NEXT_PUBLIC_META_APP_ID;
