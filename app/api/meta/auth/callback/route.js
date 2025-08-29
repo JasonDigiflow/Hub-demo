@@ -7,6 +7,13 @@ export async function GET(request) {
   try {
     console.log('Meta OAuth callback started');
     
+    // Déterminer l'URL de base pour les redirections
+    const baseRedirectUrl = process.env.NEXT_PUBLIC_URL 
+      ? (process.env.NEXT_PUBLIC_URL.startsWith('http') 
+          ? process.env.NEXT_PUBLIC_URL 
+          : `https://${process.env.NEXT_PUBLIC_URL}`)
+      : request.url;
+    
     const { searchParams } = new URL(request.url);
     const code = searchParams.get('code');
     const state = searchParams.get('state');
@@ -14,12 +21,13 @@ export async function GET(request) {
     const errorDescription = searchParams.get('error_description');
     
     console.log('Callback params:', { code: code?.substring(0, 20) + '...', state, error });
+    console.log('Redirect base URL:', baseRedirectUrl);
 
     // Si l'utilisateur a refusé les permissions
     if (error) {
       console.error('Meta OAuth error:', error, errorDescription);
       return NextResponse.redirect(
-        new URL(`/app/aids?error=${encodeURIComponent(errorDescription || 'Authentification refusée')}`, request.url)
+        new URL(`/app/aids?error=${encodeURIComponent(errorDescription || 'Authentification refusée')}`, baseRedirectUrl)
       );
     }
 
@@ -29,7 +37,7 @@ export async function GET(request) {
     
     if (!savedState || savedState.value !== state) {
       console.error('Invalid state parameter');
-      return NextResponse.redirect(new URL('/app/aids?error=Invalid+state', request.url));
+      return NextResponse.redirect(new URL('/app/aids?error=Invalid+state', baseRedirectUrl));
     }
 
     // Échanger le code contre un access token
@@ -60,7 +68,7 @@ export async function GET(request) {
 
     if (tokenData.error) {
       console.error('Token exchange error:', tokenData.error);
-      return NextResponse.redirect(new URL('/app/aids?error=Token+exchange+failed', request.url));
+      return NextResponse.redirect(new URL('/app/aids?error=Token+exchange+failed', baseRedirectUrl));
     }
 
     const accessToken = tokenData.access_token;
@@ -144,8 +152,8 @@ export async function GET(request) {
       }
     }
 
-    // Créer la réponse avec redirection
-    const response = NextResponse.redirect(new URL('/app/aids?meta_connected=true', request.url));
+    // Créer la réponse avec redirection - utiliser la même URL de base
+    const response = NextResponse.redirect(new URL('/app/aids?meta_connected=true', baseRedirectUrl));
     
     // Stocker les données dans des cookies pour le client
     response.cookies.set('meta_access_token', accessToken, {
