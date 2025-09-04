@@ -1,151 +1,168 @@
-/**
- * Logos SVG personnalisés pour chaque application DigiFlow
- * Chaque logo reflète la personnalité et la fonction de l'IA
- */
+import React from 'react';
 
+// Fidalyz - Étoile avec orbite de réputation
+export const FidalyzLogo = ({ className = "w-16 h-16" }) => (
+  <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
+    <circle cx="32" cy="32" r="20" stroke="url(#fidalyz-gradient)" strokeWidth="2" opacity="0.3"/>
+    <path d="M32 16L36 28H48L38 36L42 48L32 40L22 48L26 36L16 28H28L32 16Z" fill="url(#fidalyz-gradient)"/>
+    <circle cx="48" cy="20" r="4" fill="url(#fidalyz-gradient)" opacity="0.8"/>
+    <circle cx="16" cy="44" r="3" fill="url(#fidalyz-gradient)" opacity="0.6"/>
+    <defs>
+      <linearGradient id="fidalyz-gradient" x1="0" y1="0" x2="64" y2="64">
+        <stop stopColor="#F59E0B"/>
+        <stop offset="1" stopColor="#FCD34D"/>
+      </linearGradient>
+    </defs>
+  </svg>
+);
+
+// Ads Master - Cible avec graphiques
+export const AdsMasterLogo = ({ className = "w-16 h-16" }) => (
+  <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
+    <circle cx="32" cy="32" r="24" stroke="url(#ads-gradient)" strokeWidth="2" opacity="0.3"/>
+    <circle cx="32" cy="32" r="18" stroke="url(#ads-gradient)" strokeWidth="2" opacity="0.5"/>
+    <circle cx="32" cy="32" r="12" stroke="url(#ads-gradient)" strokeWidth="2" opacity="0.7"/>
+    <circle cx="32" cy="32" r="6" fill="url(#ads-gradient)"/>
+    <path d="M48 16L52 12M52 12L56 16M52 12V24" stroke="url(#ads-gradient)" strokeWidth="2" strokeLinecap="round"/>
+    <rect x="8" y="44" width="4" height="12" fill="url(#ads-gradient)" opacity="0.8"/>
+    <rect x="14" y="40" width="4" height="16" fill="url(#ads-gradient)" opacity="0.8"/>
+    <rect x="20" y="36" width="4" height="20" fill="url(#ads-gradient)" opacity="0.8"/>
+    <defs>
+      <linearGradient id="ads-gradient" x1="0" y1="0" x2="64" y2="64">
+        <stop stopColor="#4267B2"/>
+        <stop offset="1" stopColor="#0084FF"/>
+      </linearGradient>
+    </defs>
+  </svg>
+);
+
+// HubCRM - Hub connecté avec noeuds
+export const HubCRMLogo = ({ className = "w-16 h-16" }) => (
+  <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
+    <circle cx="32" cy="32" r="8" fill="url(#hubcrm-gradient)"/>
+    <circle cx="16" cy="16" r="5" fill="url(#hubcrm-gradient)" opacity="0.7"/>
+    <circle cx="48" cy="16" r="5" fill="url(#hubcrm-gradient)" opacity="0.7"/>
+    <circle cx="16" cy="48" r="5" fill="url(#hubcrm-gradient)" opacity="0.7"/>
+    <circle cx="48" cy="48" r="5" fill="url(#hubcrm-gradient)" opacity="0.7"/>
+    <line x1="32" y1="32" x2="16" y2="16" stroke="url(#hubcrm-gradient)" strokeWidth="2" opacity="0.5"/>
+    <line x1="32" y1="32" x2="48" y2="16" stroke="url(#hubcrm-gradient)" strokeWidth="2" opacity="0.5"/>
+    <line x1="32" y1="32" x2="16" y2="48" stroke="url(#hubcrm-gradient)" strokeWidth="2" opacity="0.5"/>
+    <line x1="32" y1="32" x2="48" y2="48" stroke="url(#hubcrm-gradient)" strokeWidth="2" opacity="0.5"/>
+    <path d="M26 32H38M32 26V38" stroke="white" strokeWidth="2" strokeLinecap="round"/>
+    <defs>
+      <linearGradient id="hubcrm-gradient" x1="0" y1="0" x2="64" y2="64">
+        <stop stopColor="#8B5CF6"/>
+        <stop offset="1" stopColor="#6366F1"/>
+      </linearGradient>
+    </defs>
+  </svg>
+);
+
+// LeadWarm - Flamme avec ondes de chaleur
+export const LeadWarmLogo = ({ className = "w-16 h-16" }) => (
+  <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
+    <path d="M32 52C40 52 46 46 46 38C46 32 42 28 40 24C38 20 36 16 32 12C28 16 26 20 24 24C22 28 18 32 18 38C18 46 24 52 32 52Z" fill="url(#leadwarm-gradient)"/>
+    <path d="M32 48C36 48 39 45 39 40C39 36 37 34 36 31C35 28 34 25 32 22C30 25 29 28 28 31C27 34 25 36 25 40C25 45 28 48 32 48Z" fill="url(#leadwarm-gradient2)" opacity="0.8"/>
+    <path d="M22 38C22 38 20 40 16 40M42 38C42 38 44 40 48 40" stroke="url(#leadwarm-gradient)" strokeWidth="2" strokeLinecap="round" opacity="0.5"/>
+    <path d="M24 32C24 32 22 30 18 30M40 32C40 32 42 30 46 30" stroke="url(#leadwarm-gradient)" strokeWidth="2" strokeLinecap="round" opacity="0.3"/>
+    <defs>
+      <linearGradient id="leadwarm-gradient" x1="32" y1="12" x2="32" y2="52">
+        <stop stopColor="#F97316"/>
+        <stop offset="1" stopColor="#EF4444"/>
+      </linearGradient>
+      <linearGradient id="leadwarm-gradient2" x1="32" y1="22" x2="32" y2="48">
+        <stop stopColor="#FCD34D"/>
+        <stop offset="1" stopColor="#F97316"/>
+      </linearGradient>
+    </defs>
+  </svg>
+);
+
+// SEOly - Loupe avec graphique de croissance
+export const SEOlyLogo = ({ className = "w-16 h-16" }) => (
+  <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
+    <circle cx="28" cy="28" r="16" stroke="url(#seoly-gradient)" strokeWidth="3" fill="none"/>
+    <path d="M39 39L52 52" stroke="url(#seoly-gradient)" strokeWidth="3" strokeLinecap="round"/>
+    <path d="M20 32L24 28L28 30L32 24L36 20" stroke="url(#seoly-gradient)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    <circle cx="20" cy="32" r="2" fill="url(#seoly-gradient)"/>
+    <circle cx="24" cy="28" r="2" fill="url(#seoly-gradient)"/>
+    <circle cx="28" cy="30" r="2" fill="url(#seoly-gradient)"/>
+    <circle cx="32" cy="24" r="2" fill="url(#seoly-gradient)"/>
+    <circle cx="36" cy="20" r="2" fill="url(#seoly-gradient)"/>
+    <defs>
+      <linearGradient id="seoly-gradient" x1="0" y1="0" x2="64" y2="64">
+        <stop stopColor="#10B981"/>
+        <stop offset="1" stopColor="#059669"/>
+      </linearGradient>
+    </defs>
+  </svg>
+);
+
+// Supportia - Bulle de chat avec cœur
+export const SupportiaLogo = ({ className = "w-16 h-16" }) => (
+  <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
+    <path d="M12 20C12 16 16 12 20 12H44C48 12 52 16 52 20V36C52 40 48 44 44 44H28L20 52V44H20C16 44 12 40 12 36V20Z" fill="url(#supportia-gradient)" opacity="0.9"/>
+    <path d="M28 26C28 24 29 22 31 22C32 22 33 23 33 24C33 23 34 22 35 22C37 22 38 24 38 26C38 30 33 34 33 34C33 34 28 30 28 26Z" fill="white"/>
+    <circle cx="20" cy="28" r="2" fill="white" opacity="0.8"/>
+    <circle cx="44" cy="28" r="2" fill="white" opacity="0.8"/>
+    <defs>
+      <linearGradient id="supportia-gradient" x1="0" y1="0" x2="64" y2="64">
+        <stop stopColor="#3B82F6"/>
+        <stop offset="1" stopColor="#06B6D4"/>
+      </linearGradient>
+    </defs>
+  </svg>
+);
+
+// CashFlow - Pièces avec graphique financier
+export const CashFlowLogo = ({ className = "w-16 h-16" }) => (
+  <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
+    <ellipse cx="32" cy="44" rx="16" ry="6" fill="url(#cashflow-gradient)" opacity="0.3"/>
+    <ellipse cx="32" cy="38" rx="16" ry="6" fill="url(#cashflow-gradient)" opacity="0.5"/>
+    <ellipse cx="32" cy="32" rx="16" ry="6" fill="url(#cashflow-gradient)" opacity="0.7"/>
+    <ellipse cx="32" cy="26" rx="16" ry="6" fill="url(#cashflow-gradient)" opacity="0.9"/>
+    <ellipse cx="32" cy="20" rx="16" ry="6" fill="url(#cashflow-gradient)"/>
+    <text x="32" y="24" textAnchor="middle" fill="white" fontSize="12" fontWeight="bold">€</text>
+    <path d="M48 16L52 12L56 20" stroke="url(#cashflow-gradient)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    <defs>
+      <linearGradient id="cashflow-gradient" x1="0" y1="0" x2="64" y2="64">
+        <stop stopColor="#EAB308"/>
+        <stop offset="1" stopColor="#F97316"/>
+      </linearGradient>
+    </defs>
+  </svg>
+);
+
+// Eden - Cerveau avec connexions neurales
+export const EdenLogo = ({ className = "w-16 h-16" }) => (
+  <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
+    <path d="M32 48C40 48 46 42 46 36C46 32 44 28 42 26C44 24 44 20 42 18C40 16 36 16 34 16C34 14 32 12 28 12C24 12 22 14 22 16C20 16 16 16 14 18C12 20 12 24 14 26C12 28 10 32 10 36C10 42 16 48 24 48" stroke="url(#eden-gradient)" strokeWidth="2" fill="none"/>
+    <path d="M26 48C26 50 28 52 32 52C36 52 38 50 38 48" stroke="url(#eden-gradient)" strokeWidth="2" strokeLinecap="round"/>
+    <circle cx="22" cy="28" r="3" fill="url(#eden-gradient)" opacity="0.8"/>
+    <circle cx="32" cy="32" r="3" fill="url(#eden-gradient)"/>
+    <circle cx="42" cy="28" r="3" fill="url(#eden-gradient)" opacity="0.8"/>
+    <circle cx="28" cy="38" r="2" fill="url(#eden-gradient)" opacity="0.6"/>
+    <circle cx="36" cy="38" r="2" fill="url(#eden-gradient)" opacity="0.6"/>
+    <path d="M22 28L32 32L42 28M28 38L32 32L36 38" stroke="url(#eden-gradient)" strokeWidth="1" opacity="0.5"/>
+    <defs>
+      <linearGradient id="eden-gradient" x1="0" y1="0" x2="64" y2="64">
+        <stop stopColor="#6366F1"/>
+        <stop offset="1" stopColor="#9333EA"/>
+      </linearGradient>
+    </defs>
+  </svg>
+);
+
+// Export all logos as an object for easy access
 export const AppLogos = {
-  // CLARK - Fidalyz (Reputation)
-  clark: (props) => (
-    <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
-      <circle cx="32" cy="32" r="30" fill="url(#clark-gradient)" opacity="0.1"/>
-      <circle cx="32" cy="32" r="24" stroke="url(#clark-gradient)" strokeWidth="2"/>
-      <path d="M32 20L35.5 27.5L44 28.5L38 34.5L39.5 43L32 39L24.5 43L26 34.5L20 28.5L28.5 27.5L32 20Z" 
-            fill="url(#clark-gradient)" stroke="url(#clark-gradient)" strokeWidth="1.5" strokeLinejoin="round"/>
-      <circle cx="32" cy="32" r="4" fill="url(#clark-gradient)"/>
-      <defs>
-        <linearGradient id="clark-gradient" x1="0" y1="0" x2="64" y2="64">
-          <stop stopColor="#FFC107"/>
-          <stop offset="1" stopColor="#FF9800"/>
-        </linearGradient>
-      </defs>
-    </svg>
-  ),
-
-  // OCTAVIA - AIDs (Ads)
-  octavia: (props) => (
-    <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
-      <rect x="8" y="8" width="48" height="48" rx="12" fill="url(#octavia-gradient)" opacity="0.1"/>
-      <circle cx="32" cy="32" r="18" stroke="url(#octavia-gradient)" strokeWidth="2"/>
-      <circle cx="32" cy="32" r="12" stroke="url(#octavia-gradient)" strokeWidth="1.5" opacity="0.6"/>
-      <circle cx="32" cy="32" r="6" fill="url(#octavia-gradient)"/>
-      <path d="M32 14V20M32 44V50M14 32H20M44 32H50" stroke="url(#octavia-gradient)" strokeWidth="2" strokeLinecap="round"/>
-      <defs>
-        <linearGradient id="octavia-gradient" x1="0" y1="0" x2="64" y2="64">
-          <stop stopColor="#4267B2"/>
-          <stop offset="1" stopColor="#0084FF"/>
-        </linearGradient>
-      </defs>
-    </svg>
-  ),
-
-  // TOM - SEOly (SEO)
-  tom: (props) => (
-    <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
-      <circle cx="26" cy="26" r="14" stroke="url(#tom-gradient)" strokeWidth="2" fill="none"/>
-      <path d="M36 36L46 46" stroke="url(#tom-gradient)" strokeWidth="3" strokeLinecap="round"/>
-      <circle cx="26" cy="26" r="8" fill="url(#tom-gradient)" opacity="0.2"/>
-      <path d="M26 20V32M20 26H32" stroke="url(#tom-gradient)" strokeWidth="2" strokeLinecap="round"/>
-      <defs>
-        <linearGradient id="tom-gradient" x1="0" y1="0" x2="64" y2="64">
-          <stop stopColor="#10B981"/>
-          <stop offset="1" stopColor="#059669"/>
-        </linearGradient>
-      </defs>
-    </svg>
-  ),
-
-  // OLIVE - Supportia (Support)
-  olive: (props) => (
-    <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
-      <rect x="12" y="16" width="40" height="32" rx="16" fill="url(#olive-gradient)" opacity="0.15"/>
-      <path d="M20 24C20 20 24 16 32 16C40 16 44 20 44 24V36C44 42 40 46 32 46C24 46 20 42 20 36V24Z" 
-            stroke="url(#olive-gradient)" strokeWidth="2" fill="none"/>
-      <circle cx="26" cy="28" r="2" fill="url(#olive-gradient)"/>
-      <circle cx="38" cy="28" r="2" fill="url(#olive-gradient)"/>
-      <path d="M26 36C26 36 28 39 32 39C36 39 38 36 38 36" 
-            stroke="url(#olive-gradient)" strokeWidth="2" strokeLinecap="round"/>
-      <defs>
-        <linearGradient id="olive-gradient" x1="0" y1="0" x2="64" y2="64">
-          <stop stopColor="#8B5CF6"/>
-          <stop offset="1" stopColor="#7C3AED"/>
-        </linearGradient>
-      </defs>
-    </svg>
-  ),
-
-  // VALÉRIE - Salesia (Sales)
-  valerie: (props) => (
-    <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
-      <path d="M32 12L40 20H48V44H16V20H24L32 12Z" 
-            fill="url(#valerie-gradient)" opacity="0.15"/>
-      <path d="M32 12L40 20H48V44H16V20H24L32 12Z" 
-            stroke="url(#valerie-gradient)" strokeWidth="2" strokeLinejoin="round"/>
-      <rect x="24" y="28" width="16" height="2" fill="url(#valerie-gradient)"/>
-      <rect x="24" y="34" width="12" height="2" fill="url(#valerie-gradient)" opacity="0.7"/>
-      <circle cx="32" cy="20" r="3" fill="url(#valerie-gradient)"/>
-      <defs>
-        <linearGradient id="valerie-gradient" x1="0" y1="0" x2="64" y2="64">
-          <stop stopColor="#EF4444"/>
-          <stop offset="1" stopColor="#EC4899"/>
-        </linearGradient>
-      </defs>
-    </svg>
-  ),
-
-  // LEXA - Legal
-  lexa: (props) => (
-    <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
-      <path d="M32 12C32 12 20 18 20 28V36C20 46 32 52 32 52C32 52 44 46 44 36V28C44 18 32 12 32 12Z" 
-            fill="url(#lexa-gradient)" opacity="0.15"/>
-      <path d="M32 12C32 12 20 18 20 28V36C20 46 32 52 32 52C32 52 44 46 44 36V28C44 18 32 12 32 12Z" 
-            stroke="url(#lexa-gradient)" strokeWidth="2" strokeLinejoin="round"/>
-      <path d="M20 28H44M26 28V40M38 28V40M26 34H38" 
-            stroke="url(#lexa-gradient)" strokeWidth="1.5" strokeLinecap="round"/>
-      <defs>
-        <linearGradient id="lexa-gradient" x1="0" y1="0" x2="64" y2="64">
-          <stop stopColor="#475569"/>
-          <stop offset="1" stopColor="#374151"/>
-        </linearGradient>
-      </defs>
-    </svg>
-  ),
-
-  // ILONA - CashFlow (Finance)
-  ilona: (props) => (
-    <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
-      <circle cx="32" cy="32" r="20" fill="url(#ilona-gradient)" opacity="0.15"/>
-      <circle cx="32" cy="32" r="20" stroke="url(#ilona-gradient)" strokeWidth="2"/>
-      <path d="M32 20V44M26 24C26 24 28 22 32 22C36 22 38 24 38 27C38 30 36 32 32 32C28 32 26 34 26 37C26 40 28 42 32 42C36 42 38 40 38 40" 
-            stroke="url(#ilona-gradient)" strokeWidth="2" strokeLinecap="round"/>
-      <defs>
-        <linearGradient id="ilona-gradient" x1="0" y1="0" x2="64" y2="64">
-          <stop stopColor="#10B981"/>
-          <stop offset="1" stopColor="#14B8A6"/>
-        </linearGradient>
-      </defs>
-    </svg>
-  ),
-
-  // EDEN - Business Intelligence
-  eden: (props) => (
-    <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
-      <rect x="12" y="12" width="40" height="40" rx="8" fill="url(#eden-gradient)" opacity="0.1"/>
-      <path d="M20 44L28 32L36 36L44 20" 
-            stroke="url(#eden-gradient)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-      <circle cx="20" cy="44" r="3" fill="url(#eden-gradient)"/>
-      <circle cx="28" cy="32" r="3" fill="url(#eden-gradient)"/>
-      <circle cx="36" cy="36" r="3" fill="url(#eden-gradient)"/>
-      <circle cx="44" cy="20" r="3" fill="url(#eden-gradient)"/>
-      <path d="M32 12L34 18L40 18L35 22L37 28L32 24L27 28L29 22L24 18L30 18L32 12Z" 
-            fill="url(#eden-gradient)" opacity="0.3"/>
-      <defs>
-        <linearGradient id="eden-gradient" x1="0" y1="0" x2="64" y2="64">
-          <stop stopColor="#6366F1"/>
-          <stop offset="1" stopColor="#9333EA"/>
-        </linearGradient>
-      </defs>
-    </svg>
-  )
+  fidalyz: FidalyzLogo,
+  'ads-master': AdsMasterLogo,
+  hubcrm: HubCRMLogo,
+  leadwarm: LeadWarmLogo,
+  seoly: SEOlyLogo,
+  supportia: SupportiaLogo,
+  cashflow: CashFlowLogo,
+  eden: EdenLogo
 };
 
 export default AppLogos;

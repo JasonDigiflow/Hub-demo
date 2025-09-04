@@ -1,0 +1,89 @@
+# RÈGLE ABSOLUE - Ne jamais toucher aux workflows GitHub
+.github/**
+.github/workflows/**
+.github/workflow/**
+
+# Zone app authentifiée - Totalement exclue
+app/app/**
+app/**/aids/**
+app/**/fidalyz/**
+app/**/pipe/**
+app/**/revenues/**
+app/**/leadwarm/**
+app/**/superadmin/**
+app/**/billing/**
+app/**/analytics/**
+app/**/organization/**
+app/**/settings/**
+app/**/team/**
+
+# Pages d'authentification
+app/auth/**
+app/demo/**
+
+# API routes et backend - Totalement exclus
+app/api/**
+api/**
+
+# Composants spécifiques aux modules (non landing)
+components/aids/**
+components/fidalyz/**
+components/auth/**
+components/apps/**
+
+# Librairies backend et intégrations
+lib/firebase*
+lib/meta*
+lib/contexts/**
+lib/jwt*
+lib/auth*
+lib/api*
+
+# Données et migrations
+data/**
+migrations/**
+seeds/**
+
+# Build et cache
+.next/**
+out/**
+build/**
+dist/**
+
+# Dependencies
+node_modules/**
+
+# IDE et config locale
+.vscode/**
+.idea/**
+*.swp
+*.swo
+.DS_Store
+
+# Environnement et secrets
+.env
+.env.local
+.env.production
+.env.*
+
+# Tests
+__tests__/**
+**/*.test.js
+**/*.test.jsx
+**/*.spec.js
+**/*.spec.jsx
+coverage/**
+
+# Documentation technique (non UI/UX)
+docs/api/**
+docs/backend/**
+docs/deployment/**
+
+# Logs et debug
+*.log
+logs/**
+tmp/**
+
+# Git (on garde le .git local s'il existe)
+.gitignore
+.git/**

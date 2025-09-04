@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Firebase Connection</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #0a0b1e;
+            color: white;
+        }
+        .card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        h1 {
+            background: linear-gradient(to right, #a855f7, #3b82f6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        button {
+            background: linear-gradient(135deg, #a855f7, #3b82f6);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 5px;
+        }
+        button:hover {
+            opacity: 0.9;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 8px;
+            margin-top: 10px;
+        }
+        .success {
+            background: rgba(34, 197, 94, 0.2);
+            border: 1px solid rgba(34, 197, 94, 0.5);
+            color: #22c55e;
+        }
+        .error {
+            background: rgba(239, 68, 68, 0.2);
+            border: 1px solid rgba(239, 68, 68, 0.5);
+            color: #ef4444;
+        }
+        .info {
+            background: rgba(59, 130, 246, 0.2);
+            border: 1px solid rgba(59, 130, 246, 0.5);
+            color: #3b82f6;
+        }
+        pre {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 10px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 Test Firebase Connection</h1>
+    
+    <div class="card">
+        <h2>Configuration Firebase</h2>
+        <div id="config-status" class="status info">
+            Vérification de la configuration...
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>Test de création de compte</h2>
+        <button onclick="testCreateAccount()">Créer un compte test</button>
+        <button onclick="cleanupTestAccount()">Nettoyer le compte test</button>
+        <div id="test-status"></div>
+    </div>
+
+    <div class="card">
+        <h2>Logs</h2>
+        <pre id="logs">En attente des actions...</pre>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getAuth, createUserWithEmailAndPassword, signOut, deleteUser } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+        import { getFirestore, doc, setDoc, getDoc, deleteDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+
+        const logs = [];
+        let testUser = null;
+
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logMessage = `[${timestamp}] ${message}`;
+            logs.push(logMessage);
+            document.getElementById('logs').textContent = logs.join('\n');
+            console.log(message);
+        }
+
+        // Configuration Firebase (sera récupérée depuis les variables d'environnement)
+        async function getFirebaseConfig() {
+            try {
+                const response = await fetch('/api/config/firebase');
+                if (!response.ok) {
+                    throw new Error('Failed to fetch Firebase config');
+                }
+                return await response.json();
+            } catch (error) {
+                log('⚠️ Impossible de récupérer la config depuis l\'API, utilisation de la config par défaut', 'warning');
+                // Configuration par défaut (à remplacer par vos vraies valeurs)
+                return {
+                    apiKey: "AIzaSyDH1RYRN3KwYlYaFGf1Tw21nFkSmBZY1dE",
+                    authDomain: "digiflowagency.firebaseapp.com",
+                    projectId: "digiflowagency",
+                    storageBucket: "digiflowagency.firebasestorage.app",
+                    messagingSenderId: "206712959406",
+                    appId: "1:206712959406:web:02e8e3f9b9e456b87e5fb2"
+                };
+            }
+        }
+
+        // Initialisation
+        async function init() {
+            try {
+                const firebaseConfig = await getFirebaseConfig();
+                const app = initializeApp(firebaseConfig);
+                window.auth = getAuth(app);
+                window.db = getFirestore(app);
+                
+                document.getElementById('config-status').className = 'status success';
+                document.getElementById('config-status').textContent = '✅ Firebase configuré et prêt';
+                log('✅ Firebase initialisé avec succès');
+                
+                // Afficher la config (sans les clés sensibles)
+                log(`Project ID: ${firebaseConfig.projectId}`);
+                log(`Auth Domain: ${firebaseConfig.authDomain}`);
+                
+            } catch (error) {
+                document.getElementById('config-status').className = 'status error';
+                document.getElementById('config-status').textContent = '❌ Erreur de configuration Firebase';
+                log(`❌ Erreur d'initialisation: ${error.message}`, 'error');
+            }
+        }
+
+        // Test de création de compte
+        window.testCreateAccount = async function() {
+            const statusDiv = document.getElementById('test-status');
+            statusDiv.className = 'status info';
+            statusDiv.textContent = '⏳ Création du compte en cours...';
+            
+            const testEmail = `test-${Date.now()}@example.com`;
+            const testPassword = 'TestPassword123!';
+            
+            log(`📧 Email de test: ${testEmail}`);
+            
+            try {
+                // 1. Créer le compte
+                log('1️⃣ Création du compte Firebase Auth...');
+                const userCredential = await createUserWithEmailAndPassword(window.auth, testEmail, testPassword);
+                testUser = userCredential.user;
+                log(`✅ Compte créé: ${testUser.uid}`);
+                
+                // 2. Créer le document utilisateur
+                log('2️⃣ Création du document Firestore...');
+                await setDoc(doc(window.db, 'users', testUser.uid), {
+                    uid: testUser.uid,
+                    email: testEmail,
+                    displayName: 'Test User',
+                    createdAt: serverTimestamp(),
+                    test: true
+                });
+                log('✅ Document utilisateur créé');
+                
+                // 3. Vérifier que le document existe
+                log('3️⃣ Vérification du document...');
+                const userDoc = await getDoc(doc(window.db, 'users', testUser.uid));
+                if (userDoc.exists()) {
+                    log('✅ Document vérifié et accessible');
+                    log(`Données: ${JSON.stringify(userDoc.data(), null, 2)}`);
+                } else {
+                    throw new Error('Document non trouvé après création');
+                }
+                
+                statusDiv.className = 'status success';
+                statusDiv.innerHTML = `
+                    ✅ Compte test créé avec succès!<br>
+                    UID: ${testUser.uid}<br>
+                    Email: ${testEmail}
+                `;
+                
+            } catch (error) {
+                statusDiv.className = 'status error';
+                statusDiv.textContent = `❌ Erreur: ${error.message}`;
+                log(`❌ Erreur: ${error.code} - ${error.message}`, 'error');
+            }
+        };
+
+        // Nettoyer le compte test
+        window.cleanupTestAccount = async function() {
+            if (!testUser) {
+                log('⚠️ Aucun compte test à nettoyer');
+                return;
+            }
+            
+            const statusDiv = document.getElementById('test-status');
+            statusDiv.className = 'status info';
+            statusDiv.textContent = '⏳ Nettoyage en cours...';
+            
+            try {
+                log('🧹 Suppression du document Firestore...');
+                await deleteDoc(doc(window.db, 'users', testUser.uid));
+                log('✅ Document supprimé');
+                
+                log('🧹 Suppression du compte Auth...');
+                await deleteUser(testUser);
+                log('✅ Compte supprimé');
+                
+                testUser = null;
+                statusDiv.className = 'status success';
+                statusDiv.textContent = '✅ Compte test nettoyé';
+                
+            } catch (error) {
+                statusDiv.className = 'status error';
+                statusDiv.textContent = `❌ Erreur de nettoyage: ${error.message}`;
+                log(`❌ Erreur de nettoyage: ${error.message}`, 'error');
+            }
+        };
+
+        // Initialiser au chargement
+        init();
+    </script>
+</body>
+</html>

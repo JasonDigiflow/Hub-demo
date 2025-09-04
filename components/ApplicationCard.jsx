@@ -2,24 +2,13 @@
 
 import { motion } from 'framer-motion';
 import Link from 'next/link';
-import AppLogos from './icons/AppLogos';
+import { AppLogos } from './icons/AppLogos';
 
 export default function ApplicationCard({ app, index }) {
   const isActive = app.status === 'active';
   
-  // Map AI names to logo components
-  const logoMap = {
-    'Clark': AppLogos.clark,
-    'Octavia': AppLogos.octavia,
-    'Tom': AppLogos.tom,
-    'Olive': AppLogos.olive,
-    'Valérie': AppLogos.valerie,
-    'Lexa': AppLogos.lexa,
-    'Ilona': AppLogos.ilona,
-    'Eden': AppLogos.eden
-  };
-
-  const LogoComponent = logoMap[app.aiName] || AppLogos.clark;
+  // Map app IDs to logo components
+  const LogoComponent = AppLogos[app.id] || AppLogos.fidalyz;
 
   return (
     <motion.div

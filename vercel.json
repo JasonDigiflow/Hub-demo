@@ -1,8 +1,0 @@
-{
-  "crons": [
-    {
-      "path": "/api/meta/sync-lite?secret=your-cron-secret-here",
-      "schedule": "0 */4 * * *"
-    }
-  ]
-}

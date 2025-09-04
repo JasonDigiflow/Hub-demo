@@ -1,0 +1,63 @@
+# Fichiers de configuration build
+package.json
+package-lock.json
+next.config.js
+tailwind.config.js
+postcss.config.js
+tsconfig.json
+jsconfig.json
+.env.example
+.eslintrc.json
+
+# Landing page et layouts
+app/page.js
+app/page.jsx
+app/page.ts
+app/page.tsx
+app/layout.js
+app/layout.jsx
+app/layout.ts
+app/layout.tsx
+app/globals.css
+
+# Pages marketing (si existantes)
+app/privacy
+app/terms
+
+# Composants UI de base requis par la landing
+components/ui/Button.jsx
+components/ui/GlassCard.jsx
+components/ui/Input.jsx
+
+# Composants home/landing
+components/home/TestimonialsSection.jsx
+components/home/FAQSection.jsx
+components/ApplicationCard.jsx
+
+# Composants layout
+components/layout/PremiumFooter.jsx
+
+# Composants chat
+components/chat/SimpleChatbot.jsx
+components/chat/AnimatedChatbot.jsx
+
+# Composants 3D
+components/three/HeroSphere.jsx
+components/three/FloatingLogos.jsx
+
+# Icônes et assets visuels
+components/icons/AppIcons.jsx
+components/icons/AppLogos.jsx
+
+# Librairies requises par la landing
+lib/premiumApplications.js
+
+# Assets publics
+public/favicon.ico
+public/marketing
+public/images
+public/fonts
+
+# Styles
+styles/landing.css
+styles/globals.css

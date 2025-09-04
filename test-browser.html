@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Test Firebase Browser</title>
+</head>
+<body>
+    <h1>Test Firebase dans le navigateur</h1>
+    <button onclick="testFirebase()">Tester Firebase</button>
+    <pre id="result"></pre>
+
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getAuth, createUserWithEmailAndPassword } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+        
+        window.testFirebase = async function() {
+            const resultDiv = document.getElementById('result');
+            
+            // Tester différentes configurations
+            const configs = [
+                {
+                    name: "Config 1 - digiflowagency",
+                    apiKey: "AIzaSyDH1RYRN3KwYlYaFGf1Tw21nFkSmBZY1dE",
+                    authDomain: "digiflowagency.firebaseapp.com",
+                    projectId: "digiflowagency",
+                    storageBucket: "digiflowagency.firebasestorage.app",
+                    messagingSenderId: "206712959406",
+                    appId: "1:206712959406:web:02e8e3f9b9e456b87e5fb2"
+                },
+                {
+                    name: "Config 2 - digiflow-hub (corrigée)",
+                    apiKey: "AIzaSyDKL0IW2C6mYqcaHF5kxdgquO7t-s00plY",
+                    authDomain: "digiflow-hub.firebaseapp.com",
+                    projectId: "digiflow-hub",
+                    storageBucket: "digiflow-hub.firebasestorage.app",
+                    messagingSenderId: "704034241253",
+                    appId: "1:704034241253:web:752002702a1ec6014c320c"
+                }
+            ];
+            
+            for (const config of configs) {
+                resultDiv.textContent += `\nTest ${config.name}:\n`;
+                resultDiv.textContent += `=====================================\n`;
+                
+                try {
+                    const app = initializeApp(config, config.name);
+                    const auth = getAuth(app);
+                    
+                    const email = `test${Date.now()}@example.com`;
+                    const password = 'TestPassword123!';
+                    
+                    resultDiv.textContent += `Tentative de création avec ${email}\n`;
+                    
+                    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+                    
+                    resultDiv.textContent += `✅ SUCCÈS avec ${config.name}!\n`;
+                    resultDiv.textContent += `UID: ${userCredential.user.uid}\n`;
+                    resultDiv.textContent += `Email: ${userCredential.user.email}\n\n`;
+                    
+                    // Supprimer le compte de test
+                    await userCredential.user.delete();
+                    resultDiv.textContent += `Compte test supprimé\n\n`;
+                    
+                } catch (error) {
+                    resultDiv.textContent += `❌ ERREUR avec ${config.name}\n`;
+                    resultDiv.textContent += `Code: ${error.code}\n`;
+                    resultDiv.textContent += `Message: ${error.message}\n\n`;
+                }
+            }
+        };
+    </script>
+</body>
+</html>

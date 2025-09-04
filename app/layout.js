@@ -1,18 +1,21 @@
-import "./globals.css";
+'use client';
 
-export const metadata = {
-  title: "DigiFlow Hub v3 - Plateforme All-in-One",
-  description: "Centralisez et optimisez toutes vos opérations digitales",
-};
+import "./globals.css";
+import { AuthProvider } from '@/lib/contexts/AuthContext';
+import { LocaleProvider } from '@/lib/contexts/LocaleContext';
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="fr">
+    <html lang="fr" data-scroll-behavior="smooth">
       <body 
         className="antialiased"
         suppressHydrationWarning={true}
       >
-        {children}
+        <AuthProvider>
+          <LocaleProvider>
+            {children}
+          </LocaleProvider>
+        </AuthProvider>
       </body>
     </html>
   );

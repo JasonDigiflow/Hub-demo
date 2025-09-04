@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Test Traductions DigiFlow Hub</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 1200px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #0a0b1e;
+            color: white;
+        }
+        .card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            backdrop-filter: blur(10px);
+        }
+        h1 {
+            background: linear-gradient(to right, #a855f7, #3b82f6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .lang-switch {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+        }
+        button {
+            background: linear-gradient(135deg, #a855f7, #3b82f6);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            opacity: 0.9;
+        }
+        button.active {
+            background: linear-gradient(135deg, #22c55e, #10b981);
+        }
+        .translation-item {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            padding: 15px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .translation-item:last-child {
+            border-bottom: none;
+        }
+        .key {
+            color: #a855f7;
+            font-family: monospace;
+            font-size: 14px;
+        }
+        .value {
+            color: white;
+        }
+        .section-title {
+            font-size: 20px;
+            font-weight: bold;
+            margin: 20px 0 10px 0;
+            color: #3b82f6;
+        }
+    </style>
+</head>
+<body>
+    <h1>🌐 Test du système de traduction DigiFlow Hub V4</h1>
+    
+    <div class="lang-switch">
+        <button id="fr-btn" class="active" onclick="setLanguage('fr')">🇫🇷 Français</button>
+        <button id="en-btn" onclick="setLanguage('en')">🇬🇧 English</button>
+    </div>
+
+    <div class="card">
+        <h2>État actuel</h2>
+        <p>Langue sélectionnée: <strong id="current-lang">Français</strong></p>
+        <p>Date de dernière MAJ: <strong>02/09/2025</strong></p>
+    </div>
+
+    <div class="card">
+        <div class="section-title">📱 Modules</div>
+        <div id="modules-translations"></div>
+    </div>
+
+    <div class="card">
+        <div class="section-title">📊 Dashboard</div>
+        <div id="dashboard-translations"></div>
+    </div>
+
+    <div class="card">
+        <div class="section-title">📈 Statistiques</div>
+        <div id="stats-translations"></div>
+    </div>
+
+    <script type="module">
+        // Import translations (simulé pour ce test)
+        const translations = {
+            fr: {
+                modules: {
+                    adsMaster: {
+                        name: 'Ads Master',
+                        description: 'Gestion multi-plateformes des campagnes publicitaires'
+                    },
+                    hubCRM: {
+                        name: 'HubCRM',
+                        description: 'CRM intelligent avec automatisation marketing'
+                    },
+                    leadWarm: {
+                        name: 'LeadWarm',
+                        description: 'Nurturing et conversion automatique des leads'
+                    },
+                    fidalyz: {
+                        name: 'Fidalyz',
+                        description: 'E-réputation et gestion des avis clients'
+                    }
+                },
+                dashboard: {
+                    activeApplications: 'Applications actives',
+                    users: 'Utilisateurs',
+                    plan: 'Plan',
+                    applicationsStatus: 'État des applications',
+                    active: 'Actif',
+                    inactive: 'Inactif',
+                    lastUpdate: 'Dernière MAJ',
+                    open: 'Ouvrir',
+                    greetings: {
+                        morning: 'Bonjour',
+                        afternoon: 'Bon après-midi',
+                        evening: 'Bonsoir'
+                    },
+                    stats: {
+                        campaigns: 'Campagnes',
+                        budget: 'Budget',
+                        roas: 'ROAS',
+                        contacts: 'Contacts',
+                        deals: 'Deals',
+                        revenue: 'Revenus',
+                        leads: 'Leads',
+                        converted: 'Convertis',
+                        rate: 'Taux'
+                    }
+                }
+            },
+            en: {
+                modules: {
+                    adsMaster: {
+                        name: 'Ads Master',
+                        description: 'Multi-platform advertising campaign management'
+                    },
+                    hubCRM: {
+                        name: 'HubCRM',
+                        description: 'Smart CRM with marketing automation'
+                    },
+                    leadWarm: {
+                        name: 'LeadWarm',
+                        description: 'Automatic lead nurturing and conversion'
+                    },
+                    fidalyz: {
+                        name: 'Fidalyz',
+                        description: 'E-reputation and customer review management'
+                    }
+                },
+                dashboard: {
+                    activeApplications: 'Active Applications',
+                    users: 'Users',
+                    plan: 'Plan',
+                    applicationsStatus: 'Applications Status',
+                    active: 'Active',
+                    inactive: 'Inactive',
+                    lastUpdate: 'Last Update',
+                    open: 'Open',
+                    greetings: {
+                        morning: 'Good morning',
+                        afternoon: 'Good afternoon',
+                        evening: 'Good evening'
+                    },
+                    stats: {
+                        campaigns: 'Campaigns',
+                        budget: 'Budget',
+                        roas: 'ROAS',
+                        contacts: 'Contacts',
+                        deals: 'Deals',
+                        revenue: 'Revenue',
+                        leads: 'Leads',
+                        converted: 'Converted',
+                        rate: 'Rate'
+                    }
+                }
+            }
+        };
+
+        let currentLang = 'fr';
+
+        function setLanguage(lang) {
+            currentLang = lang;
+            document.getElementById('fr-btn').classList.toggle('active', lang === 'fr');
+            document.getElementById('en-btn').classList.toggle('active', lang === 'en');
+            document.getElementById('current-lang').textContent = lang === 'fr' ? 'Français' : 'English';
+            updateTranslations();
+        }
+
+        function updateTranslations() {
+            const t = translations[currentLang];
+            
+            // Modules
+            let modulesHtml = '';
+            Object.entries(t.modules).forEach(([key, value]) => {
+                modulesHtml += `
+                    <div class="translation-item">
+                        <div>
+                            <div class="key">${key}</div>
+                            <div class="value">${value.name}</div>
+                        </div>
+                        <div class="value">${value.description}</div>
+                    </div>
+                `;
+            });
+            document.getElementById('modules-translations').innerHTML = modulesHtml;
+
+            // Dashboard
+            let dashboardHtml = '';
+            Object.entries(t.dashboard).forEach(([key, value]) => {
+                if (typeof value === 'string') {
+                    dashboardHtml += `
+                        <div class="translation-item">
+                            <div class="key">${key}</div>
+                            <div class="value">${value}</div>
+                        </div>
+                    `;
+                }
+            });
+            document.getElementById('dashboard-translations').innerHTML = dashboardHtml;
+
+            // Stats
+            let statsHtml = '';
+            Object.entries(t.dashboard.stats).forEach(([key, value]) => {
+                statsHtml += `
+                    <div class="translation-item">
+                        <div class="key">stats.${key}</div>
+                        <div class="value">${value}</div>
+                    </div>
+                `;
+            });
+            document.getElementById('stats-translations').innerHTML = statsHtml;
+        }
+
+        // Initial load
+        updateTranslations();
+    </script>
+</body>
+</html>
